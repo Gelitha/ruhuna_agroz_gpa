@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10b981">
+  <meta name="description" content="University of Ruhuna Faculty of Agriculture Undergraduate GPA Calculator & Academic Advisor Engine">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>University of Ruhuna - Faculty of Agriculture GPA Calculator & Academic Advisor</title>
+  <style>
+/* University of Ruhuna - Faculty of Agriculture GPA Calculator Styles
+   Modern SaaS / University Design System */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --primary: #064e3b;
+  --primary-dark: #022c22;
+  --primary-light: #047857;
+  --primary-accent: #059669;
+  --primary-mint: #10b981;
+  
+  --accent-gold: #d97706;
+  --accent-gold-light: #fef3c7;
+  --accent-gold-hover: #b45309;
+
+  --accent-expected: #7c3aed;
+  --accent-expected-light: #ede9fe;
+  --accent-expected-dark: #6d28d9;
+
+  --accent-real: #059669;
+  --accent-real-light: #d1fae5;
+
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-color: #e2e8f0;
+  --border-focus: #10b981;
+
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --warning: #f59e0b;
+  --success: #10b981;
+  --info: #3b82f6;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}
+
+/* Dark Mode 2.0 OLED Slate Theme */
+body.dark-mode {
+  --primary: #047857;
+  --primary-dark: #064e3b;
+  --primary-light: #059669;
+  --primary-accent: #10b981;
+  --primary-mint: #34d399;
+
+  --accent-gold: #f59e0b;
+  --accent-gold-light: rgba(245, 158, 11, 0.15);
+
+  --accent-expected: #a78bfa;
+  --accent-expected-light: rgba(139, 92, 246, 0.18);
+  --accent-expected-dark: #c4b5fd;
+
+  --accent-real: #34d399;
+  --accent-real-light: rgba(16, 185, 129, 0.18);
+
+  --bg-main: #090d16;
+  --bg-card: #111827;
+  --bg-card-subtle: #1a2234;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: #1f293d;
+  --border-focus: #34d399;
+
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.55;
+  padding-bottom: 80px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ==========================================
+   MINIMALIST CLEAN HEADER
+   ========================================== */
+.app-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 24px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .app-header {
+  background: rgba(17, 24, 39, 0.92);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+.header-container {
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-branding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.header-branding .logo-badge {
+  background: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  box-shadow: none;
+}
+
+.header-brand-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-brand-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary-accent);
+  line-height: 1.15;
+}
+
+.header-brand-badge {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Nav View Switcher (Segmented Control) */
+.nav-view-switcher {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.nav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.nav-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary-accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+body.dark-mode .nav-tab-btn.active {
+  background: #1e293b;
+  color: #34d399;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================
+   BUTTONS & CONTROLS
+   ========================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  font-family: inherit;
+  outline: none;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background-color: var(--primary-accent);
+  color: white;
+  box-shadow: var(--shadow-xs);
+}
+.btn-primary:hover {
+  background-color: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.btn-outline-light {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+}
+.btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-secondary {
+  background-color: var(--bg-card-subtle);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+.btn-secondary:hover {
+  background-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+.btn-accent:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.45);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.btn-danger-outline:hover {
+  background: var(--danger-light);
+}
+
+/* ==========================================
+   PROFILE PILL & DROPDOWN
+   ========================================== */
+.profile-pill-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-card-subtle);
+  color: var(--text-primary);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.profile-pill:hover {
+  background: var(--border-color);
+}
+
+.profile-pill .avatar {
+  background: var(--primary-accent);
+  color: #ffffff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.profile-chevron {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
+
+.btn-theme-toggle {
+  background: var(--bg-card-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.btn-theme-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.more-menu-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-more {
+  background: var(--bg-card-subtle);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.btn-more:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.more-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  min-width: 220px;
+  z-index: 1200;
+  display: none;
+  overflow: hidden;
+  padding: 6px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.more-dropdown.show {
+  display: flex;
+  flex-direction: column;
+}
+
+.more-dropdown-header {
+  padding: 8px 10px 4px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.more-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.more-dropdown-item:hover {
+  background: var(--bg-card-subtle);
+}
+
+.more-dropdown-item.danger {
+  color: var(--danger);
+}
+
+.more-dropdown-item.danger:hover {
+  background: var(--danger-light);
+}
+
+body.dark-mode .more-dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.more-dropdown-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  min-width: 310px;
+  z-index: 1200;
+  display: none;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.profile-dropdown.show {
+  display: block;
+}
+
+.profile-dropdown-header {
+  padding: 12px 16px;
+  background: var(--bg-card-subtle);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.profile-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s;
+}
+
+.profile-item:hover {
+  background: var(--bg-card-subtle);
+}
+
+.profile-item.active {
+  background: rgba(5, 150, 105, 0.08);
+  border-left: 3px solid var(--primary-accent);
+}
+
+.profile-info-block .name {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.profile-info-block .meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.profile-dropdown-actions {
+  padding: 10px 12px;
+  background: var(--bg-card-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ==========================================
+   LAYOUT CONTAINERS
+   ========================================== */
+.main-container {
+  max-width: 1340px;
+  margin: 22px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ==========================================
+   GREETING HERO SECTION
+   ========================================== */
+.greeting-hero-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+}
+
+.greeting-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.greeting-heading {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.greeting-name {
+  color: var(--primary-accent);
+}
+
+.greeting-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin: 0;
+}
+
+.degree-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.degree-pill-group, .degree-btn-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.degree-pill-btn, .degree-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.degree-pill-btn:hover, .degree-btn:hover {
+  color: var(--text-primary);
+}
+
+.degree-pill-btn.active, .degree-btn.active {
+  background: var(--primary-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.progress-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.standing-details-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.standing-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.standing-label {
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.standing-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.advisor-shortcut-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(5, 150, 105, 0.06);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.advisor-shortcut-banner strong {
+  color: var(--primary-accent);
+}
+
+.provisional-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--bg-card-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.workspace-card, .advisor-full-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.advisor-full-card {
+  padding: 24px;
+}
+
+.spec-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spec-select, .sim-select, select.grade-select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+
+.spec-select:focus, .sim-select:focus, select.grade-select:focus {
+  border-color: var(--border-focus);
+}
+
+/* ==========================================
+   MODERN METRICS CARDS (Real vs Expected)
+   ========================================== */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.metric-card.gold::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.metric-card.emerald::before { background: linear-gradient(90deg, #10b981, #059669); }
+.metric-card.blue::before { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+.metric-card.purple::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.metric-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-gold { background: var(--accent-gold-light); color: #92400e; }
+body.dark-mode .badge-gold { color: #fbbf24; }
+.badge-emerald { background: var(--accent-real-light); color: #065f46; }
+body.dark-mode .badge-emerald { color: #34d399; }
+.badge-blue { background: rgba(59, 130, 246, 0.15); color: #1e40af; }
+body.dark-mode .badge-blue { color: #60a5fa; }
+.badge-purple { background: var(--accent-expected-light); color: #5b21b6; }
+body.dark-mode .badge-purple { color: #c4b5fd; }
+.badge-slate { background: var(--bg-card-subtle); color: var(--text-secondary); }
+.badge-rose { background: var(--danger-light); color: #991b1b; }
+
+.metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.metric-unit {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.metric-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* Dual CGPA Display Banner */
+.expected-cgpa-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--accent-expected-light);
+  color: var(--accent-expected);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.view-panel {
+  animation: fadeIn 0.18s ease-out;
+}
+
+/* ==========================================
+   CONTENT GRID: TABS & ADVISOR
+   ========================================== */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1040px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tabs-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* Semester Tabs */
+.semester-tabs-header {
+  display: flex;
+  background: var(--bg-card-subtle);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.semester-tabs-header::-webkit-scrollbar {
+  display: none;
+}
+
+.sem-tab-btn {
+  padding: 13px 18px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sem-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.sem-tab-btn.active {
+  color: var(--primary-accent);
+  border-bottom-color: var(--primary-accent);
+  background: var(--bg-card);
+}
+
+.sem-tab-badge {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+body.dark-mode .sem-tab-badge {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Semester Workspace */
+.semester-panel {
+  padding: 20px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-header-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.sem-stats-banner {
+  display: flex;
+  gap: 16px;
+  background: var(--bg-card-subtle);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  font-size: 0.82rem;
+}
+
+.sem-stat-item strong {
+  color: var(--primary-accent);
+  font-size: 0.92rem;
+}
+
+/* ==========================================
+   MODERN COURSE TABLE
+   ========================================== */
+.table-responsive {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.course-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.84rem;
+}
+
+.course-table th {
+  background: var(--bg-card-subtle);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.course-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.course-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.course-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.dark-mode .course-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.course-table tbody tr.row-expected {
+  background: rgba(124, 58, 237, 0.03);
+}
+
+body.dark-mode .course-table tbody tr.row-expected {
+  background: rgba(124, 58, 237, 0.07);
+}
+
+.code-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: var(--bg-card-subtle);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-color);
+}
+
+.dept-tag {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-left: 5px;
+  font-weight: 600;
+}
+
+.course-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Real vs Expected Interactive Chip */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.status-chip.chip-real {
+  background: var(--accent-real-light);
+  color: #065f46;
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+body.dark-mode .status-chip.chip-real {
+  color: #34d399;
+}
+
+.status-chip.chip-expected {
+  background: var(--accent-expected-light);
+  color: var(--accent-expected);
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+body.dark-mode .status-chip.chip-expected {
+  color: #c4b5fd;
+}
+
+.status-chip:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* Repeat Toggle Group */
+.repeat-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.repeat-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.repeat-checkbox-label.active {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Table Bottom Actions */
+.table-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Search input */
+.course-filter-input {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.course-filter-input:focus {
+  border-color: var(--border-focus);
+}
+
+/* ==========================================
+   ADVISOR SIDEBAR & TOOL TABS
+   ========================================== */
+.advisor-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+
+.tool-tab-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card-subtle);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tool-tab-btn {
+  flex: 1;
+  min-width: 65px;
+  text-align: center;
+  padding: 6px 4px;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.tool-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tool-tab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary-accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.advisor-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+/* Repeat / What-If / Planner result boxes */
+.target-sim-box, .what-if-box, .repeat-calc-box {
+  background: var(--bg-card-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  border: 1px solid var(--border-color);
+}
+
+.sim-input-row, .repeat-row, .what-if-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.sim-result-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.sim-result-box.achievable {
+  border-left: 3px solid var(--success);
+}
+
+.sim-result-box.unachievable {
+  border-left: 3px solid var(--danger);
+}
+
+/* Audit Items */
+.audit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+}
+
+.audit-passed {
+  background: var(--accent-real-light);
+  color: #065f46;
+}
+
+body.dark-mode .audit-passed {
+  color: #34d399;
+}
+
+.audit-pending {
+  background: var(--accent-gold-light);
+  color: #92400e;
+}
+
+body.dark-mode .audit-pending {
+  color: #fbbf24;
+}
+
+/* ==========================================
+   SVG CHART CONTAINER
+   ========================================== */
+.chart-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+/* ==========================================
+   MODALS & OVERLAYS
+   ========================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-box {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  transform: scale(0.96);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.open .modal-box {
+  transform: scale(1);
+}
+
+.modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 22px 24px;
+  overflow-y: auto;
+  font-size: 0.86rem;
+}
+
+.modal-footer {
+  padding: 14px 24px;
+  background: var(--bg-card-subtle);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.paste-textarea {
+  width: 100%;
+  height: 170px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  outline: none;
+  resize: vertical;
+}
+
+/* ==========================================
+   ONBOARDING WELCOME MODAL
+   ========================================== */
+.onboarding-card {
+  max-width: 480px;
+}
+
+.onboarding-hero {
+  text-align: center;
+  padding: 20px 24px 10px;
+}
+
+.onboarding-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #064e3b, #047857);
+  color: #f59e0b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 16px -2px rgba(6, 78, 59, 0.3);
+}
+
+.degree-radio-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.degree-radio-option {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.degree-radio-option:hover {
+  border-color: var(--primary-accent);
+  background: rgba(5, 150, 105, 0.04);
+}
+
+.degree-radio-option.selected {
+  border-color: var(--primary-accent);
+  background: rgba(5, 150, 105, 0.08);
+}
+
+.degree-radio-option input {
+  margin-right: 12px;
+  accent-color: var(--primary-accent);
+}
+
+/* Print Layout */
+@media print {
+  body {
+    background: white;
+    color: black;
+    padding: 0;
+  }
+  .app-header,
+  .greeting-hero-card,
+  .degree-selector-card,
+  .nav-view-switcher,
+  .tool-tab-group,
+  .chart-container,
+  .table-actions,
+  .advisor-sidebar,
+  .advisor-shortcut-banner,
+  .provisional-banner,
+  #view-advisor,
+  #view-analytics,
+  .btn,
+  .modal-overlay,
+  .status-chip {
+    display: none !important;
+  }
+  #view-workspace {
+    display: block !important;
+  }
+  .print-only-header {
+    display: block !important;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+  }
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+  .tabs-container {
+    border: none;
+    box-shadow: none;
+  }
+  .semester-tabs-header {
+    display: none;
+  }
+}
+
+.print-only-header {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   RESULT STATUS TWO-OPTION SWITCH BUTTON
+   ========================================== */
+.result-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  gap: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+body.dark-mode .result-status-toggle {
+  background: #111827;
+  border-color: #334155;
+}
+
+.status-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.status-toggle-btn:hover {
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .status-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-toggle-btn.status-real.active {
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.35);
+}
+
+.status-toggle-btn.status-expected.active {
+  background: #8b5cf6;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.35);
+}
+
+.status-toggle-btn .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-toggle-btn .status-sparkle {
+  font-size: 0.75rem;
+}
+
+/* Toast Notification */
+.app-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e293b;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  border: 1px solid #334155;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+.app-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Regulation Risk Alerts */
+.alert-card {
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border-left: 4px solid transparent;
+  background: var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.alert-danger {
+  border-left-color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--text-main);
+}
+
+.alert-warning {
+  border-left-color: var(--warning);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text-main);
+}
+
+.alert-info {
+  border-left-color: var(--info);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text-main);
+}
+
+.alert-success {
+  border-left-color: var(--success);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--text-main);
+}
+
+/* Grade Distribution Visual */
+.grade-distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 8px;
+  align-items: flex-end;
+  height: 120px;
+  padding-top: 10px;
+}
+
+.grade-dist-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.dist-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  height: 16px;
+}
+
+.dist-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 22px;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+body.dark-mode .dist-bar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dist-bar {
+  width: 100%;
+  border-radius: 4px;
+  transition: height 0.4s ease;
+  min-height: 2px;
+}
+
+.dist-bar.bar-gold { background: #f59e0b; }
+.dist-bar.bar-green { background: #10b981; }
+.dist-bar.bar-blue { background: #3b82f6; }
+.dist-bar.bar-amber { background: #d97706; }
+.dist-bar.bar-red { background: #ef4444; }
+
+.dist-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Quick Fill Action Pill Group */
+.quick-fill-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.quick-fill-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+</head>
+<body>
+
+  <!-- Printable Academic Transcript Header (Visible only on print/save PDF) -->
+  <div class="print-only-header">
+    <h2 style="margin: 0; font-size: 1.3rem;">FACULTY OF AGRICULTURE — UNIVERSITY OF RUHUNA</h2>
+    <p style="margin: 3px 0; font-weight: 700; font-size: 1rem;" id="printStudentInfo">Student: Gjay | Index: 7740</p>
+    <p style="margin: 2px 0; font-size: 0.9rem;" id="printDegreeName">Undergraduate Academic Performance Summary (2023/24 Handbook)</p>
+    <p style="margin: 2px 0; font-size: 0.85rem;" id="printMetaDetails">Generated Transcript Summary</p>
+  </div>
+
+  <!-- Minimalist Modern Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="header-branding">
+        <span class="logo-badge" title="Faculty of Agriculture, University of Ruhuna">🌾</span>
+        <div class="header-brand-info">
+          <span class="header-brand-title">AgriGPA</span>
+          <span class="header-brand-badge">UoR Faculty of Agriculture</span>
+        </div>
+      </div>
+
+      <!-- Center View Switcher (Clean Segmented Tabs) -->
+      <nav class="nav-view-switcher" id="mainNavSwitcher">
+        <button class="nav-tab-btn active" data-view="workspace">
+          <span class="nav-icon">📚</span>
+          <span>Semester Grades</span>
+        </button>
+        <button class="nav-tab-btn" data-view="advisor">
+          <span class="nav-icon">🎯</span>
+          <span>Academic Advisor</span>
+        </button>
+        <button class="nav-tab-btn" data-view="analytics">
+          <span class="nav-icon">📈</span>
+          <span>Progression</span>
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <!-- Student Profile Pill & Dropdown -->
+        <div class="profile-pill-wrapper" id="profilePillWrapper">
+          <button class="profile-pill" id="profilePillBtn" title="Switch or manage student profile">
+            <span class="avatar" id="profileAvatar">G</span>
+            <span id="profileDisplayName">Gjay (7740)</span>
+            <span class="profile-chevron">▾</span>
+          </button>
+          <div class="profile-dropdown" id="profileDropdown">
+            <div class="profile-dropdown-header">
+              <span>Saved Profiles</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Local Storage</span>
+            </div>
+            <div id="profileListItems" style="max-height: 220px; overflow-y: auto;">
+              <!-- Dynamic profile list items -->
+            </div>
+            <div class="profile-dropdown-actions">
+              <button class="btn btn-primary" id="btnOpenNewProfileModal" style="width: 100%; justify-content: center; font-size: 0.8rem;">+ New Student Profile</button>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-secondary" id="btnEditProfileModal" style="flex: 1; justify-content: center; font-size: 0.75rem;">✏️ Edit</button>
+                <button class="btn btn-secondary" id="btnCloneProfile" style="flex: 1; justify-content: center; font-size: 0.75rem;">📋 Duplicate</button>
+                <button class="btn btn-danger-outline" id="btnDeleteCurrentProfile" style="justify-content: center; font-size: 0.75rem;" title="Delete Profile">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shareable Summary Card Quick Action -->
+        <button class="btn btn-secondary" id="btnCopySummaryCard" title="Copy formatted academic performance summary to clipboard" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; padding: 6px 10px;">
+          <span>📋</span> Share Card
+        </button>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button class="btn btn-theme-toggle" id="btnThemeToggle" title="Toggle Dark/Light Mode">🌙 Dark</button>
+
+        <!-- More Actions Dropdown Menu -->
+        <div class="more-menu-wrapper" id="moreMenuWrapper">
+          <button class="btn btn-more" id="btnMoreMenu" title="More Tools & Actions">⚙️ ▾</button>
+          <div class="more-dropdown" id="moreDropdown">
+            <div class="more-dropdown-header">Tools & Data</div>
+            <button class="more-dropdown-item" id="btnQuickPaste">📋 Quick Paste Transcript</button>
+            <button class="more-dropdown-item" id="btnLoadSample">🧪 Load Sample Data</button>
+            <button class="more-dropdown-item" id="btnExportCsv">📥 Export Transcript (CSV)</button>
+            <button class="more-dropdown-item" id="btnBackupRestore">💾 Backup & Restore JSON</button>
+            <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+            <div class="more-dropdown-divider"></div>
+            <button class="more-dropdown-item" id="btnPrintReport">🖨️ Print / Save PDF</button>
+            <button class="more-dropdown-item danger" id="btnResetAll">🔄 Reset All Courses</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- Personalized Greeting & Degree Hero Banner -->
+    <section class="greeting-hero-card">
+      <div class="greeting-content">
+        <h1 class="greeting-heading" id="greetingTitle">Good afternoon, <span class="greeting-name">Gjay</span> 👋</h1>
+        <p class="greeting-subtitle" id="greetingSubtitle">BSc Hons in Agricultural Resource Management & Tech • Index 7740</p>
+      </div>
+
+      <div class="degree-controls-inline">
+        <div class="degree-pill-group" id="degreeBtnGroup">
+          <button class="degree-btn degree-pill-btn active" data-degree="ARMT">ARMT (126 Cr)</button>
+          <button class="degree-btn degree-pill-btn" data-degree="ABM">ABM (125 Cr)</button>
+          <button class="degree-btn degree-pill-btn" data-degree="GT">Green Tech (125 Cr)</button>
+        </div>
+
+        <div class="spec-selector-group" id="specializationContainer">
+          <label for="specDeptSelect">Year 4 Specialization:</label>
+          <select id="specDeptSelect" class="spec-select">
+            <option value="CS">Crop Science (CS)</option>
+            <option value="AS">Animal Science (AS)</option>
+            <option value="BL">Agricultural Biology (BL)</option>
+            <option value="EC">Agric. Economics & Agribusiness (EC)</option>
+            <option value="EN">Agric. Engineering (EN)</option>
+            <option value="FS">Food Science & Technology (FS)</option>
+            <option value="SS">Soil Science (SS)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Clean Minimalist Metrics Strip -->
+    <section class="metrics-grid">
+      <!-- Cumulative GPA Card -->
+      <div class="metric-card gold">
+        <div class="metric-header">
+          <span class="metric-title">Cumulative GPA (CGPA)</span>
+          <span class="metric-badge badge-gold" id="summaryClassStanding">First Class Honours</span>
+        </div>
+        <div class="metric-value-row">
+          <span class="metric-value" id="summaryCgpaValue">0.00</span>
+          <span class="metric-unit">/ 4.00</span>
+        </div>
+        <div class="metric-subtitle" id="cgpaDetails">Real Confirmed CGPA Standing</div>
+        <div id="expectedCgpaContainer" style="margin-top: 6px;">
+          <span class="expected-cgpa-pill" id="summaryExpectedCgpaPill" style="display: none;">✨ Expected: 0.00 (+0.00)</span>
+        </div>
+      </div>
+
+      <!-- Total Credits Progress Card -->
+      <div class="metric-card emerald">
+        <div class="metric-header">
+          <span class="metric-title">Degree Credits Earned</span>
+          <span class="metric-badge badge-emerald" id="summaryCreditsProgress">0 / 126 Cr</span>
+        </div>
+        <div class="progress-bar-wrap" style="margin-top: 14px;">
+          <div class="progress-bar-fill" id="summaryCreditsBar" style="width: 0%;"></div>
+        </div>
+        <div class="metric-subtitle" style="margin-top: 8px;">Minimum credit requirements for graduation</div>
+      </div>
+
+      <!-- Academic Standing & Honors Card -->
+      <div class="metric-card blue">
+        <div class="metric-header">
+          <span class="metric-title">Academic Honors & Standing</span>
+          <span class="metric-badge badge-blue" id="summaryHonorsBadge">Dean's Honors Pending</span>
+        </div>
+        <div class="standing-details-wrap" style="margin-top: 10px;">
+          <div class="standing-line">
+            <span class="standing-label">Dean's Honors:</span>
+            <span class="standing-text">Annual GPA ≥ 3.70 (Y1-2) or 3.80 (Y3-4)</span>
+          </div>
+          <div class="standing-line" style="margin-top: 6px;">
+            <span class="standing-label">Non-GPA Modules:</span>
+            <span class="metric-badge badge-slate" id="summaryNgpaBadge">In Progress</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 1: Semester Workspace (Courses & Grades) -->
+    <div class="view-panel active" id="view-workspace">
+      <div class="workspace-card">
+        <!-- Semester Tab Header -->
+        <div class="semester-tabs-header" id="semesterTabsContainer">
+          <button class="semester-tab active" data-sem="1-1">Sem 1-1</button>
+          <button class="semester-tab" data-sem="1-2">Sem 1-2</button>
+          <button class="semester-tab" data-sem="2-1">Sem 2-1</button>
+          <button class="semester-tab" data-sem="2-2">Sem 2-2</button>
+          <button class="semester-tab" data-sem="3-1">Sem 3-1</button>
+          <button class="semester-tab" data-sem="3-2">Sem 3-2</button>
+          <button class="semester-tab" data-sem="4-1">Sem 4-1</button>
+          <button class="semester-tab" data-sem="4-2">Sem 4-2</button>
+          <button class="semester-tab" data-sem="all" style="color: var(--primary-accent); font-weight: 800;">📊 All Semesters</button>
+        </div>
+
+        <!-- Semester Workspace Panel -->
+        <div class="semester-panel" id="semesterPanel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-header-title" id="semesterTitle">Semester 1-1</h2>
+              <div style="font-size: 0.8rem; color: var(--text-secondary);" id="semesterSubtitle">Track real confirmed grades vs. anticipated/expected subject results</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="course-filter-wrapper">
+                <input type="text" id="courseFilterInput" class="course-filter-input" placeholder="🔍 Search code, name, dept...">
+              </div>
+              <div class="sem-stats-banner">
+                <div class="sem-stat-item">Real SGPA: <strong id="semRealSgpaValue">0.00</strong></div>
+                <div class="sem-stat-item" id="semExpectedStatWrap" style="display: none;">Expected SGPA: <strong id="semExpectedSgpaValue" style="color: var(--accent-expected);">0.00</strong></div>
+                <div class="sem-stat-item">GPA Credits: <strong id="semCreditsValue">0</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Fill Action Toolbar -->
+          <div class="quick-fill-bar">
+            <span class="quick-fill-label">⚡ Quick Fill:</span>
+            <button class="btn btn-secondary" id="btnBulkFillA" style="padding: 3px 8px; font-size: 0.74rem;">Fill with A (4.0)</button>
+            <button class="btn btn-secondary" id="btnBulkFillBPlus" style="padding: 3px 8px; font-size: 0.74rem;">Fill with B+ (3.3)</button>
+            <button class="btn btn-secondary" id="btnMarkAllReal" style="padding: 3px 8px; font-size: 0.74rem;">🟢 Mark All Real</button>
+            <button class="btn btn-secondary" id="btnFillExpected" style="padding: 3px 8px; font-size: 0.74rem;">✨ Mark All Expected</button>
+            <button class="btn btn-danger-outline" id="btnClearSemGrades" style="padding: 3px 8px; font-size: 0.74rem; margin-left: auto;">🔄 Clear Grades</button>
+          </div>
+
+          <!-- Courses Table -->
+          <div class="table-responsive">
+            <table class="course-table" id="courseTable">
+              <thead>
+                <tr>
+                  <th style="width: 120px;">Course Code</th>
+                  <th>Course Title</th>
+                  <th style="width: 65px; text-align: center;">Credits</th>
+                  <th style="width: 95px;">Type</th>
+                  <th style="width: 155px; text-align: center;">Result Status</th>
+                  <th style="width: 125px;">Grade</th>
+                  <th style="width: 110px;">Repeat?</th>
+                  <th style="width: 65px; text-align: center;">GPV</th>
+                  <th style="width: 75px; text-align: right;">Points</th>
+                  <th style="width: 45px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="courseTableBody">
+                <!-- Rows injected dynamically via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="table-actions">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="btnAddElectiveModalBtn">+ Add Elective from Catalog</button>
+              <button class="btn btn-secondary" id="btnAddCustomCourseBtn">+ Add Custom Course</button>
+            </div>
+            <button class="btn btn-secondary" id="btnRestoreCompulsory">Reset Standard Compulsory</button>
+          </div>
+
+          <!-- Fast Switch to Advisor Prompt Card -->
+          <div class="advisor-shortcut-banner">
+            <div>
+              <strong>🎯 Need Academic Guidance?</strong> Target GPA planner, "What-If" final projection, and repeat upgrades are in the Academic Advisor.
+            </div>
+            <button class="btn btn-primary" id="btnGoToAdvisor" style="padding: 6px 14px; font-size: 0.8rem;">Open Academic Advisor →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: Academic Advisor & Projections Hub -->
+    <div class="view-panel" id="view-advisor" style="display: none;">
+      <div class="advisor-full-card">
+        <!-- Faculty Regulation Risk Alerts Banner -->
+        <div style="margin-bottom: 16px;">
+          <h3 style="font-size: 0.92rem; font-weight: 700; color: var(--primary-accent); margin-bottom: 8px;">🛡️ Faculty Regulation & Academic Standing Health Check</h3>
+          <div id="academicRiskAlertsContainer">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Advisor Tool Nav Tabs -->
+        <div class="tool-tab-group">
+          <button class="tool-tab-btn active" data-tool="planner">🎯 Target Planner</button>
+          <button class="tool-tab-btn" data-tool="whatif">🔮 What-If Simulator</button>
+          <button class="tool-tab-btn" data-tool="repeat">🔄 Repeat Upgrade</button>
+          <button class="tool-tab-btn" data-tool="audit">🎓 Degree Audit</button>
+          <button class="tool-tab-btn" data-tool="honors">🏆 Dean's Honors</button>
+          <button class="tool-tab-btn" data-tool="ngpa">📝 Non-GPA Courses</button>
+        </div>
+
+        <!-- Tool 1: Target GPA Planner -->
+        <div class="advisor-tool-pane" id="tool-pane-planner">
+          <div class="advisor-card-title">
+            <span>🎯 Target GPA Planner & Concrete Combinations</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Determine the exact average GPA and recommended letter grade combinations across remaining credits to secure your target honours degree:
+          </p>
+          <div class="target-sim-box">
+            <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; display: block;">Select Target Honours Standing or Custom CGPA:</label>
+            <div class="sim-input-row" style="gap: 8px;">
+              <select id="targetGoalSelect" class="sim-select" style="flex: 2;">
+                <option value="3.70">First Class Honours (3.70)</option>
+                <option value="3.30">Second Class Upper (3.30)</option>
+                <option value="3.00">Second Class Lower (3.00)</option>
+                <option value="2.00">General Pass (2.00)</option>
+              </select>
+              <input type="number" id="targetGpaInput" class="sim-select" style="flex: 1; max-width: 90px;" min="2.00" max="4.00" step="0.01" value="3.70" placeholder="CGPA">
+              <button class="btn btn-primary" id="btnCalculateTarget">Calculate Target</button>
+            </div>
+            <div class="sim-result-box" id="targetGpaResultBox">
+              Select your degree target to see the required remaining grade point average and recommended grade combinations.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 2: What-If GPA Simulator -->
+        <div class="advisor-tool-pane" id="tool-pane-whatif" style="display: none;">
+          <div class="advisor-card-title">
+            <span>🔮 "What-If" GPA Projection Simulator</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Project your final CGPA by simulating your performance across all remaining degree credits:
+          </p>
+          <div class="what-if-box">
+            <div class="what-if-row">
+              <label style="font-size: 0.82rem; font-weight: 700;">Simulated Average Grade:</label>
+              <select id="whatIfGradeSelect" class="sim-select" style="flex: 1;">
+                <option value="4.00">All A / A+ (4.00 GPV)</option>
+                <option value="3.70" selected>All A- (3.70 GPV)</option>
+                <option value="3.30">All B+ (3.30 GPV)</option>
+                <option value="3.00">All B (3.00 GPV)</option>
+                <option value="2.70">All B- (2.70 GPV)</option>
+                <option value="2.30">All C+ (2.30 GPV)</option>
+                <option value="2.00">All C (2.00 GPV)</option>
+              </select>
+            </div>
+            <div style="margin-top: 12px; padding: 14px; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);" id="whatIfResultBox">
+              <!-- Injected dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 3: Repeat Impact Planner -->
+        <div class="advisor-tool-pane" id="tool-pane-repeat" style="display: none;">
+          <div class="advisor-card-title">
+            <span>🔄 Repeat Grade Upgrade Planner</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Ruhuna Faculty Rule: Standard repeat is capped at <strong>C (2.0 GPV)</strong> unless approved on valid medical/Senate excuse:
+          </p>
+          <div class="repeat-calc-box">
+            <div style="margin-bottom: 10px;">
+              <label style="font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 4px;">Select Course to Repeat:</label>
+              <select id="repeatCourseSelect" class="sim-select" style="width: 100%;">
+                <!-- Populated dynamically with registered courses -->
+              </select>
+            </div>
+            <div class="repeat-row">
+              <div style="flex: 1;">
+                <label style="font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 4px;">Target Grade:</label>
+                <select id="repeatTargetGradeSelect" class="sim-select" style="width: 100%;">
+                  <option value="C">C (2.0 - Normal Cap)</option>
+                  <option value="B">B (3.0 - Senate Excused)</option>
+                  <option value="A-">A- (3.7 - Senate Excused)</option>
+                  <option value="A">A (4.0 - Senate Excused)</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 6px; cursor: pointer; padding-bottom: 8px;">
+                  <input type="checkbox" id="repeatExcusedCheck"> Senate Excused?
+                </label>
+              </div>
+            </div>
+            <div style="margin-top: 12px; padding: 12px; background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);" id="repeatResultBox">
+              Select a course to evaluate the CGPA boost.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool 4: Graduation Audit Checklist -->
+        <div class="advisor-tool-pane" id="tool-pane-audit" style="display: none;">
+          <div class="advisor-card-title">
+            <span>🎓 Degree Conferment Audit Checklist</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Graduation compliance audit with Faculty of Agriculture regulations:
+          </p>
+          <div id="auditChecklistContainer">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Tool 5: Dean's Honors & Specialization -->
+        <div class="advisor-tool-pane" id="tool-pane-honors" style="display: none;">
+          <div class="advisor-card-title">
+            <span>🏆 Dean's Honors List Eligibility</span>
+          </div>
+          <div id="deansHonorListContainer" style="margin-bottom: 14px;">
+            <!-- Injected dynamically -->
+          </div>
+          <div class="advisor-card-title" style="margin-top: 16px;">
+            <span>🎓 3-1 Departmental Specialization Preference</span>
+          </div>
+          <div id="specializationAdvisorContent" style="font-size: 0.84rem;">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Tool 6: Non-GPA Checklist -->
+        <div class="advisor-tool-pane" id="tool-pane-ngpa" style="display: none;">
+          <div class="advisor-card-title">
+            <span>📝 Compulsory Non-GPA Checklist</span>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+            Must pass with minimum grade of <strong>C- (1.7)</strong> for degree conferment:
+          </div>
+          <div id="ngpaCoursesList" style="font-size: 0.84rem;">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: Performance Trends & Progression Chart -->
+    <div class="view-panel" id="view-analytics" style="display: none;">
+      <div class="chart-container">
+        <div class="chart-header">
+          <div>
+            <strong style="font-size: 0.95rem; color: var(--primary-accent);">📈 GPA Progression & Honours Trajectory (Sem 1-1 to 4-2)</strong>
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">Real Confirmed SGPA vs. Anticipated/Expected CGPA curve</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><span class="legend-dot" style="background: #10b981;"></span> Real Confirmed</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #8b5cf6;"></span> Anticipated / Expected</div>
+            <div class="legend-item"><span style="border-top: 2px dashed #f59e0b; width: 14px; display: inline-block;"></span> First Class (3.70)</div>
+            <div class="legend-item"><span style="border-top: 2px dashed #3b82f6; width: 14px; display: inline-block;"></span> Second Upper (3.30)</div>
+          </div>
+        </div>
+        <div id="gpaTrendChartWrapper">
+          <!-- Injected dynamically via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Letter Grade Distribution Card -->
+      <div class="chart-container" style="margin-top: 16px;">
+        <div class="chart-header">
+          <div>
+            <strong style="font-size: 0.95rem; color: var(--primary-accent);">📊 Letter Grade Distribution Spread & Performance Metrics</strong>
+            <div style="font-size: 0.78rem; color: var(--text-secondary);">Frequency of letter grades across all completed semesters</div>
+          </div>
+        </div>
+        <div id="gradeDistributionWrapper" style="padding: 12px 16px;">
+          <!-- Injected dynamically via JavaScript -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal 1: Onboarding Welcome Screen (Shown on First Visit) -->
+  <div class="modal-overlay" id="onboardingModal">
+    <div class="modal-box onboarding-card">
+      <div class="modal-header" style="text-align: center; display: block; border-bottom: none; padding-bottom: 0;">
+        <span style="font-size: 2.5rem; display: block; margin-bottom: 6px;">🌾</span>
+        <h2 style="font-size: 1.3rem; margin: 0; color: var(--primary-accent);">Welcome to AgriGPA!</h2>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 4px;">Faculty of Agriculture, University of Ruhuna</p>
+      </div>
+      <div class="modal-body" style="padding-top: 10px;">
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px; text-align: center;">
+          Let's quickly set up your undergraduate academic profile to tailor your degree requirements and curriculum roadmap:
+        </p>
+
+        <div style="margin-bottom: 12px;">
+          <label style="font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 4px;">Your Name / Preferred Name:</label>
+          <input type="text" id="onboardName" placeholder="e.g., Gjay" value="Gjay" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); outline: none;">
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 4px;">Index Number (Last 4 digits or full index):</label>
+          <input type="text" id="onboardIndex" placeholder="e.g., 7740 or AG/2021/7740" value="7740" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); outline: none;">
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 6px;">Undergraduate Degree Programme:</label>
+          <div class="onboarding-degree-options">
+            <button class="onboarding-opt-btn active" data-deg="ARMT">
+              <strong>ARMT (126 Cr)</strong>
+              <span>Agric. Resource Mgt. & Tech</span>
+            </button>
+            <button class="onboarding-opt-btn" data-deg="ABM">
+              <strong>ABM (125 Cr)</strong>
+              <span>Agribusiness Management</span>
+            </button>
+            <button class="onboarding-opt-btn" data-deg="GT">
+              <strong>Green Tech (125 Cr)</strong>
+              <span>BSc Hons Green Technology</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="onboardSpecGroup" style="margin-bottom: 12px;">
+          <label style="font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 4px;">Anticipated Specialization Stream (Year 4):</label>
+          <select id="onboardSpec" class="sim-select" style="width: 100%;">
+            <option value="CS" selected>Crop Science (CS)</option>
+            <option value="AS">Animal Science (AS)</option>
+            <option value="BL">Agricultural Biology (BL)</option>
+            <option value="EC">Agric. Economics & Agribusiness (EC)</option>
+            <option value="EN">Agric. Engineering (EN)</option>
+            <option value="FS">Food Science & Technology (FS)</option>
+            <option value="SS">Soil Science (SS)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 16px 24px;">
+        <button class="btn btn-primary" id="btnCompleteOnboarding" style="width: 100%; justify-content: center;">Get Started with AgriGPA →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Quick Paste Transcript Parser -->
+  <div class="modal-overlay" id="quickPasteModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📋 Quick Paste Results / Transcript</h3>
+        <button class="modal-close-btn" data-close="quickPasteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 8px;">Paste text directly from your result sheet, MIS, or text table. The parser will automatically recognize course codes (e.g., <code>CS11201</code>, <code>BL11301</code>) and grades (<code>A+</code>, <code>A</code>, <code>B+</code>, etc.):</p>
+        <textarea class="paste-textarea" id="pasteInputText" placeholder="Example:&#10;CS11201 Principles of Agronomy 2 A&#10;BL11301 Plant Physiology and Systematics 3 B+&#10;EC11201 Micro Economics 2 A-&#10;CC11202 English I 2 A"></textarea>
+        <div id="pasteResultsPreview" style="margin-top: 10px; font-weight: 600; color: var(--primary-accent);"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="quickPasteModal">Cancel</button>
+        <button class="btn btn-primary" id="btnApplyParsedResults">Apply Parsed Grades</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Add Elective Course Catalog -->
+  <div class="modal-overlay" id="electiveCatalogModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📚 Elective Course Catalog (<span id="electiveModalSemesterTitle">Semester 1-1</span>)</h3>
+        <button class="modal-close-btn" data-close="electiveCatalogModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="electiveSearchInput" placeholder="Search by course code, title, or department..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 12px;">
+        <div id="electiveCoursesListContainer" style="max-height: 380px; overflow-y: auto;">
+          <!-- Course list injected dynamically -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="electiveCatalogModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Student Profile Create / Edit -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="profileModalTitle">👤 Student Profile</h3>
+        <button class="modal-close-btn" data-close="profileModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 0.82rem; display: block; margin-bottom: 4px;">Student Name / Nickname:</label>
+          <input type="text" id="profileModalName" placeholder="e.g., Gjay" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 0.82rem; display: block; margin-bottom: 4px;">Index Number (Last 4 digits or full index):</label>
+          <input type="text" id="profileModalIndex" placeholder="e.g., 7740 or AG/2021/7740" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); outline: none;">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 0.82rem; display: block; margin-bottom: 4px;">Degree Programme:</label>
+          <select id="profileModalDegree" class="sim-select" style="width: 100%;">
+            <option value="ARMT">BSc Hons in Agricultural Resource Management & Technology (ARMT - 126 Cr)</option>
+            <option value="ABM">BSc Hons in Agribusiness Management (ABM - 125 Cr)</option>
+            <option value="GT">BSc Hons in Green Technology (GT - 125 Cr)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="profileModal">Cancel</button>
+        <button class="btn btn-primary" id="btnSaveProfileModal">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decoupled TypeScript-compiled UI bundle -->
+  <script>
+(()=>{var GRADING_SCALE={"A+":{gpv:4,status:"Pass",marks:">= 85%"},"A":{gpv:4,status:"Pass",marks:"80 - 84%"},"A-":{gpv:3.7,status:"Pass",marks:"75 - 79%"},"B+":{gpv:3.3,status:"Pass",marks:"70 - 74%"},"B":{gpv:3,status:"Pass",marks:"65 - 69%"},"B-":{gpv:2.7,status:"Pass",marks:"60 - 64%"},"C+":{gpv:2.3,status:"Pass",marks:"55 - 59%"},"C":{gpv:2,status:"Pass (Repeat Cap)",marks:"50 - 54%"},"C-":{gpv:1.7,status:"Conditional (NGPA Pass)",marks:"45 - 49%"},"D+":{gpv:1.3,status:"Conditional",marks:"40 - 44%"},"D":{gpv:1,status:"Conditional",marks:"35 - 39%"},"E":{gpv:0,status:"Fail (Must Repeat)",marks:"< 35%"}};var DEPARTMENTS={AS:"Department of Animal Science",BL:"Department of Agricultural Biology",CS:"Department of Crop Science",EC:"Department of Agricultural Economics & Agribusiness",EN:"Department of Agricultural Engineering & Environmental Technology",FS:"Department of Food Science & Technology",SS:"Department of Soil Science",CC:"Common / Interdisciplinary / Computer Unit"};var DEGREE_INFO={ARMT:{code:"ARMT",name:"BSc Hons in Agricultural Resource Management & Technology",shortName:"ARMT",totalMinGpaCredits:126,minElectiveCredits:18,minCompulsoryCredits:108,nonGpaCredits:5,hasSpecializationChoice:true,semesters:{"1-1":{compulsoryCredits:15,minElectives:0},"1-2":{compulsoryCredits:16,minElectives:0},"2-1":{compulsoryCredits:16,minElectives:0},"2-2":{compulsoryCredits:13,minElectives:2},"3-1":{compulsoryCredits:12,minElectives:4},"3-2":{compulsoryCredits:15,minElectives:4},"4-1":{compulsoryCredits:12,minElectives:0},"4-2":{compulsoryCredits:9,minElectives:0}}},ABM:{code:"ABM",name:"BSc Hons in Agribusiness Management",shortName:"ABM",totalMinGpaCredits:125,minElectiveCredits:16,minCompulsoryCredits:109,nonGpaCredits:5,hasSpecializationChoice:true,semesters:{"1-1":{compulsoryCredits:15,minElectives:0},"1-2":{compulsoryCredits:18,minElectives:0},"2-1":{compulsoryCredits:15,minElectives:0},"2-2":{compulsoryCredits:16,minElectives:0},"3-1":{compulsoryCredits:12,minElectives:4},"3-2":{compulsoryCredits:12,minElectives:4},"4-1":{compulsoryCredits:12,minElectives:0},"4-2":{compulsoryCredits:9,minElectives:0}}},GT:{code:"GT",name:"BSc Hons in Green Technology",shortName:"GT",totalMinGpaCredits:125,minElectiveCredits:14,minCompulsoryCredits:111,nonGpaCredits:5,hasSpecializationChoice:false,semesters:{"1-1":{compulsoryCredits:15,minElectives:0},"1-2":{compulsoryCredits:15,minElectives:0},"2-1":{compulsoryCredits:16,minElectives:0},"2-2":{compulsoryCredits:16,minElectives:0},"3-1":{compulsoryCredits:14,minElectives:2},"3-2":{compulsoryCredits:14,minElectives:2},"4-1":{compulsoryCredits:12,minElectives:0},"4-2":{compulsoryCredits:9,minElectives:0}}}};var COURSE_CATALOG={"CC10001":{code:"CC10001",name:"General English",credits:0,isNgpa:true,dept:"CC",semester:"Orientation"},"CC10002":{code:"CC10002",name:"Computer Awareness",credits:0,isNgpa:true,dept:"CC",semester:"Orientation"},"CC10003":{code:"CC10003",name:"Basic Mathematics",credits:0,isNgpa:true,dept:"CC",semester:"Orientation"},"CC10004":{code:"CC10004",name:"Basic Statistics",credits:0,isNgpa:true,dept:"CC",semester:"Orientation"},"CC10005":{code:"CC10005",name:"Career Development and Active Citizen",credits:0,isNgpa:true,dept:"CC",semester:"Orientation"},"CC11202":{code:"CC11202",name:"English I",credits:2,isNgpa:true,dept:"CC",semester:"1-1"},"CC12101":{code:"CC12101",name:"Basic Technical Writing",credits:1,isNgpa:true,dept:"CC",semester:"1-2"},"CC12202":{code:"CC12202",name:"English II",credits:2,isNgpa:true,dept:"CC",semester:"1-2"},"AS11201":{code:"AS11201",name:"Anatomy and Physiology of Farm Animals",credits:2,isNgpa:false,dept:"AS",semester:"1-1"},"BL11301":{code:"BL11301",name:"Plant Physiology and Systematics",credits:3,isNgpa:false,dept:"BL",semester:"1-1"},"CC11201":{code:"CC11201",name:"Information and Communication Technology in Agriculture",credits:2,isNgpa:false,dept:"CC",semester:"1-1"},"CC11203":{code:"CC11203",name:"Information and Communication Technology",credits:2,isNgpa:false,dept:"CC",semester:"1-1"},"CS11201":{code:"CS11201",name:"Principles of Agronomy",credits:2,isNgpa:false,dept:"CS",semester:"1-1"},"EC11201":{code:"EC11201",name:"Micro Economics",credits:2,isNgpa:false,dept:"EC",semester:"1-1"},"EC11202":{code:"EC11202",name:"Economic Statistics",credits:2,isNgpa:false,dept:"EC",semester:"1-1"},"EC11203":{code:"EC11203",name:"Economic Principles",credits:2,isNgpa:false,dept:"EC",semester:"1-1"},"EN11201":{code:"EN11201",name:"Hydrology and Climatology",credits:2,isNgpa:false,dept:"EN",semester:"1-1"},"EN11302":{code:"EN11302",name:"Environmental Pollution, Toxicology and Remediation",credits:3,isNgpa:false,dept:"EN",semester:"1-1"},"EN11203":{code:"EN11203",name:"Natural and Cultural Heritage Conservation",credits:2,isNgpa:false,dept:"EN",semester:"1-1"},"EN11204":{code:"EN11204",name:"Environmental Law & Policy",credits:2,isNgpa:false,dept:"EN",semester:"1-1"},"FS11201":{code:"FS11201",name:"Biochemistry",credits:2,isNgpa:false,dept:"FS",semester:"1-1"},"AS12301":{code:"AS12301",name:"Animal Nutrition, Forage & Feed Technology",credits:3,isNgpa:false,dept:"AS",semester:"1-2"},"BL12201":{code:"BL12201",name:"Entomology",credits:2,isNgpa:false,dept:"BL",semester:"1-2"},"BL12202":{code:"BL12202",name:"Biodiversity Conservation",credits:2,isNgpa:false,dept:"BL",semester:"1-2"},"BL12203":{code:"BL12203",name:"Environmental Biotechnology",credits:2,isNgpa:false,dept:"BL",semester:"1-2"},"CS12201":{code:"CS12201",name:"Agroforestry and Silviculture",credits:2,isNgpa:false,dept:"CS",semester:"1-2"},"EC12201":{code:"EC12201",name:"Macro Economics",credits:2,isNgpa:false,dept:"EC",semester:"1-2"},"EC12202":{code:"EC12202",name:"Principles of Business Management",credits:2,isNgpa:false,dept:"EC",semester:"1-2"},"EC12203":{code:"EC12203",name:"Marketing Management",credits:2,isNgpa:false,dept:"EC",semester:"1-2"},"EN12201":{code:"EN12201",name:"Agricultural Machinery Engineering",credits:2,isNgpa:false,dept:"EN",semester:"1-2"},"EN12202":{code:"EN12202",name:"Environmental Footprints",credits:2,isNgpa:false,dept:"EN",semester:"1-2"},"EN12203":{code:"EN12203",name:"Renewable Energy Systems I",credits:2,isNgpa:false,dept:"EN",semester:"1-2"},"EN12204":{code:"EN12204",name:"Climate Change Adaptation and Mitigation",credits:2,isNgpa:false,dept:"EN",semester:"1-2"},"EN12205":{code:"EN12205",name:"Green Chemistry",credits:2,isNgpa:false,dept:"EN",semester:"1-2"},"FS12201":{code:"FS12201",name:"Food Chemistry",credits:2,isNgpa:false,dept:"FS",semester:"1-2"},"SS12301":{code:"SS12301",name:"Fundamentals of Soil Science",credits:3,isNgpa:false,dept:"SS",semester:"1-2"},"AS21101":{code:"AS21101",name:"Animal Genetics and Breeding",credits:1,isNgpa:false,dept:"AS",semester:"2-1"},"AS21102":{code:"AS21102",name:"Animal Products Technology",credits:1,isNgpa:false,dept:"AS",semester:"2-1"},"BL21201":{code:"BL21201",name:"Genetics and Plant Breeding",credits:2,isNgpa:false,dept:"BL",semester:"2-1"},"BL21205":{code:"BL21205",name:"Plant Pathology",credits:2,isNgpa:false,dept:"BL",semester:"2-1"},"CS21201":{code:"CS21201",name:"Agroecology",credits:2,isNgpa:false,dept:"CS",semester:"2-1"},"EC21201":{code:"EC21201",name:"Agricultural Marketing",credits:2,isNgpa:false,dept:"EC",semester:"2-1"},"EC21202":{code:"EC21202",name:"Book Keeping & Accountancy",credits:2,isNgpa:false,dept:"EC",semester:"2-1"},"EC21204":{code:"EC21204",name:"Natural Resource Economics",credits:2,isNgpa:false,dept:"EC",semester:"2-1"},"EC21205":{code:"EC21205",name:"Consumer Behavior",credits:2,isNgpa:false,dept:"EC",semester:"2-1"},"EC21206":{code:"EC21206",name:"Environmental Economics",credits:2,isNgpa:false,dept:"EC",semester:"2-1"},"EN21201":{code:"EN21201",name:"Bioprocessing and Post-harvest Engineering",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21202":{code:"EN21202",name:"Ergonomics",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21205":{code:"EN21205",name:"Machinery Principles and Power Units",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21206":{code:"EN21206",name:"Life Cycle Assessment",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21207":{code:"EN21207",name:"Renewable Energy Systems II",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21208":{code:"EN21208",name:"Productivity and Quality Management",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"EN21209":{code:"EN21209",name:"Energy Audit and Energy Asset Management",credits:2,isNgpa:false,dept:"EN",semester:"2-1"},"FS21201":{code:"FS21201",name:"Food and Nutrition",credits:2,isNgpa:false,dept:"FS",semester:"2-1"},"SS21201":{code:"SS21201",name:"Soil, Plant and Environment",credits:2,isNgpa:false,dept:"SS",semester:"2-1"},"AS21203":{code:"AS21203",name:"Analytical Methods in Animal Nutrition",credits:2,isNgpa:false,dept:"AS",semester:"2-1",isElective:true},"BL21202":{code:"BL21202",name:"Developmental Plant Physiology",credits:2,isNgpa:false,dept:"BL",semester:"2-1",isElective:true},"BL21203":{code:"BL21203",name:"Economic Botany",credits:2,isNgpa:false,dept:"BL",semester:"2-1",isElective:true},"BL21204":{code:"BL21204",name:"Environmental Biology",credits:2,isNgpa:false,dept:"BL",semester:"2-1",isElective:true},"CS21202":{code:"CS21202",name:"Plant Propagation and Nursery Management",credits:2,isNgpa:false,dept:"CS",semester:"2-1",isElective:true},"EC21203":{code:"EC21203",name:"Human Resource Management",credits:2,isNgpa:false,dept:"EC",semester:"2-1",isElective:true},"EN21203":{code:"EN21203",name:"Workshop Technology",credits:2,isNgpa:false,dept:"EN",semester:"2-1",isElective:true},"EN21204":{code:"EN21204",name:"Civil Engineering for Agriculture",credits:2,isNgpa:false,dept:"EN",semester:"2-1",isElective:true},"FS21202":{code:"FS21202",name:"Food Preservation Technology",credits:2,isNgpa:false,dept:"FS",semester:"2-1",isElective:true},"SS21202":{code:"SS21202",name:"Geology and Geomorphology",credits:2,isNgpa:false,dept:"SS",semester:"2-1",isElective:true},"AS22201":{code:"AS22201",name:"Aquaculture and Fisheries Management",credits:2,isNgpa:false,dept:"AS",semester:"2-2"},"AS22102":{code:"AS22102",name:"Meat Science",credits:1,isNgpa:false,dept:"AS",semester:"2-2"},"AS22204":{code:"AS22204",name:"Aquatic Ecosystem Management",credits:2,isNgpa:false,dept:"AS",semester:"2-2"},"BL22201":{code:"BL22201",name:"Molecular Biology and Biotechnology",credits:2,isNgpa:false,dept:"BL",semester:"2-2"},"CS22201":{code:"CS22201",name:"Principles of Crop Production",credits:2,isNgpa:false,dept:"CS",semester:"2-2"},"CS22202":{code:"CS22202",name:"Field Practices in Crop Production",credits:2,isNgpa:false,dept:"CS",semester:"2-2"},"CS22206":{code:"CS22206",name:"Sustainable Land Use & Urban Agriculture",credits:2,isNgpa:false,dept:"CS",semester:"2-2"},"EC22201":{code:"EC22201",name:"Agricultural Policy and Law",credits:2,isNgpa:false,dept:"EC",semester:"2-2"},"EC22202":{code:"EC22202",name:"Business Law",credits:2,isNgpa:false,dept:"EC",semester:"2-2"},"EC22203":{code:"EC22203",name:"Advanced Marketing Management",credits:2,isNgpa:false,dept:"EC",semester:"2-2"},"EC22204":{code:"EC22204",name:"Cost and Management Accounting",credits:2,isNgpa:false,dept:"EC",semester:"2-2"},"EC22205":{code:"EC22205",name:"Organizational Leadership",credits:2,isNgpa:false,dept:"EC",semester:"2-2"},"EN22201":{code:"EN22201",name:"Irrigation & Drainage Engineering",credits:2,isNgpa:false,dept:"EN",semester:"2-2"},"EN22202":{code:"EN22202",name:"Applied Hydraulics",credits:2,isNgpa:false,dept:"EN",semester:"2-2"},"EN22205":{code:"EN22205",name:"Cleaner Production and Green Productivity",credits:2,isNgpa:false,dept:"EN",semester:"2-2"},"EN22206":{code:"EN22206",name:"Solid Waste Management",credits:2,isNgpa:false,dept:"EN",semester:"2-2"},"EN22207":{code:"EN22207",name:"Industrial Water and Wastewater Treatment",credits:2,isNgpa:false,dept:"EN",semester:"2-2"},"SS22204":{code:"SS22204",name:"Soil and Water Conservation",credits:2,isNgpa:false,dept:"SS",semester:"2-2"},"AS22203":{code:"AS22203",name:"Poultry Science and Production",credits:2,isNgpa:false,dept:"AS",semester:"2-2",isElective:true},"BL22202":{code:"BL22202",name:"Microbial Ecology",credits:2,isNgpa:false,dept:"BL",semester:"2-2",isElective:true},"CS22203":{code:"CS22203",name:"Post-harvest Biology and Technology of Horticultural Crops",credits:2,isNgpa:false,dept:"CS",semester:"2-2",isElective:true},"CS22204":{code:"CS22204",name:"Floriculture and Landscape Horticulture",credits:2,isNgpa:false,dept:"CS",semester:"2-2",isElective:true},"CS22205":{code:"CS22205",name:"Plantation Crop Management",credits:2,isNgpa:false,dept:"CS",semester:"2-2",isElective:true},"EN22203":{code:"EN22203",name:"Geoinformatics for Natural Resource Management",credits:2,isNgpa:false,dept:"EN",semester:"2-2",isElective:true},"EN22204":{code:"EN22204",name:"Environmental Geotechnology",credits:2,isNgpa:false,dept:"EN",semester:"2-2",isElective:true},"FS22201":{code:"FS22201",name:"Food Quality Management",credits:2,isNgpa:false,dept:"FS",semester:"2-2",isElective:true},"SS22201":{code:"SS22201",name:"Soil Quality and Sustainable Agriculture",credits:2,isNgpa:false,dept:"SS",semester:"2-2",isElective:true},"SS22202":{code:"SS22202",name:"Environmental Analytical Chemistry",credits:2,isNgpa:false,dept:"SS",semester:"2-2",isElective:true},"AS31201":{code:"AS31201",name:"Dairy Science and Technology",credits:2,isNgpa:false,dept:"AS",semester:"3-1"},"CS31201":{code:"CS31201",name:"Agricultural Innovation and Technologies",credits:2,isNgpa:false,dept:"CS",semester:"3-1"},"EC31201":{code:"EC31201",name:"Agribusiness Management",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EC31203":{code:"EC31203",name:"Econometrics",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EC31204":{code:"EC31204",name:"Supply Chain Management",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EC31206":{code:"EC31206",name:"International Trade and Finance",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EC31207":{code:"EC31207",name:"Green Economics",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EC31208":{code:"EC31208",name:"Green Business Development and Entrepreneurship",credits:2,isNgpa:false,dept:"EC",semester:"3-1"},"EN31201":{code:"EN31201",name:"Structures and Environmental Control Engineering",credits:2,isNgpa:false,dept:"EN",semester:"3-1"},"EN31206":{code:"EN31206",name:"Bio-refinery and Bio-products",credits:2,isNgpa:false,dept:"EN",semester:"3-1"},"EN31207":{code:"EN31207",name:"Smart Environmental Monitoring Techniques",credits:2,isNgpa:false,dept:"EN",semester:"3-1"},"EN31208":{code:"EN31208",name:"Eco-Industrial Park Development",credits:2,isNgpa:false,dept:"EN",semester:"3-1"},"FS31201":{code:"FS31201",name:"Food Processing Technology",credits:2,isNgpa:false,dept:"FS",semester:"3-1"},"FS31204":{code:"FS31204",name:"Green Chemistry and Bio-processing in Food Industry",credits:2,isNgpa:false,dept:"FS",semester:"3-1"},"SS31201":{code:"SS31201",name:"Soil and Environmental Chemistry",credits:2,isNgpa:false,dept:"SS",semester:"3-1"},"AS31202":{code:"AS31202",name:"Applied Animal Breeding",credits:2,isNgpa:false,dept:"AS",semester:"3-1",isElective:true},"AS31204":{code:"AS31204",name:"Livestock Environmental Management",credits:2,isNgpa:false,dept:"AS",semester:"3-1",isElective:true},"BL31201":{code:"BL31201",name:"Environmental Plant Physiology",credits:2,isNgpa:false,dept:"BL",semester:"3-1",isElective:true},"BL31202":{code:"BL31202",name:"Industrial Entomology",credits:2,isNgpa:false,dept:"BL",semester:"3-1",isElective:true},"BL31203":{code:"BL31203",name:"Plant-microbe Interactions",credits:2,isNgpa:false,dept:"BL",semester:"3-1",isElective:true},"CC31201":{code:"CC31201",name:"Database Management Systems",credits:2,isNgpa:false,dept:"CC",semester:"3-1",isElective:true},"CC31202":{code:"CC31202",name:"Smart Farming Techniques and its Applications",credits:2,isNgpa:false,dept:"CC",semester:"3-1",isElective:true},"CS31202":{code:"CS31202",name:"Forest Ecology and Management",credits:2,isNgpa:false,dept:"CS",semester:"3-1",isElective:true},"CS31203":{code:"CS31203",name:"Plant Tissue Culture",credits:2,isNgpa:false,dept:"CS",semester:"3-1",isElective:true},"CS31204":{code:"CS31204",name:"Rice Production Technology",credits:2,isNgpa:false,dept:"CS",semester:"3-1",isElective:true},"CS31205":{code:"CS31205",name:"Organic Agriculture",credits:2,isNgpa:false,dept:"CS",semester:"3-1",isElective:true},"EC31202":{code:"EC31202",name:"Rural Development and Empowerment",credits:2,isNgpa:false,dept:"EC",semester:"3-1",isElective:true},"EC31205":{code:"EC31205",name:"Total Quality Management",credits:2,isNgpa:false,dept:"EC",semester:"3-1",isElective:true},"EN31202":{code:"EN31202",name:"Designing and Installation of Micro Irrigation Systems",credits:2,isNgpa:false,dept:"EN",semester:"3-1",isElective:true},"EN31203":{code:"EN31203",name:"Technical Instrumentation and Device Development",credits:2,isNgpa:false,dept:"EN",semester:"3-1",isElective:true},"EN31204":{code:"EN31204",name:"Environment Information and Management",credits:2,isNgpa:false,dept:"EN",semester:"3-1",isElective:true},"EN31205":{code:"EN31205",name:"Renewable Energy for Sustainable Agriculture",credits:2,isNgpa:false,dept:"EN",semester:"3-1",isElective:true},"EN31209":{code:"EN31209",name:"Business Models in Resource Recovery from Waste",credits:2,isNgpa:false,dept:"EN",semester:"3-1",isElective:true},"FS31202":{code:"FS31202",name:"Food Waste Management",credits:2,isNgpa:false,dept:"FS",semester:"3-1",isElective:true},"FS31203":{code:"FS31203",name:"Sensory Evaluation of Food",credits:2,isNgpa:false,dept:"FS",semester:"3-1",isElective:true},"FS31205":{code:"FS31205",name:"Fish, Meat and Egg Product Technology",credits:2,isNgpa:false,dept:"FS",semester:"3-1",isElective:true},"SS31202":{code:"SS31202",name:"Tools for Environmental Studies",credits:2,isNgpa:false,dept:"SS",semester:"3-1",isElective:true},"SS31203":{code:"SS31203",name:"Land-use Planning",credits:2,isNgpa:false,dept:"SS",semester:"3-1",isElective:true},"SS31204":{code:"SS31204",name:"Soil Fertility Management",credits:2,isNgpa:false,dept:"SS",semester:"3-1",isElective:true},"SS31205":{code:"SS31205",name:"Climate Change and Soil Gas Fluxes",credits:2,isNgpa:false,dept:"SS",semester:"3-1",isElective:true},"AS32201":{code:"AS32201",name:"Applied Livestock Production",credits:2,isNgpa:false,dept:"AS",semester:"3-2"},"BL32201":{code:"BL32201",name:"Field Biology and Crop Health Management",credits:2,isNgpa:false,dept:"BL",semester:"3-2"},"CC32201":{code:"CC32201",name:"Applied Statistics I",credits:2,isNgpa:false,dept:"CC",semester:"3-2"},"CS32301":{code:"CS32301",name:"Production Technology of Field Crops and Vegetables",credits:3,isNgpa:false,dept:"CS",semester:"3-2"},"CS32102":{code:"CS32102",name:"Protected Agriculture",credits:1,isNgpa:false,dept:"CS",semester:"3-2"},"EC32201":{code:"EC32201",name:"Extension Education",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EC32202":{code:"EC32202",name:"Project Management",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EC32204":{code:"EC32204",name:"Organizational Behaviour",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EC32206":{code:"EC32206",name:"Business Start-ups",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EC32207":{code:"EC32207",name:"Financial Management",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EC32208":{code:"EC32208",name:"Environmental Impact Assessment",credits:2,isNgpa:false,dept:"EC",semester:"3-2"},"EN32201":{code:"EN32201",name:"Remote Sensing and GIS for Agriculture",credits:2,isNgpa:false,dept:"EN",semester:"3-2"},"EN32206":{code:"EN32206",name:"Hazardous Waste Management",credits:2,isNgpa:false,dept:"EN",semester:"3-2"},"EN32207":{code:"EN32207",name:"Green Buildings and Sustainable Infrastructure",credits:2,isNgpa:false,dept:"EN",semester:"3-2"},"EN32208":{code:"EN32208",name:"Environmental Modeling and Risk Assessment",credits:2,isNgpa:false,dept:"EN",semester:"3-2"},"EN32209":{code:"EN32209",name:"Environmental Nanotechnology",credits:2,isNgpa:false,dept:"EN",semester:"3-2"},"SS32101":{code:"SS32101",name:"Land Degradation and Watershed Management",credits:1,isNgpa:false,dept:"SS",semester:"3-2"},"AS32202":{code:"AS32202",name:"Non-ruminant Production and Management",credits:2,isNgpa:false,dept:"AS",semester:"3-2",isElective:true},"AS32203":{code:"AS32203",name:"Ruminant Production and Management",credits:2,isNgpa:false,dept:"AS",semester:"3-2",isElective:true},"BL32202":{code:"BL32202",name:"Integrated Pest Management",credits:2,isNgpa:false,dept:"BL",semester:"3-2",isElective:true},"BL32203":{code:"BL32203",name:"Weed Science",credits:2,isNgpa:false,dept:"BL",semester:"3-2",isElective:true},"CC32202":{code:"CC32202",name:"Computer Programming for Agricultural Sciences",credits:2,isNgpa:false,dept:"CC",semester:"3-2",isElective:true},"CS32203":{code:"CS32203",name:"Commercial Fruit Production",credits:2,isNgpa:false,dept:"CS",semester:"3-2",isElective:true},"CS32204":{code:"CS32204",name:"Export Agricultural Crop Production",credits:2,isNgpa:false,dept:"CS",semester:"3-2",isElective:true},"CS32205":{code:"CS32205",name:"Controlled Environment Agriculture",credits:2,isNgpa:false,dept:"CS",semester:"3-2",isElective:true},"EC32203":{code:"EC32203",name:"Agricultural Project Planning and Evaluation",credits:2,isNgpa:false,dept:"EC",semester:"3-2",isElective:true},"EC32205":{code:"EC32205",name:"Social Entrepreneurship",credits:2,isNgpa:false,dept:"EC",semester:"3-2",isElective:true},"EN32202":{code:"EN32202",name:"Precision Agriculture",credits:2,isNgpa:false,dept:"EN",semester:"3-2",isElective:true},"EN32203":{code:"EN32203",name:"Groundwater Hydrology",credits:2,isNgpa:false,dept:"EN",semester:"3-2",isElective:true},"EN32204":{code:"EN32204",name:"Applied Energy Management in Agriculture",credits:2,isNgpa:false,dept:"EN",semester:"3-2",isElective:true},"FS32201":{code:"FS32201",name:"Dairy Processing Technology",credits:2,isNgpa:false,dept:"FS",semester:"3-2",isElective:true},"FS32202":{code:"FS32202",name:"Cereal and Grain Processing",credits:2,isNgpa:false,dept:"FS",semester:"3-2",isElective:true},"SS32202":{code:"SS32202",name:"Soil-water-plant Relationships",credits:2,isNgpa:false,dept:"SS",semester:"3-2",isElective:true},"SS32203":{code:"SS32203",name:"Nutrient Dynamics in Tropical Soils",credits:2,isNgpa:false,dept:"SS",semester:"3-2",isElective:true},"CC41201":{code:"CC41201",name:"Scientific Communication and Research Methodology",credits:2,isNgpa:false,dept:"CC",semester:"4-1"},"CC41202":{code:"CC41202",name:"Applied Statistics II",credits:2,isNgpa:false,dept:"CC",semester:"4-1"},"CC41203":{code:"CC41203",name:"Personality and Professional Skills Development",credits:2,isNgpa:false,dept:"CC",semester:"4-1"},"AS41201":{code:"AS41201",name:"Applied Animal Breeding & Biotechnology",credits:2,isNgpa:false,dept:"AS",semester:"4-1",specDept:"AS"},"AS41202":{code:"AS41202",name:"Feed Resource Management & Commercial Feed Manufacture",credits:2,isNgpa:false,dept:"AS",semester:"4-1",specDept:"AS"},"AS41203":{code:"AS41203",name:"Dairy Farm Management and Processing Operations",credits:2,isNgpa:false,dept:"AS",semester:"4-1",specDept:"AS"},"BL41201":{code:"BL41201",name:"Molecular Genetics and Functional Genomics",credits:2,isNgpa:false,dept:"BL",semester:"4-1",specDept:"BL"},"BL41302":{code:"BL41302",name:"Applied Entomology & Pest Surveillance",credits:3,isNgpa:false,dept:"BL",semester:"4-1",specDept:"BL"},"BL41103":{code:"BL41103",name:"Plant Pathology Diagnosis & Quarantine",credits:1,isNgpa:false,dept:"BL",semester:"4-1",specDept:"BL"},"CS41101":{code:"CS41101",name:"Advanced Crop Physiology",credits:1,isNgpa:false,dept:"CS",semester:"4-1",specDept:"CS"},"CS41202":{code:"CS41202",name:"Commercial Floriculture and Landscape Architecture",credits:2,isNgpa:false,dept:"CS",semester:"4-1",specDept:"CS"},"CS41103":{code:"CS41103",name:"Plantation Crops & Processing Technology",credits:1,isNgpa:false,dept:"CS",semester:"4-1",specDept:"CS"},"CS41104":{code:"CS41104",name:"Seed Science and Technology",credits:1,isNgpa:false,dept:"CS",semester:"4-1",specDept:"CS"},"CS41105":{code:"CS41105",name:"Crop Modelling and Yield Forecasting",credits:1,isNgpa:false,dept:"CS",semester:"4-1",specDept:"CS"},"EC41201":{code:"EC41201",name:"Agricultural Value Chain Management",credits:2,isNgpa:false,dept:"EC",semester:"4-1",specDept:"EC"},"EC41202":{code:"EC41202",name:"Advanced Agribusiness Finance & Investment Analysis",credits:2,isNgpa:false,dept:"EC",semester:"4-1",specDept:"EC"},"EC41203":{code:"EC41203",name:"International Trade in Agri-Food Products",credits:2,isNgpa:false,dept:"EC",semester:"4-1",specDept:"EC"},"EN41201":{code:"EN41201",name:"Advanced Post-Harvest Technology and Automation",credits:2,isNgpa:false,dept:"EN",semester:"4-1",specDept:"EN"},"EN41102":{code:"EN41102",name:"Advanced Irrigation Engineering & Watershed Simulation",credits:1,isNgpa:false,dept:"EN",semester:"4-1",specDept:"EN"},"EN41103":{code:"EN41103",name:"Farm Power Machinery and Automation Systems",credits:1,isNgpa:false,dept:"EN",semester:"4-1",specDept:"EN"},"EN41204":{code:"EN41204",name:"Geo-informatics for Land and Water Resources Management",credits:2,isNgpa:false,dept:"EN",semester:"4-1",specDept:"EN"},"FS41201":{code:"FS41201",name:"Food Product Development and Sensory Science",credits:2,isNgpa:false,dept:"FS",semester:"4-1",specDept:"FS"},"FS41202":{code:"FS41202",name:"Food Analysis",credits:2,isNgpa:false,dept:"FS",semester:"4-1",specDept:"FS"},"FS41203":{code:"FS41203",name:"Food Process Engineering",credits:2,isNgpa:false,dept:"FS",semester:"4-1",specDept:"FS"},"SS41201":{code:"SS41201",name:"Soil Physics",credits:2,isNgpa:false,dept:"SS",semester:"4-1",specDept:"SS"},"SS41202":{code:"SS41202",name:"Environmental Soil Chemistry",credits:2,isNgpa:false,dept:"SS",semester:"4-1",specDept:"SS"},"SS41103":{code:"SS41103",name:"Soil Ecosystem & Dynamics of Organic Matter",credits:1,isNgpa:false,dept:"SS",semester:"4-1",specDept:"SS"},"SS41104":{code:"SS41104",name:"Techniques in Soil Research",credits:1,isNgpa:false,dept:"SS",semester:"4-1",specDept:"SS"},"EN41205":{code:"EN41205",name:"Research Methodology and Scientific Writing",credits:2,isNgpa:false,dept:"EN",semester:"4-1"},"EN41206":{code:"EN41206",name:"Process Automation and Smart Control",credits:2,isNgpa:false,dept:"EN",semester:"4-1"},"EN41207":{code:"EN41207",name:"Case Studies in Environmental Technology",credits:2,isNgpa:false,dept:"EN",semester:"4-1"},"EN41208":{code:"EN41208",name:"Green Behavior and Sustainable Consumption Simulation",credits:2,isNgpa:false,dept:"EN",semester:"4-1"},"AS42601":{code:"AS42601",name:"Research Project in Animal Science",credits:6,isNgpa:false,dept:"AS",semester:"4-2"},"BL42601":{code:"BL42601",name:"Research Project in Agricultural Biology",credits:6,isNgpa:false,dept:"BL",semester:"4-2"},"CS42601":{code:"CS42601",name:"Research Project in Crop Science",credits:6,isNgpa:false,dept:"CS",semester:"4-2"},"EC42601":{code:"EC42601",name:"Research Project in Agricultural Economics & Agribusiness",credits:6,isNgpa:false,dept:"EC",semester:"4-2"},"EN42601":{code:"EN42601",name:"Research Study in Agricultural Engineering / Green Technology",credits:6,isNgpa:false,dept:"EN",semester:"4-2"},"FS42601":{code:"FS42601",name:"Research Study in Food Science & Technology",credits:6,isNgpa:false,dept:"FS",semester:"4-2"},"SS42601":{code:"SS42601",name:"Research Study in Soil Science",credits:6,isNgpa:false,dept:"SS",semester:"4-2"},"CC42301":{code:"CC42301",name:"Internship",credits:3,isNgpa:false,dept:"CC",semester:"4-2"},"CC42302":{code:"CC42302",name:"Internship",credits:3,isNgpa:false,dept:"CC",semester:"4-2"}};var DEGREE_COMPULSORY_COURSES={ARMT:{"1-1":["AS11201","BL11301","CC11201","CS11201","EC11201","EN11201","FS11201","CC11202"],"1-2":["AS12301","BL12201","CS12201","EC12201","EN12201","FS12201","SS12301","CC12101","CC12202"],"2-1":["AS21101","AS21102","BL21201","BL21205","CS21201","EC21201","EN21201","FS21201","SS21201"],"2-2":["AS22201","AS22102","BL22201","CS22201","CS22202","EC22201","EN22201"],"3-1":["AS31201","CS31201","EC31201","EN31201","FS31201","SS31201"],"3-2":["AS32201","BL32201","CC32201","CS32301","CS32102","EC32201","EN32201","SS32101"],"4-1":["CC41201","CC41202","CC41203"],"4-2":["CC42301"]},ABM:{"1-1":["AS11201","BL11301","CC11201","CS11201","EC11201","EC11202","FS11201","CC11202"],"1-2":["AS12301","CS12201","EC12201","EC12202","EC12203","EN12201","FS12201","SS12301","CC12101","CC12202"],"2-1":["AS21102","CS21201","EC21201","EC21202","EC21204","EC21205","EN21201","FS21201"],"2-2":["AS22201","CS22201","CS22202","EC22201","EC22202","EC22203","EC22204","EC22205"],"3-1":["CS31201","EC31201","EC31203","EC31204","EC31206","FS31201"],"3-2":["CC32201","EC32201","EC32202","EC32204","EC32206","EC32207"],"4-1":["CC41201","CC41202","CC41203"],"4-2":["CC42301"]},GT:{"1-1":["CC11203","CS11201","EC11203","EN11201","EN11302","EN11203","EN11204","CC11202"],"1-2":["BL12202","BL12203","EN12202","EN12203","EN12204","EN12205","SS12301","CC12101","CC12202"],"2-1":["CS21201","EC21206","EN21202","EN21205","EN21206","EN21207","EN21208","EN21209"],"2-2":["AS22204","CS22206","EN22201","EN22202","EN22205","EN22206","EN22207","SS22204"],"3-1":["EC31207","EC31208","EN31201","EN31206","EN31207","EN31208","FS31204"],"3-2":["CC32201","EC32202","EC32208","EN32206","EN32207","EN32208","EN32209"],"4-1":["CC41202","CC41203","EN41205","EN41206","EN41207","EN41208"],"4-2":["EN42601","CC42301"]}};var SPECIALIZATION_STREAMS={AS:{name:"Animal Science",dept:"AS",courses:["AS41201","AS41202","AS41203"],researchCode:"AS42601"},BL:{name:"Agricultural Biology",dept:"BL",courses:["BL41201","BL41302","BL41103"],researchCode:"BL42601"},CS:{name:"Crop Science",dept:"CS",courses:["CS41101","CS41202","CS41103","CS41104","CS41105"],researchCode:"CS42601"},EC:{name:"Agricultural Economics & Agribusiness",dept:"EC",courses:["EC41201","EC41202","EC41203"],researchCode:"EC42601"},EN:{name:"Agricultural Engineering & Environmental Technology",dept:"EN",courses:["EN41201","EN41102","EN41103","EN41204"],researchCode:"EN42601"},FS:{name:"Food Science & Technology",dept:"FS",courses:["FS41201","FS41202","FS41203"],researchCode:"FS42601"},SS:{name:"Soil Science",dept:"SS",courses:["SS41201","SS41202","SS41103","SS41104"],researchCode:"SS42601"}};function parseCourseCode(codeStr){if(!codeStr||typeof codeStr!=="string")return null;const clean=codeStr.trim().toUpperCase();const match=clean.match(/^([A-Z]{2})(\d)(\d)(\d)(\d{2})$/);if(!match)return null;const[_,dept,year,sem,credit,courseNum]=match;return{code:clean,dept,deptName:DEPARTMENTS[dept]||"Unknown Department",year:parseInt(year,10),semester:parseInt(sem,10),semesterKey:`${year}-${sem}`,credits:parseInt(credit,10),courseNum,isNgpa:dept==="CC"&&(courseNum==="01"||courseNum==="02"||courseNum==="03"||courseNum==="04"||courseNum==="05")&&year==="1"&&sem==="0"||clean==="CC11202"||clean==="CC12101"||clean==="CC12202"}}var RUHUNA_DATABASE={GRADING_SCALE,DEPARTMENTS,DEGREE_INFO,COURSE_CATALOG,DEGREE_COMPULSORY_COURSES,SPECIALIZATION_STREAMS,parseCourseCode};if(typeof globalThis.module!=="undefined"&&globalThis.module.exports){globalThis.module.exports=RUHUNA_DATABASE}if(typeof window!=="undefined"){window.RUHUNA_DATABASE=RUHUNA_DATABASE;Object.assign(window,RUHUNA_DATABASE)}var PROFILES_STORAGE_KEY="ruhuna_agri_profiles_v2";var ACTIVE_PROFILE_KEY="ruhuna_agri_active_profile_id";var LEGACY_STORAGE_KEY="ruhuna_agri_gpa_v1";var STATE={id:"prof_default",name:"Gjay",indexNumber:"7740",degree:"ARMT",currentSemester:"1-1",specializationDept:"CS",specializationResearch:"CS42601",semesters:{"1-1":[],"1-2":[],"2-1":[],"2-2":[],"3-1":[],"3-2":[],"4-1":[],"4-2":[]},orientationCourses:[{code:"CC10001",name:"General English",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10002",name:"Computer Awareness",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10003",name:"Basic Mathematics",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10004",name:"Basic Statistics",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10005",name:"Career Development and Active Citizen",credits:0,dept:"CC",grade:"C-",isNgpa:true}]};function initDefaultCoursesForDegree(degreeCode){const compCourses=DEGREE_COMPULSORY_COURSES[degreeCode]||{};const newSemesters={};["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{newSemesters[semKey]=[];const codes=compCourses[semKey]||[];codes.forEach(code=>{const info=COURSE_CATALOG[code]||parseCourseCode(code)||{code,name:code,credits:2,dept:"CC",isNgpa:false};newSemesters[semKey].push({code:info.code,name:info.name||info.code,credits:info.credits,dept:info.dept||(parseCourseCode(info.code)?parseCourseCode(info.code).dept:"CC"),isNgpa:!!info.isNgpa,isCompulsory:true,grade:"",isRepeat:false,isExcused:false,isExpected:false})});if(semKey==="4-1"&&(degreeCode==="ARMT"||degreeCode==="ABM")){const spec=SPECIALIZATION_STREAMS[STATE.specializationDept||"CS"];if(spec&&spec.courses){spec.courses.forEach(code=>{const info=COURSE_CATALOG[code]||{code,name:code,credits:2,dept:spec.dept};newSemesters[semKey].push({code:info.code,name:info.name,credits:info.credits,dept:spec.dept,isNgpa:false,isCompulsory:true,isSpecialization:true,grade:"",isRepeat:false,isExcused:false,isExpected:false})})}}if(semKey==="4-2"){const specDept=STATE.specializationDept||"CS";const resCode=degreeCode==="GT"?"EN42601":SPECIALIZATION_STREAMS[specDept]?.researchCode||"CS42601";const resInfo=COURSE_CATALOG[resCode]||{code:resCode,name:"Research Project",credits:6,dept:degreeCode==="GT"?"EN":specDept};const exists=newSemesters[semKey].some(c=>c.code===resCode);if(!exists){newSemesters[semKey].unshift({code:resInfo.code,name:resInfo.name,credits:resInfo.credits,dept:resInfo.dept,isNgpa:false,isCompulsory:true,grade:"",isRepeat:false,isExcused:false,isExpected:false})}}});return newSemesters}function calculateCourseGpv(course){if(!course.grade||!GRADING_SCALE[course.grade]){return null}let baseGpv=GRADING_SCALE[course.grade].gpv;if(course.isRepeat&&!course.isExcused){if(baseGpv>2){baseGpv=2}}return baseGpv}function calculateSemesterStats(courseList){let gpaCreditsAttempted=0;let gpaCreditsEarned=0;let weightedPoints=0;let realCreditsAttempted=0;let realCreditsEarned=0;let realWeightedPoints=0;let ngpaPassedCount=0;let ngpaTotalCount=0;let hasIncomplete=false;let allAboveB=true;let hasRepeat=false;let expectedCoursesCount=0;(courseList||[]).forEach(course=>{if(course.isNgpa){ngpaTotalCount++;if(course.grade){const gpv2=GRADING_SCALE[course.grade]?.gpv||0;if(gpv2>=1.7){ngpaPassedCount++}}return}if(course.isRepeat){hasRepeat=true}if(!course.grade){hasIncomplete=true;allAboveB=false;return}const gpv=calculateCourseGpv(course);if(gpv===null){hasIncomplete=true;allAboveB=false;return}const creds=Number(course.credits)||0;gpaCreditsAttempted+=creds;weightedPoints+=creds*gpv;if(gpv>=1.7){gpaCreditsEarned+=creds}if(course.isExpected){expectedCoursesCount++}else{realCreditsAttempted+=creds;realWeightedPoints+=creds*gpv;if(gpv>=1.7){realCreditsEarned+=creds}}if(gpv<3){allAboveB=false}});const sgpa=gpaCreditsAttempted>0?weightedPoints/gpaCreditsAttempted:0;const realSgpa=realCreditsAttempted>0?realWeightedPoints/realCreditsAttempted:0;return{gpaCreditsAttempted,gpaCreditsEarned,weightedPoints,sgpa:parseFloat(sgpa.toFixed(2)),sgpaExact:gpaCreditsAttempted>0?weightedPoints/gpaCreditsAttempted:0,realCreditsAttempted,realCreditsEarned,realWeightedPoints,realSgpa:parseFloat(realSgpa.toFixed(2)),realSgpaExact:realCreditsAttempted>0?realWeightedPoints/realCreditsAttempted:0,expectedCoursesCount,hasExpected:expectedCoursesCount>0,ngpaPassedCount,ngpaTotalCount,hasIncomplete,allAboveB,hasRepeat}}function getClassStanding(cgpa,creditsAttempted=1){if(creditsAttempted===0)return{title:"In Progress",color:"secondary"};if(cgpa>=3.7)return{title:"First Class Honours",color:"gold"};if(cgpa>=3.3)return{title:"Second Class (Upper Division)",color:"emerald"};if(cgpa>=3)return{title:"Second Class (Lower Division)",color:"blue"};if(cgpa>=2)return{title:"Pass",color:"slate"};return{title:"Fail / Academic Probation",color:"rose"}}function calculateOverallStats(){let totalGpaCreditsAttempted=0;let totalGpaCreditsEarned=0;let totalWeightedPoints=0;let realCreditsAttempted=0;let realCreditsEarned=0;let realWeightedPoints=0;let totalExpectedCoursesCount=0;let totalCompulsoryEarned=0;let totalElectiveEarned=0;let ngpaAllPassed=true;let unredeemedFailCount=0;(STATE.orientationCourses||[]).forEach(c=>{if(!c.grade||(GRADING_SCALE[c.grade]?.gpv||0)<1.7){ngpaAllPassed=false}});const semStats={};["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{const list=STATE.semesters[semKey]||[];const stats=calculateSemesterStats(list);semStats[semKey]=stats;totalGpaCreditsAttempted+=stats.gpaCreditsAttempted;totalGpaCreditsEarned+=stats.gpaCreditsEarned;totalWeightedPoints+=stats.weightedPoints;realCreditsAttempted+=stats.realCreditsAttempted;realCreditsEarned+=stats.realCreditsEarned;realWeightedPoints+=stats.realWeightedPoints;totalExpectedCoursesCount+=stats.expectedCoursesCount;list.forEach(c=>{if(c.isNgpa){if(!c.grade||(GRADING_SCALE[c.grade]?.gpv||0)<1.7){ngpaAllPassed=false}}else{const gpv=calculateCourseGpv(c);if(gpv!==null&&gpv>=1.7){if(c.isCompulsory){totalCompulsoryEarned+=Number(c.credits)||0}else{totalElectiveEarned+=Number(c.credits)||0}}if(c.grade==="E"){unredeemedFailCount++}}})});const cgpa=totalGpaCreditsAttempted>0?totalWeightedPoints/totalGpaCreditsAttempted:0;const realCgpa=realCreditsAttempted>0?realWeightedPoints/realCreditsAttempted:0;const degInfo=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;const standing=getClassStanding(cgpa,totalGpaCreditsAttempted);const realStanding=getClassStanding(realCgpa,realCreditsAttempted);const deltaCgpa=cgpa-realCgpa;const deansHonors={};const years=[{yr:1,sems:["1-1","1-2"],cutoff:3.7,reqCredits:degInfo.semesters["1-1"].compulsoryCredits+degInfo.semesters["1-2"].compulsoryCredits},{yr:2,sems:["2-1","2-2"],cutoff:3.7,reqCredits:degInfo.semesters["2-1"].compulsoryCredits+degInfo.semesters["2-2"].compulsoryCredits},{yr:3,sems:["3-1","3-2"],cutoff:3.8,reqCredits:degInfo.semesters["3-1"].compulsoryCredits+degInfo.semesters["3-2"].compulsoryCredits},{yr:4,sems:["4-1","4-2"],cutoff:3.8,reqCredits:degInfo.semesters["4-1"].compulsoryCredits+degInfo.semesters["4-2"].compulsoryCredits}];years.forEach(y=>{const s1=semStats[y.sems[0]];const s2=semStats[y.sems[1]];const yrAttempted=s1.gpaCreditsAttempted+s2.gpaCreditsAttempted;const yrPoints=s1.weightedPoints+s2.weightedPoints;const yrGpa=yrAttempted>0?yrPoints/yrAttempted:0;const hasRepeats=s1.hasRepeat||s2.hasRepeat;const allB=s1.allAboveB&&s2.allAboveB;const hasInc=s1.hasIncomplete||s2.hasIncomplete;const creditsMet=yrAttempted>=y.reqCredits;let status="Incomplete";let reason="";if(hasInc||yrAttempted===0){status="Pending / In Progress";reason="Not all semester grades are finalized."}else if(hasRepeats){status="Not Eligible";reason="Repeated courses are not eligible for Dean\u2019s Honor List (first attempt only)."}else if(!allB){status="Not Eligible";reason="All registered courses must have a grade of B (3.0) or higher."}else if(!creditsMet){status="Not Eligible";reason=`Completed credits (${yrAttempted}) do not meet the minimum requirement (${y.reqCredits}).`}else if(yrGpa<y.cutoff){status="Not Eligible";reason=`Annual GPA (${yrGpa.toFixed(2)}) is below the required threshold of ${y.cutoff.toFixed(2)}.`}else{status="Eligible for Dean\u2019s Honor List";reason=`Annual GPA: ${yrGpa.toFixed(2)} (>= ${y.cutoff.toFixed(2)}) with all grades >= B. Congratulations!`}deansHonors[y.yr]={year:y.yr,annualGpa:parseFloat(yrGpa.toFixed(2)),status,eligible:status.startsWith("Eligible"),reason}});let specEligibility={evaluated:false,gpaMet:false,electiveRatioMet:false,gpa31:0,electiveDeptCredits:0,totalYear3ElectiveCredits:0,ratio:0,statusText:"",chosenDept:STATE.specializationDept};if(STATE.degree==="ARMT"||STATE.degree==="ABM"){let pts31=0;let creds31=0;["1-1","1-2","2-1","2-2","3-1"].forEach(k=>{pts31+=semStats[k].weightedPoints;creds31+=semStats[k].gpaCreditsAttempted});const gpaEnd31=creds31>0?pts31/creds31:0;specEligibility.evaluated=creds31>=60;specEligibility.gpa31=parseFloat(gpaEnd31.toFixed(2));specEligibility.gpaMet=gpaEnd31>=2.7;let yr3ElectiveTotal=0;let yr3ElectiveDept=0;["3-1","3-2"].forEach(k=>{(STATE.semesters[k]||[]).forEach(c=>{if(!c.isCompulsory&&!c.isNgpa){const cred=Number(c.credits)||0;yr3ElectiveTotal+=cred;if(c.dept===STATE.specializationDept){yr3ElectiveDept+=cred}}})});specEligibility.totalYear3ElectiveCredits=yr3ElectiveTotal;specEligibility.electiveDeptCredits=yr3ElectiveDept;specEligibility.ratio=yr3ElectiveTotal>0?yr3ElectiveDept/yr3ElectiveTotal:0;specEligibility.electiveRatioMet=yr3ElectiveTotal>0?specEligibility.ratio>=.5:false;if(!specEligibility.gpaMet){specEligibility.statusText=`Cumulative GPA at end of 3-1 is ${specEligibility.gpa31.toFixed(2)} (< 2.70). Preference guarantee not assured; allocation subject to competition/availability.`}else if(yr3ElectiveTotal>0&&!specEligibility.electiveRatioMet){specEligibility.statusText=`GPA requirement met (${specEligibility.gpa31.toFixed(2)} >= 2.70), but only ${(specEligibility.ratio*100).toFixed(0)}% of 3rd year electives are from ${STATE.specializationDept} (minimum 50% required).`}else{specEligibility.statusText=`Fully Eligible for Guaranteed Preference in ${DEPARTMENTS[STATE.specializationDept]||STATE.specializationDept}! (GPA: ${specEligibility.gpa31.toFixed(2)} >= 2.70, Dept Electives: ${yr3ElectiveDept}/${yr3ElectiveTotal} credits).`}}return{totalGpaCreditsAttempted,totalGpaCreditsEarned,totalWeightedPoints,totalCompulsoryEarned,totalElectiveEarned,totalRequiredCredits:degInfo.totalMinGpaCredits,minElectiveCredits:degInfo.minElectiveCredits,minCompulsoryCredits:degInfo.minCompulsoryCredits,cgpa:parseFloat(cgpa.toFixed(2)),cgpaExact:cgpa,classStanding:standing.title,classBadgeColor:standing.color,realCreditsAttempted,realCreditsEarned,realWeightedPoints,realCgpa:parseFloat(realCgpa.toFixed(2)),realCgpaExact:realCgpa,realClassStanding:realStanding.title,realClassBadgeColor:realStanding.color,hasExpectedCourses:totalExpectedCoursesCount>0,totalExpectedCoursesCount,deltaCgpa:parseFloat(deltaCgpa.toFixed(2)),ngpaAllPassed,unredeemedFailCount,semStats,deansHonors,specEligibility}}function solveConcreteGradeCombinations(requiredAvgGpa,remainingCredits){if(requiredAvgGpa>4||requiredAvgGpa<=0||remainingCredits<=0){return[]}const numCourses=Math.max(1,Math.round(remainingCredits/2));const combinations=[];const candidates=[{grade:"A",gpv:4},{grade:"A-",gpv:3.7},{grade:"B+",gpv:3.3},{grade:"B",gpv:3},{grade:"B-",gpv:2.7},{grade:"C+",gpv:2.3},{grade:"C",gpv:2}];for(let i=0;i<candidates.length;i++){for(let j=i+1;j<candidates.length;j++){const g1=candidates[i];const g2=candidates[j];if(g1.gpv>g2.gpv){const targetSum=numCourses*requiredAvgGpa;const kFloat=(targetSum-numCourses*g2.gpv)/(g1.gpv-g2.gpv);const k=Math.ceil(kFloat);if(k>0&&k<numCourses){const count1=k;const count2=numCourses-k;const achievedGpa=parseFloat(((count1*g1.gpv+count2*g2.gpv)/numCourses).toFixed(2));if(achievedGpa>=requiredAvgGpa&&achievedGpa-requiredAvgGpa<=.15){let difficulty="Moderate";if(achievedGpa>=3.8)difficulty="Very High";else if(achievedGpa>=3.5)difficulty="Demanding";else if(achievedGpa<=3)difficulty="Achievable";const summary=`${count1} \xD7 ${g1.grade} (${g1.gpv.toFixed(1)}) and ${count2} \xD7 ${g2.grade} (${g2.gpv.toFixed(1)})`;combinations.push({summary,gradesBreakdown:{[g1.grade]:count1,[g2.grade]:count2},achievedGpa,difficulty})}}}}}const uniqueCombos=[];const seenSummaries=new Set;combinations.forEach(c=>{if(!seenSummaries.has(c.summary)&&uniqueCombos.length<3){seenSummaries.add(c.summary);uniqueCombos.push(c)}});return uniqueCombos}function calculateTargetGpa(targetCgpa){const stats=calculateOverallStats();const totalRequired=stats.totalRequiredCredits;const attempted=stats.totalGpaCreditsAttempted;const currentPoints=stats.totalWeightedPoints;const remainingCredits=Math.max(0,totalRequired-attempted);if(remainingCredits===0){return{possible:false,message:"All minimum degree credits have already been attempted."}}const neededPoints=targetCgpa*totalRequired-currentPoints;const requiredAverageGpa=neededPoints/remainingCredits;if(requiredAverageGpa>4){return{possible:false,requiredAverageGpa:parseFloat(requiredAverageGpa.toFixed(2)),remainingCredits,message:`Mathematically unattainable. You would need an average GPA of ${requiredAverageGpa.toFixed(2)} across your remaining ${remainingCredits} credits (maximum possible is 4.00).`}}if(requiredAverageGpa<=0){return{possible:true,requiredAverageGpa:0,remainingCredits,message:`Already secured! Your current weighted points already guarantee a final CGPA of at least ${targetCgpa.toFixed(2)}, provided you earn passing grades in the remaining ${remainingCredits} credits.`}}let suggestion="";if(requiredAverageGpa>=3.85){suggestion="Virtually all A+ / A grades required."}else if(requiredAverageGpa>=3.65){suggestion="A majority of A grades with some A- grades required."}else if(requiredAverageGpa>=3.25){suggestion="Consistent mix of A- and B+ grades required."}else if(requiredAverageGpa>=2.95){suggestion="Solid B and B+ grades required."}else{suggestion="Maintaining C+ or B- grades will suffice."}const combinations=solveConcreteGradeCombinations(requiredAverageGpa,remainingCredits);return{possible:true,requiredAverageGpa:parseFloat(requiredAverageGpa.toFixed(2)),remainingCredits,suggestion,combinations,message:`You need to average a ${requiredAverageGpa.toFixed(2)} GPA across your remaining ${remainingCredits} credits. ${suggestion}`}}function calculateAcademicRiskAlerts(){const alerts=[];const stats=calculateOverallStats();const failCourses=[];["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{(STATE.semesters[semKey]||[]).forEach(c=>{if(!c.isNgpa&&c.grade==="E"){failCourses.push(`${c.code} (${semKey})`)}})});if(failCourses.length>0){alerts.push({level:"danger",title:"Active Fail (E) Grade(s) Detected",message:`You have ${failCourses.length} course(s) with an active E grade: ${failCourses.join(", ")}. Under University of Ruhuna regulations, all E grades must be repeated and cleared for degree conferment.`,affectedCourses:failCourses})}const conditionalCourses=[];["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{(STATE.semesters[semKey]||[]).forEach(c=>{if(!c.isNgpa&&(c.grade==="D"||c.grade==="D+")){conditionalCourses.push(`${c.code} [${c.grade}]`)}})});if(conditionalCourses.length>2){alerts.push({level:"warning",title:"High Volume of Conditional Passes (D / D+)",message:`You have ${conditionalCourses.length} conditional passes: ${conditionalCourses.join(", ")}. Excessive conditional passes severely depress your CGPA and risk class honours standing. Consider re-sitting them if eligible.`,affectedCourses:conditionalCourses})}if(stats.totalGpaCreditsAttempted>=15&&stats.cgpa<2){alerts.push({level:"danger",title:"Academic Probation Warning",message:`Your cumulative GPA (${stats.cgpa.toFixed(2)}) is below 2.00. Under Faculty regulations, maintaining a CGPA below 2.00 places a student on academic warning or probation.`})}const pendingNgpa=[];(STATE.orientationCourses||[]).forEach(c=>{if(!c.grade||(GRADING_SCALE[c.grade]?.gpv||0)<1.7){pendingNgpa.push(c.code)}});if(pendingNgpa.length>0){alerts.push({level:"info",title:"Compulsory Non-GPA Modules Incomplete",message:`${pendingNgpa.length} orientation or English module(s) still require a passing grade (C- or higher): ${pendingNgpa.join(", ")}.`,affectedCourses:pendingNgpa})}if(alerts.length===0&&stats.totalGpaCreditsAttempted>0){alerts.push({level:"success",title:"Academic Record in Good Standing \u{1F31F}",message:"Zero fail grades, no probation flags, and all core degree progression criteria are currently satisfied!"})}return alerts}function calculateRepeatImpact(courseCode,targetGrade,isExcused=false){let targetCourse=null;let semFound="";["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{(STATE.semesters[semKey]||[]).forEach(c=>{if(c.code===courseCode){targetCourse=c;semFound=semKey}})});if(!targetCourse||!targetCourse.grade){return null}const credits=Number(targetCourse.credits)||0;const oldGpv=calculateCourseGpv(targetCourse)||0;let newGpv=GRADING_SCALE[targetGrade]?.gpv||0;if(!isExcused&&newGpv>2){newGpv=2}const deltaGpv=newGpv-oldGpv;const deltaPoints=deltaGpv*credits;const currentStats=calculateOverallStats();const currentPoints=currentStats.totalWeightedPoints;const attempted=currentStats.totalGpaCreditsAttempted;const projectedPoints=currentPoints+deltaPoints;const projectedCgpa=attempted>0?projectedPoints/attempted:0;const deltaCgpa=projectedCgpa-currentStats.cgpa;const oldStanding=getClassStanding(currentStats.cgpa,attempted);const newStanding=getClassStanding(projectedCgpa,attempted);return{courseCode,courseName:targetCourse.name,credits,semester:semFound,oldGrade:targetCourse.grade,oldGpv:parseFloat(oldGpv.toFixed(2)),targetGrade,newGpv:parseFloat(newGpv.toFixed(2)),deltaGpv:parseFloat(deltaGpv.toFixed(2)),deltaPoints:parseFloat(deltaPoints.toFixed(2)),currentCgpa:currentStats.cgpa,projectedCgpa:parseFloat(projectedCgpa.toFixed(2)),deltaCgpa:parseFloat(deltaCgpa.toFixed(2)),oldStanding:oldStanding.title,newStanding:newStanding.title,classChanged:oldStanding.title!==newStanding.title}}function simulateGpaProjection(simulatedSgpa){const currentStats=calculateOverallStats();const totalRequired=currentStats.totalRequiredCredits;const currentAttempted=currentStats.totalGpaCreditsAttempted;const remainingCredits=Math.max(0,totalRequired-currentAttempted);const currentPoints=currentStats.totalWeightedPoints;const simulatedPoints=simulatedSgpa*remainingCredits;const projectedTotalPoints=currentPoints+simulatedPoints;const projectedFinalCgpa=totalRequired>0?projectedTotalPoints/totalRequired:0;const standing=getClassStanding(projectedFinalCgpa,totalRequired);return{currentCgpa:currentStats.cgpa,remainingCredits,simulatedSgpa:parseFloat(simulatedSgpa.toFixed(2)),projectedCgpa:parseFloat(projectedFinalCgpa.toFixed(2)),projectedStanding:standing.title,standingColor:standing.color,deltaCgpa:parseFloat((projectedFinalCgpa-currentStats.cgpa).toFixed(2))}}function checkDegreeConfermentAudit(){const stats=calculateOverallStats();const degInfo=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;const items=[{title:"Total GPA Credits Earned",requirement:`Minimum ${stats.totalRequiredCredits} credits`,current:`${stats.totalGpaCreditsEarned} credits earned (${stats.totalGpaCreditsAttempted} attempted)`,passed:stats.totalGpaCreditsEarned>=stats.totalRequiredCredits},{title:"Compulsory Course Credits",requirement:`Minimum ${stats.minCompulsoryCredits} credits`,current:`${stats.totalCompulsoryEarned} credits passed`,passed:stats.totalCompulsoryEarned>=stats.minCompulsoryCredits},{title:"Elective Course Credits",requirement:`Minimum ${stats.minElectiveCredits} credits`,current:`${stats.totalElectiveEarned} credits passed`,passed:stats.totalElectiveEarned>=stats.minElectiveCredits},{title:"Non-GPA Courses Completed",requirement:"Pass (>= C-) in all Orientation & English modules",current:stats.ngpaAllPassed?"All passed (>= C-)":"Pending / Failed modules exist",passed:stats.ngpaAllPassed},{title:"Academic Standing (CGPA)",requirement:"Minimum CGPA of 2.00",current:`Current CGPA: ${stats.cgpa.toFixed(2)} (${stats.classStanding})`,passed:stats.cgpa>=2},{title:"No Unredeemed Fail (E) Grades",requirement:"Zero active E grades",current:stats.unredeemedFailCount===0?"Clear (0 E grades)":`${stats.unredeemedFailCount} unrepeated E grade(s)`,passed:stats.unredeemedFailCount===0}];const allPassed=items.every(i=>i.passed);return{allPassed,items,degreeCode:STATE.degree,degreeName:degInfo.name}}function generateAcademicSummaryCardText(){const stats=calculateOverallStats();const degInfo=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;const specDeptName=DEPARTMENTS[STATE.specializationDept]||STATE.specializationDept;return[`\u{1F33E} UNIVERSITY OF RUHUNA \u2014 FACULTY OF AGRICULTURE`,`Student: ${STATE.name} (${STATE.indexNumber})`,`Degree: ${degInfo.shortName} \u2022 ${specDeptName}`,`--------------------------------------------------`,`\u{1F393} Overall CGPA: ${stats.cgpa.toFixed(2)} [${stats.classStanding}]`,stats.hasExpectedCourses?`\u2728 Real Confirmed CGPA: ${stats.realCgpa.toFixed(2)} (${stats.deltaCgpa>=0?"+":""}${stats.deltaCgpa.toFixed(2)} with expected)`:`\u{1F7E2} Status: All Grades Confirmed`,`\u{1F4DA} Completed Credits: ${stats.totalGpaCreditsEarned} / ${stats.totalRequiredCredits} GPA Credits`,`\u{1F4CB} Non-GPA Modules: ${stats.ngpaAllPassed?"All Satisfied (Passed)":"Pending Modules"}`,`--------------------------------------------------`,`Generated via AgriGPA Academic Advisor Engine`].join("\n")}function getAllProfiles(){if(typeof localStorage==="undefined")return[];try{const raw=localStorage.getItem(PROFILES_STORAGE_KEY);if(raw){const arr=JSON.parse(raw);if(Array.isArray(arr)&&arr.length>0)return arr}}catch(e){console.error("Error parsing profiles from localStorage:",e)}return[]}function saveAllProfiles(profiles){if(typeof localStorage==="undefined")return;try{localStorage.setItem(PROFILES_STORAGE_KEY,JSON.stringify(profiles))}catch(e){console.error("Error saving profiles to localStorage:",e)}}function getActiveProfileId(){if(typeof localStorage==="undefined")return null;return localStorage.getItem(ACTIVE_PROFILE_KEY)}function setActiveProfileId(id){if(typeof localStorage==="undefined")return;localStorage.setItem(ACTIVE_PROFILE_KEY,id)}function createDefaultProfileObject(id,name,indexNumber,degree="ARMT"){return{id:id||"prof_"+Date.now(),name:name||"Gjay",indexNumber:indexNumber||"7740",degree,currentSemester:"1-1",specializationDept:"CS",specializationResearch:"CS42601",semesters:initDefaultCoursesForDegree(degree),orientationCourses:[{code:"CC10001",name:"General English",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10002",name:"Computer Awareness",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10003",name:"Basic Mathematics",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10004",name:"Basic Statistics",credits:0,dept:"CC",grade:"C-",isNgpa:true},{code:"CC10005",name:"Career Development and Active Citizen",credits:0,dept:"CC",grade:"C-",isNgpa:true}],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()}}function loadState(){if(typeof localStorage==="undefined")return false;try{let profiles=getAllProfiles();if(profiles.length===0){const legacyRaw=localStorage.getItem(LEGACY_STORAGE_KEY);let legacyData=null;if(legacyRaw){try{legacyData=JSON.parse(legacyRaw)}catch(err){}}const initialProfile=createDefaultProfileObject("prof_default","Gjay","7740",legacyData?.degree||"ARMT");if(legacyData&&legacyData.semesters){initialProfile.semesters=legacyData.semesters;if(legacyData.specializationDept)initialProfile.specializationDept=legacyData.specializationDept;if(legacyData.orientationCourses)initialProfile.orientationCourses=legacyData.orientationCourses}profiles=[initialProfile];saveAllProfiles(profiles);setActiveProfileId(initialProfile.id)}let activeId=getActiveProfileId();let activeProfile=profiles.find(p=>p.id===activeId);if(!activeProfile){activeProfile=profiles[0];setActiveProfileId(activeProfile.id)}STATE.id=activeProfile.id;STATE.name=activeProfile.name||"Gjay";STATE.indexNumber=activeProfile.indexNumber||"7740";STATE.degree=activeProfile.degree||"ARMT";STATE.specializationDept=activeProfile.specializationDept||"CS";STATE.specializationResearch=activeProfile.specializationResearch||"CS42601";STATE.currentSemester=activeProfile.currentSemester||"1-1";STATE.semesters=activeProfile.semesters||initDefaultCoursesForDegree(STATE.degree);STATE.orientationCourses=activeProfile.orientationCourses||[{code:"CC10001",name:"General English",credits:0,grade:"C-",isNgpa:true},{code:"CC10002",name:"Computer Awareness",credits:0,grade:"C-",isNgpa:true},{code:"CC10003",name:"Basic Mathematics",credits:0,grade:"C-",isNgpa:true},{code:"CC10004",name:"Basic Statistics",credits:0,grade:"C-",isNgpa:true},{code:"CC10005",name:"Career Development and Active Citizen",credits:0,grade:"C-",isNgpa:true}];return true}catch(e){console.error("Failed to load state from localStorage",e)}return false}function saveState(){if(typeof localStorage==="undefined")return;try{let profiles=getAllProfiles();const activeId=STATE.id||getActiveProfileId();let index=profiles.findIndex(p=>p.id===activeId);const snapshot={id:activeId||"prof_"+Date.now(),name:STATE.name||"Gjay",indexNumber:STATE.indexNumber||"7740",degree:STATE.degree,specializationDept:STATE.specializationDept,specializationResearch:STATE.specializationResearch,currentSemester:STATE.currentSemester,semesters:STATE.semesters,orientationCourses:STATE.orientationCourses,updatedAt:new Date().toISOString()};if(index>=0){profiles[index]={...profiles[index],...snapshot}}else{snapshot.createdAt=new Date().toISOString();profiles.push(snapshot);setActiveProfileId(snapshot.id)}saveAllProfiles(profiles);localStorage.setItem(LEGACY_STORAGE_KEY,JSON.stringify(STATE))}catch(e){console.error("Failed to save state to localStorage",e)}}function createNewProfile(name,indexNumber,degree="ARMT"){saveState();const newProfile=createDefaultProfileObject(null,name||"Student",indexNumber||"0000",degree);const profiles=getAllProfiles();profiles.push(newProfile);saveAllProfiles(profiles);setActiveProfileId(newProfile.id);loadState();return newProfile}function switchProfile(profileId){saveState();setActiveProfileId(profileId);return loadState()}function deleteProfile(profileId){let profiles=getAllProfiles();if(profiles.length<=1){return{success:false,message:"Cannot delete the only profile."}}profiles=profiles.filter(p=>p.id!==profileId);saveAllProfiles(profiles);if(getActiveProfileId()===profileId){setActiveProfileId(profiles[0].id)}loadState();return{success:true}}function cloneActiveProfile(cloneName){saveState();const profiles=getAllProfiles();const current=profiles.find(p=>p.id===STATE.id)||profiles[0];const copy=JSON.parse(JSON.stringify(current));copy.id="prof_"+Date.now();copy.name=cloneName||`${current.name} (Copy)`;copy.createdAt=new Date().toISOString();copy.updatedAt=new Date().toISOString();profiles.push(copy);saveAllProfiles(profiles);setActiveProfileId(copy.id);loadState();return copy}function updateProfileMetadata(name,indexNumber,degree){STATE.name=(name||"").trim()||STATE.name;STATE.indexNumber=(indexNumber||"").trim()||STATE.indexNumber;if(degree&&degree!==STATE.degree){STATE.degree=degree;STATE.semesters=initDefaultCoursesForDegree(degree)}saveState()}function exportActiveProfileJson(){const profile={appName:"University of Ruhuna Faculty of Agriculture GPA Calculator",version:"2.5",exportedAt:new Date().toISOString(),profile:{name:STATE.name,indexNumber:STATE.indexNumber,degree:STATE.degree,specializationDept:STATE.specializationDept,semesters:STATE.semesters,orientationCourses:STATE.orientationCourses}};return JSON.stringify(profile,null,2)}function exportAllProfilesJson(){saveState();const exportData={appName:"University of Ruhuna Faculty of Agriculture GPA Calculator",version:"2.5",exportedAt:new Date().toISOString(),profiles:getAllProfiles()};return JSON.stringify(exportData,null,2)}function importProfileJson(jsonString){try{const data=typeof jsonString==="string"?JSON.parse(jsonString):jsonString;const profiles=getAllProfiles();if(data.profiles&&Array.isArray(data.profiles)){data.profiles.forEach(p=>{p.id="prof_"+Date.now()+"_"+Math.random().toString(36).substr(2,4);profiles.push(p)});saveAllProfiles(profiles);setActiveProfileId(profiles[profiles.length-1].id);loadState();return{success:true,count:data.profiles.length}}else if(data.profile){const p=data.profile;const newProf=createDefaultProfileObject("prof_"+Date.now(),p.name||"Imported Student",p.indexNumber||"0000",p.degree||"ARMT");if(p.semesters)newProf.semesters=p.semesters;if(p.specializationDept)newProf.specializationDept=p.specializationDept;if(p.orientationCourses)newProf.orientationCourses=p.orientationCourses;profiles.push(newProf);saveAllProfiles(profiles);setActiveProfileId(newProf.id);loadState();return{success:true,count:1}}else{return{success:false,message:"Invalid file format: expected profile data structure."}}}catch(err){return{success:false,message:"JSON parsing failed: "+err.message}}}function exportTranscriptCsv(){const stats=calculateOverallStats();const degInfo=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;const lines=[`"UNIVERSITY OF RUHUNA - FACULTY OF AGRICULTURE"`,`"Undergraduate Academic Transcript Summary"`,`"Student Name:",${JSON.stringify(STATE.name)}`,`"Index Number:",${JSON.stringify(STATE.indexNumber)}`,`"Degree Programme:",${JSON.stringify(degInfo.name+" ("+STATE.degree+")")}`,`"Specialization Field:",${JSON.stringify(DEPARTMENTS[STATE.specializationDept]||STATE.specializationDept)}`,`"Date Generated:",${JSON.stringify(new Date().toLocaleDateString())}`,``,`"Semester","Course Code","Course Title","Credits","Course Type","Grade","GPV","Quality Points","Status"`];(STATE.orientationCourses||[]).forEach(c=>{const gpv=GRADING_SCALE[c.grade]?.gpv||0;const passed=gpv>=1.7;lines.push(`"Orientation",${JSON.stringify(c.code)},${JSON.stringify(c.name)},0,"Non-GPA",${JSON.stringify(c.grade||"Pending")},${gpv.toFixed(1)},0,${JSON.stringify(passed?"Passed":"Pending")}`)});["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{const semList=STATE.semesters[semKey]||[];semList.forEach(c=>{const gpv=calculateCourseGpv(c);const creds=Number(c.credits)||0;const qp=gpv!==null?(gpv*creds).toFixed(2):"0.00";const cType=c.isNgpa?"Non-GPA":c.isCompulsory?"Compulsory":"Elective";const repNote=c.isRepeat?c.isExcused?" (Repeat-Excused)":" (Repeat-Capped)":"";const status=!c.grade?"Pending":gpv!==null&&gpv>=1.7?"Passed":"Failed";lines.push(`${JSON.stringify("Sem "+semKey)},${JSON.stringify(c.code)},${JSON.stringify(c.name)},${creds},${JSON.stringify(cType+repNote)},${JSON.stringify(c.grade||"-")},${gpv!==null?gpv.toFixed(1):"-"},${qp},${JSON.stringify(status)}`)})});lines.push(``);lines.push(`"ACADEMIC SUMMARY"`);lines.push(`"Total GPA Credits Attempted:",${stats.totalGpaCreditsAttempted}`);lines.push(`"Total GPA Credits Earned:",${stats.totalGpaCreditsEarned}`);lines.push(`"Cumulative GPA (CGPA):",${stats.cgpa.toFixed(2)}`);lines.push(`"Class Standing:",${JSON.stringify(stats.classStanding)}`);lines.push(`"Non-GPA Status:",${JSON.stringify(stats.ngpaAllPassed?"All Non-GPA Modules Satisfied":"Pending Modules")}`);return lines.join("\r\n")}function parseTranscriptText(text){if(!text||typeof text!=="string")return[];const lines=text.split(/\r?\n/);const matchedCourses=[];const codeRegex=/\b([A-Z]{2}\d{5})\b/i;const gradeRegex=/(?:^|\s|\t|,)(A\+|A-|B\+|B-|C\+|C-|D\+|A|B|C|D|E)(?:$|\s|\t|,|\.|;)/i;lines.forEach(line=>{const trimmed=line.trim();if(!trimmed)return;const codeMatch=trimmed.match(codeRegex);const gradeMatch=trimmed.match(gradeRegex);if(codeMatch&&codeMatch[1]){const code=codeMatch[1].toUpperCase();const grade=gradeMatch&&gradeMatch[1]?gradeMatch[1].toUpperCase():"";matchedCourses.push({code,grade,originalLine:line})}});return matchedCourses}function loadSampleStudentData(){STATE.degree="ARMT";STATE.specializationDept="CS";STATE.name="Gjay";STATE.indexNumber="7740";STATE.semesters=initDefaultCoursesForDegree("ARMT");const sampleGrades={"1-1":{"AS11201":"A","BL11301":"A-","CC11201":"A+","CS11201":"A","EC11201":"B+","EN11201":"A-","FS11201":"A","CC11202":"A"},"1-2":{"AS12301":"A","BL12201":"A-","CS12201":"A","EC12201":"B+","EN12201":"A","FS12201":"A-","SS12301":"A","CC12101":"A","CC12202":"A-"},"2-1":{"AS21101":"A","AS21102":"A-","BL21201":"B+","BL21205":"A-","CS21201":"A","EC21201":"A-","EN21201":"A","FS21201":"B+","SS21201":"A"},"2-2":{"AS22201":"A","AS22102":"A-","BL22201":"A","CS22201":"A+","CS22202":"A","EC22201":"A-","EN22201":"A"},"3-1":{"AS31201":"A","CS31201":"A+","EC31201":"A-","EN31201":"A","FS31201":"A-","SS31201":"A"}};STATE.semesters["3-1"].push({code:"CS31203",name:"Plant Tissue Culture",credits:2,dept:"CS",isNgpa:false,isCompulsory:false,grade:"A",isRepeat:false,isExcused:false,isExpected:false});STATE.semesters["3-1"].push({code:"CS31205",name:"Organic Agriculture",credits:2,dept:"CS",isNgpa:false,isCompulsory:false,grade:"A-",isRepeat:false,isExcused:false,isExpected:false});Object.keys(sampleGrades).forEach(sem=>{const grades=sampleGrades[sem];STATE.semesters[sem].forEach(course=>{if(grades[course.code]){course.grade=grades[course.code]}})});saveState()}Object.defineProperty(STATE,"studentName",{get(){return this.name},set(val){this.name=val}});var exportsObj={STATE,initDefaultCoursesForDegree,calculateCourseGpv,calculateSemesterStats,calculateOverallStats,solveConcreteGradeCombinations,calculateTargetGpa,calculateAcademicRiskAlerts,calculateRepeatImpact,simulateGpaProjection,checkDegreeConfermentAudit,generateAcademicSummaryCardText,parseTranscriptText,loadSampleStudentData,saveState,loadState,getAllProfiles,saveAllProfiles,getActiveProfileId,setActiveProfileId,createNewProfile,switchProfile,deleteProfile,cloneActiveProfile,updateProfileMetadata,exportActiveProfileJson,exportAllProfilesJson,importProfileJson,exportTranscriptCsv};if(typeof globalThis.module!=="undefined"&&globalThis.module.exports){globalThis.module.exports=exportsObj}if(typeof window!=="undefined"){Object.assign(window,exportsObj)}var ONBOARDING_KEY="ruhuna_agri_onboarded_v2";var THEME_STORAGE_KEY="ruhuna_agri_theme";var isEditingProfile=false;function showToast(message,duration=3e3){let toast=document.getElementById("appToastNotification");if(!toast){toast=document.createElement("div");toast.id="appToastNotification";toast.className="app-toast";document.body.appendChild(toast)}toast.innerText=message;toast.classList.add("show");setTimeout(()=>{toast?.classList.remove("show")},duration)}async function copyToClipboard(text,successMessage="Copied to clipboard!"){try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);showToast(`\u2714 ${successMessage}`)}else{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);showToast(`\u2714 ${successMessage}`)}}catch(err){console.error("Failed to copy to clipboard",err);showToast("Failed to copy to clipboard")}}function initTheme(){const saved=localStorage.getItem(THEME_STORAGE_KEY);const prefersDark=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;if(saved==="dark"||!saved&&prefersDark){document.body.classList.add("dark-mode");const btn=document.getElementById("btnThemeToggle");if(btn)btn.innerHTML="\u2600\uFE0F Light"}else{document.body.classList.remove("dark-mode");const btn=document.getElementById("btnThemeToggle");if(btn)btn.innerHTML="\u{1F319} Dark"}}function toggleTheme(){const isDark=document.body.classList.toggle("dark-mode");localStorage.setItem(THEME_STORAGE_KEY,isDark?"dark":"light");const btn=document.getElementById("btnThemeToggle");if(btn)btn.innerHTML=isDark?"\u2600\uFE0F Light":"\u{1F319} Dark";renderGpaTrendChart();renderGradeDistribution()}function checkFirstTimeOnboarding(){if(!localStorage.getItem(ONBOARDING_KEY)){const modal=document.getElementById("onboardingModal");if(modal)modal.classList.add("show")}}function escapeHtml(str){if(!str)return"";return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}function updateGreeting(){const greetingEl=document.getElementById("greetingTitle");const subtitleEl=document.getElementById("greetingSubtitle");if(!greetingEl)return;const hour=new Date().getHours();let timeGreeting="Good day";if(hour>=4&&hour<12)timeGreeting="Good morning";else if(hour>=12&&hour<17)timeGreeting="Good afternoon";else if(hour>=17&&hour<22)timeGreeting="Good evening";else timeGreeting="Burning the midnight oil";const studentName=escapeHtml(STATE.name||"Student");greetingEl.innerHTML=`${timeGreeting}, <span class="greeting-name">${studentName}</span> \u{1F44B}`;if(subtitleEl){const degInfo=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;const specName=STATE.degree!=="GT"?` \u2022 ${STATE.specializationDept} Stream`:"";subtitleEl.innerText=`${degInfo.name}${specName} \u2022 Index: ${STATE.indexNumber||"N/A"}`}}function renderProfileHeader(){const profileDisplayName=document.getElementById("profileDisplayName");const profileAvatar=document.getElementById("profileAvatar");if(profileDisplayName){profileDisplayName.innerText=`${STATE.name} (${STATE.indexNumber||"No Index"})`}if(profileAvatar){profileAvatar.innerText=(STATE.name||"G").charAt(0).toUpperCase()}renderProfileDropdownList();updateGreeting()}function renderProfileDropdownList(){const container=document.getElementById("profileListItems");if(!container)return;container.innerHTML="";const profiles=getAllProfiles();profiles.forEach(p=>{const item=document.createElement("div");item.className="profile-dropdown-item"+(p.id===STATE.id?" active":"");item.innerHTML=`
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="avatar" style="width: 24px; height: 24px; font-size: 0.7rem;">${(p.name||"S").charAt(0).toUpperCase()}</span>
+        <div>
+          <div style="font-weight: 600; font-size: 0.8rem;">${escapeHtml(p.name)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-muted);">${p.degree} \u2022 ${p.indexNumber}</div>
+        </div>
+      </div>
+      ${p.id===STATE.id?'<span style="color: var(--primary-accent); font-size: 0.75rem;">\u2713 Active</span>':""}
+    `;item.addEventListener("click",()=>{if(p.id!==STATE.id){switchProfile(p.id);renderAll()}const dropdown=document.getElementById("profileDropdown");if(dropdown)dropdown.classList.remove("show")});container.appendChild(item)})}function renderPrintHeader(){const printStudent=document.getElementById("printStudentInfo");const printDegree=document.getElementById("printDegreeName");if(printStudent){printStudent.innerText=`Student: ${STATE.name} | Index Number: ${STATE.indexNumber} | Generated: ${new Date().toLocaleDateString()}`}if(printDegree){const deg=DEGREE_INFO[STATE.degree]||DEGREE_INFO.ARMT;printDegree.innerText=`${deg.name} (${STATE.degree}) \u2022 Specialization: ${DEPARTMENTS[STATE.specializationDept]||STATE.specializationDept}`}}function renderDegreeButtons(){document.querySelectorAll("#degreeBtnGroup .degree-btn").forEach(btn=>{if(btn.getAttribute("data-degree")===STATE.degree){btn.classList.add("active")}else{btn.classList.remove("active")}});const specContainer=document.getElementById("specializationContainer");const specSelect=document.getElementById("specDeptSelect");if(specContainer){specContainer.style.display=STATE.degree==="GT"?"none":"flex"}if(specSelect){specSelect.value=STATE.specializationDept||"CS"}}function renderTabs(){document.querySelectorAll("#semesterTabsContainer .semester-tab").forEach(tab=>{if(tab.getAttribute("data-sem")===STATE.currentSemester){tab.classList.add("active")}else{tab.classList.remove("active")}})}function renderSummaryCards(){const stats=calculateOverallStats();const cgpaEl=document.getElementById("summaryCgpaValue");const classStandingEl=document.getElementById("summaryClassStanding");const expectedCgpaPill=document.getElementById("summaryExpectedCgpaPill");if(cgpaEl){cgpaEl.innerText=stats.realCreditsAttempted>0?stats.realCgpa.toFixed(2):stats.cgpa.toFixed(2)}if(classStandingEl){const displayStanding=stats.realCreditsAttempted>0?stats.realClassStanding:stats.classStanding;const badgeColor=stats.realCreditsAttempted>0?stats.realClassBadgeColor:stats.classBadgeColor;classStandingEl.className=`metric-badge badge-${badgeColor}`;classStandingEl.innerText=displayStanding}if(expectedCgpaPill){if(stats.hasExpectedCourses){expectedCgpaPill.style.display="inline-flex";expectedCgpaPill.innerText=`\u2728 Expected: ${stats.cgpa.toFixed(2)} (${stats.deltaCgpa>=0?"+":""}${stats.deltaCgpa.toFixed(2)})`}else{expectedCgpaPill.style.display="none"}}const creditsProgressEl=document.getElementById("summaryCreditsProgress");const progressBar=document.getElementById("summaryCreditsBar");const pct=Math.min(100,Math.round(stats.totalGpaCreditsEarned/stats.totalRequiredCredits*100));if(creditsProgressEl){creditsProgressEl.innerText=`${stats.totalGpaCreditsEarned} / ${stats.totalRequiredCredits} Cr`}if(progressBar){progressBar.style.width=`${pct}%`}const honorsBadge=document.getElementById("summaryHonorsBadge");const ngpaBadge=document.getElementById("summaryNgpaBadge");if(honorsBadge){let anyEligible=false;for(let yr=1;yr<=4;yr++){if(stats.deansHonors[yr]?.eligible){anyEligible=true;break}}if(anyEligible){honorsBadge.className="metric-badge badge-gold";honorsBadge.innerText="Dean\u2019s Honors Eligible \u{1F3C5}"}else{honorsBadge.className="metric-badge badge-slate";honorsBadge.innerText="Dean\u2019s Honors Pending"}}if(ngpaBadge){if(stats.ngpaAllPassed){ngpaBadge.className="metric-badge badge-emerald";ngpaBadge.innerText="Non-GPA Modules: Passed"}else{ngpaBadge.className="metric-badge badge-rose";ngpaBadge.innerText="Non-GPA Modules: Incomplete"}}}function renderGpaTrendChart(){const container=document.getElementById("gpaTrendChartWrapper");if(!container)return;const semKeys=["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"];const overall=calculateOverallStats();const isDark=document.body.classList.contains("dark-mode");let cumPointsReal=0;let cumCreditsReal=0;let cumPointsExp=0;let cumCreditsExp=0;const data=[];semKeys.forEach(sem=>{const s=overall.semStats[sem];if(s.gpaCreditsAttempted>0){cumPointsExp+=s.weightedPoints;cumCreditsExp+=s.gpaCreditsAttempted;cumPointsReal+=s.realWeightedPoints;cumCreditsReal+=s.realCreditsAttempted;data.push({sem,realSgpa:s.realSgpa,expSgpa:s.sgpa,realCgpa:cumCreditsReal>0?parseFloat((cumPointsReal/cumCreditsReal).toFixed(2)):null,expCgpa:parseFloat((cumPointsExp/cumCreditsExp).toFixed(2)),hasExpected:s.hasExpected})}});const width=800;const height=180;const padLeft=40;const padRight=30;const padTop=15;const padBottom=25;const chartW=width-padLeft-padRight;const chartH=height-padTop-padBottom;const getY=val=>padTop+chartH-val/4*chartH;const getX=idx=>padLeft+chartW/(semKeys.length-1)*idx;const y37=getY(3.7);const y33=getY(3.3);const y30=getY(3);const y20=getY(2);const textColor=isDark?"#94a3b8":"#64748b";const gridColor=isDark?"#1f293d":"#e2e8f0";let svg=`
+    <svg viewBox="0 0 ${width} ${height}" class="chart-svg" style="font-family: inherit;">
+      <line x1="${padLeft}" y1="${y37}" x2="${width-padRight}" y2="${y37}" stroke="#f59e0b" stroke-dasharray="4,4" stroke-width="1.2" opacity="0.8" />
+      <text x="${width-padRight+4}" y="${y37+3}" fill="#f59e0b" font-size="9" font-weight="700">3.70</text>
+
+      <line x1="${padLeft}" y1="${y33}" x2="${width-padRight}" y2="${y33}" stroke="#3b82f6" stroke-dasharray="4,4" stroke-width="1.2" opacity="0.8" />
+      <text x="${width-padRight+4}" y="${y33+3}" fill="#3b82f6" font-size="9" font-weight="700">3.30</text>
+
+      <line x1="${padLeft}" y1="${y30}" x2="${width-padRight}" y2="${y30}" stroke="${gridColor}" stroke-dasharray="2,2" stroke-width="1" />
+      <line x1="${padLeft}" y1="${y20}" x2="${width-padRight}" y2="${y20}" stroke="${gridColor}" stroke-dasharray="2,2" stroke-width="1" />
+
+      <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop+chartH}" stroke="${gridColor}" stroke-width="1.5" />
+      <line x1="${padLeft}" y1="${padTop+chartH}" x2="${width-padRight}" y2="${padTop+chartH}" stroke="${gridColor}" stroke-width="1.5" />
+
+      <text x="${padLeft-6}" y="${getY(4)+3}" fill="${textColor}" font-size="9" text-anchor="end">4.0</text>
+      <text x="${padLeft-6}" y="${getY(3)+3}" fill="${textColor}" font-size="9" text-anchor="end">3.0</text>
+      <text x="${padLeft-6}" y="${getY(2)+3}" fill="${textColor}" font-size="9" text-anchor="end">2.0</text>
+      <text x="${padLeft-6}" y="${getY(1)+3}" fill="${textColor}" font-size="9" text-anchor="end">1.0</text>
+  `;semKeys.forEach((sem,idx)=>{const x=getX(idx);svg+=`<text x="${x}" y="${padTop+chartH+16}" fill="${textColor}" font-size="10" text-anchor="middle" font-weight="700">${sem}</text>`});if(data.length>0){let realPath="";let expPath="";data.forEach((d,i)=>{const semIdx=semKeys.indexOf(d.sem);const x=getX(semIdx);const yExp=getY(d.expCgpa);if(i===0){expPath+=`M ${x} ${yExp}`}else{expPath+=` L ${x} ${yExp}`}if(d.realCgpa!==null){const yReal=getY(d.realCgpa);if(!realPath){realPath+=`M ${x} ${yReal}`}else{realPath+=` L ${x} ${yReal}`}}});if(expPath){svg+=`<path d="${expPath}" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-dasharray="4,4" opacity="0.85" />`}if(realPath){svg+=`<path d="${realPath}" fill="none" stroke="#10b981" stroke-width="3.5" />`}data.forEach(d=>{const semIdx=semKeys.indexOf(d.sem);const x=getX(semIdx);if(d.realCgpa!==null){const yReal=getY(d.realCgpa);svg+=`<circle cx="${x}" cy="${yReal}" r="4.5" fill="#10b981" stroke="${isDark?"#111827":"#ffffff"}" stroke-width="1.5" />`;svg+=`<text x="${x}" y="${yReal-8}" fill="${isDark?"#f8fafc":"#1e293b"}" font-size="9.5" font-weight="700" text-anchor="middle">${d.realCgpa.toFixed(2)}</text>`}if(d.hasExpected){const yExp=getY(d.expCgpa);svg+=`<circle cx="${x}" cy="${yExp}" r="4" fill="#8b5cf6" />`}})}else{svg+=`<text x="${width/2}" y="${height/2}" fill="${textColor}" font-size="12" text-anchor="middle">Enter grades to generate your real vs. expected progression curves.</text>`}svg+=`</svg>`;container.innerHTML=svg}function renderGradeDistribution(){const container=document.getElementById("gradeDistributionWrapper");if(!container)return;const counts={"A+":0,"A":0,"A-":0,"B+":0,"B":0,"B-":0,"C+":0,"C":0,"C-":0,"D+":0,"D":0,"E":0};let totalGraded=0;["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{(STATE.semesters[semKey]||[]).forEach(c=>{if(!c.isNgpa&&c.grade&&counts[c.grade]!==void 0){counts[c.grade]++;totalGraded++}})});if(totalGraded===0){container.innerHTML=`<div style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 0.85rem;">No completed course grades entered yet. Grade distribution will populate automatically.</div>`;return}const gradesList=["A+","A","A-","B+","B","B-","C+","C","C-","D+","D","E"];const maxCount=Math.max(...Object.values(counts),1);let html=`<div class="grade-distribution-grid">`;gradesList.forEach(g=>{const cnt=counts[g]||0;const barHeightPct=Math.round(cnt/maxCount*100);const gpv=GRADING_SCALE[g]?.gpv||0;let colorClass="bar-pass";if(gpv>=3.7)colorClass="bar-gold";else if(gpv>=3)colorClass="bar-green";else if(gpv>=2)colorClass="bar-blue";else if(gpv>=1)colorClass="bar-amber";else colorClass="bar-red";html+=`
+      <div class="grade-dist-col">
+        <span class="dist-count">${cnt>0?cnt:""}</span>
+        <div class="dist-bar-track">
+          <div class="dist-bar ${colorClass}" style="height: ${barHeightPct}%;"></div>
+        </div>
+        <span class="dist-label">${g}</span>
+      </div>
+    `});html+=`</div>`;html+=`
+    <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.78rem; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 6px;">
+      <span>Total Graded Courses: <strong>${totalGraded}</strong></span>
+      <span>Top Tier (A/A+/A-): <strong>${counts["A+"]+counts["A"]+counts["A-"]}</strong> (${Math.round((counts["A+"]+counts["A"]+counts["A-"])/totalGraded*100)}%)</span>
+    </div>
+  `;container.innerHTML=html}function filterSemesterCourseRows(term){const rows=document.querySelectorAll("#courseTableBody tr");rows.forEach(r=>{const text=r.innerText.toLowerCase();if(!term||text.includes(term.toLowerCase())){r.style.display=""}else{r.style.display="none"}})}function renderCurrentSemesterView(){const tableBody=document.getElementById("courseTableBody");if(!tableBody)return;tableBody.innerHTML="";if(STATE.currentSemester==="all"){renderAllSemestersView(tableBody);return}const semList=STATE.semesters[STATE.currentSemester]||[];const semStats=calculateSemesterStats(semList);const titleEl=document.getElementById("semesterTitle");const subtitleEl=document.getElementById("semesterSubtitle");const realSgpaEl=document.getElementById("semRealSgpaValue");const creditsEl=document.getElementById("semCreditsValue");if(titleEl)titleEl.innerText=`Semester ${STATE.currentSemester}`;if(subtitleEl)subtitleEl.innerText=`Track real confirmed grades vs. anticipated/expected subject results`;if(realSgpaEl)realSgpaEl.innerText=semStats.realSgpa.toFixed(2);if(creditsEl)creditsEl.innerText=String(semStats.gpaCreditsAttempted);const expStatWrap=document.getElementById("semExpectedStatWrap");const expSgpaEl=document.getElementById("semExpectedSgpaValue");if(expStatWrap&&expSgpaEl){if(semStats.hasExpected){expStatWrap.style.display="block";expSgpaEl.innerText=semStats.sgpa.toFixed(2)}else{expStatWrap.style.display="none"}}if(semList.length===0){tableBody.innerHTML=`<tr><td colspan="10" style="text-align: center; padding: 28px; color: var(--text-muted);">No courses registered in this semester. Click "Add Elective" or "Reset Standard Compulsory" to populate.</td></tr>`;return}semList.forEach((course,index)=>{const tr=document.createElement("tr");if(course.isExpected){tr.classList.add("row-expected")}const tdCode=document.createElement("td");tdCode.innerHTML=`<span class="code-badge">${course.code}</span><span class="dept-tag">${course.dept}</span>`;const tdName=document.createElement("td");tdName.className="course-name-cell";tdName.innerHTML=`<span class="course-title">${course.name}</span>`;const tdCredits=document.createElement("td");tdCredits.style.textAlign="center";tdCredits.innerHTML=`<strong>${course.credits}</strong>`;const tdType=document.createElement("td");if(course.isNgpa){tdType.innerHTML=`<span class="metric-badge badge-slate" title="Excluded from GPA">Non-GPA</span>`}else if(course.isSpecialization){tdType.innerHTML=`<span class="metric-badge badge-gold">Specialization</span>`}else if(course.isCompulsory){tdType.innerHTML=`<span class="metric-badge badge-blue">Compulsory</span>`}else{tdType.innerHTML=`<span class="metric-badge badge-emerald">Elective</span>`}const tdStatus=document.createElement("td");tdStatus.style.textAlign="center";if(course.isNgpa){tdStatus.innerHTML=`<span style="color: var(--text-muted); font-size: 0.72rem;">Standard</span>`}else{const toggleContainer=document.createElement("div");toggleContainer.className="result-status-toggle";toggleContainer.setAttribute("role","group");toggleContainer.setAttribute("aria-label",`Result status for ${course.code}`);const btnReal=document.createElement("button");btnReal.type="button";btnReal.className="status-toggle-btn status-real"+(!course.isExpected?" active":"");btnReal.innerHTML=`<span class="status-dot"></span>Real`;btnReal.title="Confirmed Final Grade (Officially released by faculty)";btnReal.addEventListener("click",e=>{e.stopPropagation();if(course.isExpected){course.isExpected=false;saveState();renderAll()}});const btnExpected=document.createElement("button");btnExpected.type="button";btnExpected.className="status-toggle-btn status-expected"+(course.isExpected?" active":"");btnExpected.innerHTML=`<span class="status-sparkle">\u2728</span>Expected`;btnExpected.title="Anticipated / Expected Mark (Provisional scenario planning)";btnExpected.addEventListener("click",e=>{e.stopPropagation();if(!course.isExpected){course.isExpected=true;saveState();renderAll()}});toggleContainer.appendChild(btnReal);toggleContainer.appendChild(btnExpected);tdStatus.appendChild(toggleContainer)}const tdGrade=document.createElement("td");const select=document.createElement("select");select.className="grade-select";select.innerHTML=`
+      <option value="">--</option>
+      <option value="A+">A+ (4.0)</option>
+      <option value="A">A (4.0)</option>
+      <option value="A-">A- (3.7)</option>
+      <option value="B+">B+ (3.3)</option>
+      <option value="B">B (3.0)</option>
+      <option value="B-">B- (2.7)</option>
+      <option value="C+">C+ (2.3)</option>
+      <option value="C">C (2.0)</option>
+      <option value="C-">C- (1.7)</option>
+      <option value="D+">D+ (1.3)</option>
+      <option value="D">D (1.0)</option>
+      <option value="E">E (0.0)</option>
+    `;select.value=course.grade||"";select.addEventListener("change",e=>{course.grade=e.target.value;saveState();renderAll()});select.addEventListener("keydown",e=>{const key=e.key.toUpperCase();if(["A","B","C","D","E"].includes(key)){e.preventDefault();const currentVal=select.value;const optionsForLetter={"A":["A+","A","A-"],"B":["B+","B","B-"],"C":["C+","C","C-"],"D":["D+","D"],"E":["E"]};const list=optionsForLetter[key];const nextIndex=(list.indexOf(currentVal)+1)%list.length;const nextGrade=list[nextIndex]||list[0];select.value=nextGrade;course.grade=nextGrade;saveState();renderAll()}});tdGrade.appendChild(select);const tdRepeat=document.createElement("td");if(!course.isNgpa){const repeatGroup=document.createElement("div");repeatGroup.className="repeat-toggle-group";const repeatLabel=document.createElement("label");repeatLabel.className="repeat-checkbox-label"+(course.isRepeat?" active":"");const chk=document.createElement("input");chk.type="checkbox";chk.checked=!!course.isRepeat;chk.addEventListener("change",e=>{course.isRepeat=e.target.checked;saveState();renderAll()});repeatLabel.appendChild(chk);repeatLabel.appendChild(document.createTextNode(course.isRepeat?" Repeat (Cap C)":" Repeat"));repeatGroup.appendChild(repeatLabel);if(course.isRepeat){const excuseLabel=document.createElement("label");excuseLabel.className="repeat-checkbox-label";excuseLabel.style.fontSize="0.7rem";const exChk=document.createElement("input");exChk.type="checkbox";exChk.checked=!!course.isExcused;exChk.addEventListener("change",e=>{course.isExcused=e.target.checked;saveState();renderAll()});excuseLabel.appendChild(exChk);excuseLabel.appendChild(document.createTextNode(" Medical/Excuse"));repeatGroup.appendChild(excuseLabel)}tdRepeat.appendChild(repeatGroup)}else{tdRepeat.innerHTML=`<span style="color: var(--text-muted); font-size: 0.75rem;">N/A</span>`}const tdGpv=document.createElement("td");tdGpv.style.textAlign="center";const gpv=calculateCourseGpv(course);tdGpv.innerHTML=course.isNgpa?`<span style="color: var(--text-muted);">NGPA</span>`:gpv!==null?`<strong>${gpv.toFixed(1)}</strong>`:`\u2014`;const tdPoints=document.createElement("td");tdPoints.style.textAlign="right";if(course.isNgpa||gpv===null){tdPoints.innerText="\u2014"}else{const pts=(Number(course.credits)||0)*gpv;tdPoints.innerHTML=`<strong>${pts.toFixed(1)}</strong>`}const tdAction=document.createElement("td");tdAction.style.textAlign="center";if(!course.isCompulsory&&!course.isSpecialization){const delBtn=document.createElement("button");delBtn.className="btn btn-danger-outline";delBtn.style.padding="4px 8px";delBtn.style.fontSize="0.75rem";delBtn.innerHTML="\u{1F5D1}\uFE0F";delBtn.title="Remove elective course";delBtn.addEventListener("click",()=>{semList.splice(index,1);saveState();renderAll()});tdAction.appendChild(delBtn)}else{tdAction.innerHTML=`<span style="color: var(--text-muted); font-size: 0.75rem;">Req</span>`}tr.appendChild(tdCode);tr.appendChild(tdName);tr.appendChild(tdCredits);tr.appendChild(tdType);tr.appendChild(tdStatus);tr.appendChild(tdGrade);tr.appendChild(tdRepeat);tr.appendChild(tdGpv);tr.appendChild(tdPoints);tr.appendChild(tdAction);tableBody.appendChild(tr)})}function renderAllSemestersView(tableBody){const titleEl=document.getElementById("semesterTitle");const subtitleEl=document.getElementById("semesterSubtitle");if(titleEl)titleEl.innerText="All Semesters Overview (Cumulative)";if(subtitleEl)subtitleEl.innerText="Complete academic history across all 8 semesters";const stats=calculateOverallStats();const realSgpaEl=document.getElementById("semRealSgpaValue");const creditsEl=document.getElementById("semCreditsValue");if(realSgpaEl)realSgpaEl.innerText=stats.realCgpa.toFixed(2);if(creditsEl)creditsEl.innerText=String(stats.totalGpaCreditsAttempted);const expStatWrap=document.getElementById("semExpectedStatWrap");const expSgpaEl=document.getElementById("semExpectedSgpaValue");if(expStatWrap&&expSgpaEl){if(stats.hasExpectedCourses){expStatWrap.style.display="block";expSgpaEl.innerText=stats.cgpa.toFixed(2)}else{expStatWrap.style.display="none"}}["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(semKey=>{const semList=STATE.semesters[semKey]||[];if(semList.length===0)return;const semStats=stats.semStats[semKey];const headerRow=document.createElement("tr");headerRow.style.backgroundColor=document.body.classList.contains("dark-mode")?"#1e293b":"#f1f5f9";headerRow.innerHTML=`
+      <td colspan="10" style="padding: 10px 14px; font-weight: 700; color: var(--primary-accent);">
+        Semester ${semKey} \u2014 Real SGPA: ${semStats.realSgpa.toFixed(2)} ${semStats.hasExpected?"| Expected SGPA: "+semStats.sgpa.toFixed(2):""} (${semStats.gpaCreditsAttempted} GPA Credits)
+      </td>
+    `;tableBody.appendChild(headerRow);semList.forEach(course=>{const tr=document.createElement("tr");if(course.isExpected)tr.classList.add("row-expected");const gpv=calculateCourseGpv(course);const pts=gpv!==null&&!course.isNgpa?(Number(course.credits)*gpv).toFixed(1):"\u2014";tr.innerHTML=`
+        <td><span class="code-badge">${course.code}</span><span class="dept-tag">${course.dept}</span></td>
+        <td><span class="course-title">${course.name}</span></td>
+        <td style="text-align: center;">${course.credits}</td>
+        <td>${course.isNgpa?'<span class="metric-badge badge-slate">NGPA</span>':course.isCompulsory?'<span class="metric-badge badge-blue">Compulsory</span>':'<span class="metric-badge badge-emerald">Elective</span>'}</td>
+        <td style="text-align: center;">${course.isExpected?'<span class="status-toggle-btn status-expected active" style="pointer-events:none;"><span class="status-sparkle">\u2728</span>Expected</span>':'<span class="status-toggle-btn status-real active" style="pointer-events:none;"><span class="status-dot"></span>Real</span>'}</td>
+        <td><strong>${course.grade||'<span style="color: var(--text-muted);">--</span>'}</strong></td>
+        <td>${course.isRepeat?'<span class="metric-badge badge-rose">Repeat</span>':"\u2014"}</td>
+        <td style="text-align: center;">${course.isNgpa?"NGPA":gpv!==null?gpv.toFixed(1):"\u2014"}</td>
+        <td style="text-align: right;">${pts}</td>
+        <td style="text-align: center;">\u2014</td>
+      `;tableBody.appendChild(tr)})})}function bulkFillSemesterGrades(targetGrade){if(STATE.currentSemester==="all"){showToast("Please select a specific semester to fill grades.");return}const semList=STATE.semesters[STATE.currentSemester]||[];let filledCount=0;semList.forEach(c=>{if(!c.isNgpa&&!c.grade){c.grade=targetGrade;c.isExpected=true;filledCount++}});saveState();renderAll();showToast(`\u2714 Filled ${filledCount} unfinalized course(s) with ${targetGrade} (\u2728 Expected)`)}function bulkToggleSemesterExpected(setExpected){if(STATE.currentSemester==="all"){showToast("Please select a specific semester.");return}const semList=STATE.semesters[STATE.currentSemester]||[];semList.forEach(c=>{if(!c.isNgpa){c.isExpected=setExpected}});saveState();renderAll();showToast(setExpected?"\u2728 Marked all semester courses as Expected":"\u{1F7E2} Marked all semester courses as Real Confirmed")}function clearCurrentSemesterGrades(){if(STATE.currentSemester==="all"){showToast("Select a specific semester to clear.");return}if(!confirm(`Are you sure you want to clear all entered grades for Semester ${STATE.currentSemester}?`)){return}const semList=STATE.semesters[STATE.currentSemester]||[];semList.forEach(c=>{c.grade="";c.isExpected=false;c.isRepeat=false;c.isExcused=false});saveState();renderAll();showToast(`Semester ${STATE.currentSemester} grades cleared`)}function renderWhatIfSimulator(){const select=document.getElementById("whatIfGradeSelect");const container=document.getElementById("whatIfResultBox");if(!select||!container)return;const simGpv=parseFloat(select.value)||3.7;const result=simulateGpaProjection(simGpv);container.innerHTML=`
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 0.82rem; color: var(--text-secondary);">Projected Final CGPA:</span>
+      <span style="font-size: 1.4rem; font-weight: 800; color: var(--primary-accent);">${result.projectedCgpa.toFixed(2)}</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 0.82rem; color: var(--text-secondary);">Honours Classification:</span>
+      <span class="metric-badge badge-${result.standingColor}">${result.projectedStanding}</span>
+    </div>
+    <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 6px;">
+      Simulated across your remaining <strong>${result.remainingCredits} credits</strong>. Projected CGPA delta:
+      <strong style="color: ${result.deltaCgpa>=0?"var(--success)":"var(--danger)"};">
+        ${result.deltaCgpa>=0?"+":""}${result.deltaCgpa.toFixed(2)}
+      </strong>
+    </div>
+  `}function renderTargetPlannerResult(targetGpa){const container=document.getElementById("targetGpaResultBox");if(!container)return;const result=calculateTargetGpa(targetGpa);if(!result.possible){container.innerHTML=`
+      <div style="padding: 10px; border-radius: var(--radius-sm); font-size: 0.82rem; background: rgba(239, 68, 68, 0.12); color: var(--danger); line-height: 1.4;">
+        \u26A0\uFE0F ${result.message}
+      </div>
+    `;return}let combinationsHtml="";if(result.combinations&&result.combinations.length>0){combinationsHtml+=`
+      <div style="margin-top: 12px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+        <span style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Recommended Grade Combinations:</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+    `;result.combinations.forEach((c,idx)=>{let badgeClass="badge-blue";if(c.difficulty==="Very High"||c.difficulty==="Demanding")badgeClass="badge-gold";else if(c.difficulty==="Achievable")badgeClass="badge-emerald";combinationsHtml+=`
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 0.8rem;">
+            <strong>Option ${idx+1}:</strong> ${c.summary}
+          </div>
+          <span class="metric-badge ${badgeClass}" style="font-size: 0.7rem;">${c.difficulty}</span>
+        </div>
+      `});combinationsHtml+=`</div></div>`}container.innerHTML=`
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <span style="font-size: 0.82rem; color: var(--text-secondary);">Required Average SGPA:</span>
+      <span style="font-size: 1.4rem; font-weight: 800; color: var(--primary-accent);">${result.requiredAverageGpa?.toFixed(2)}</span>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
+      ${result.message}
+    </div>
+    ${combinationsHtml}
+  `}function populateRepeatCoursesDropdown(){const select=document.getElementById("repeatCourseSelect");if(!select)return;select.innerHTML="";const foundCourses=[];["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(sem=>{(STATE.semesters[sem]||[]).forEach(c=>{if(!c.isNgpa&&c.grade){foundCourses.push(c)}})});if(foundCourses.length===0){select.innerHTML='<option value="">No completed graded courses found</option>';return}foundCourses.sort((a,b)=>{const gpvA=GRADING_SCALE[a.grade||""]?.gpv||0;const gpvB=GRADING_SCALE[b.grade||""]?.gpv||0;return gpvA-gpvB});foundCourses.forEach(c=>{const opt=document.createElement("option");opt.value=c.code;opt.innerText=`${c.code} - ${c.name} (${c.credits} Cr) [Current: ${c.grade}]`;select.appendChild(opt)});updateRepeatImpactDisplay()}function updateRepeatImpactDisplay(){const code=document.getElementById("repeatCourseSelect")?.value;const targetGrade=document.getElementById("repeatTargetGradeSelect")?.value;const isExcused=document.getElementById("repeatExcusedCheck")?.checked||false;const container=document.getElementById("repeatResultBox");if(!container||!code)return;const res=calculateRepeatImpact(code,targetGrade,isExcused);if(!res){container.innerHTML="Select a valid graded course to preview impact.";return}container.innerHTML=`
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span>Grade Upgrade:</span>
+      <strong>${res.oldGrade} (${res.oldGpv.toFixed(1)}) \u2192 ${res.targetGrade} (${res.newGpv.toFixed(1)}${!isExcused&&res.newGpv>2?" Capped at 2.0":""})</strong>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span>Net Points Gained:</span>
+      <span style="font-weight: 700; color: ${res.deltaPoints>0?"var(--success)":"var(--text-muted)"};">
+        ${res.deltaPoints>0?"+":""}${res.deltaPoints.toFixed(1)} Points
+      </span>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <span>CGPA Projection:</span>
+      <strong>${res.currentCgpa.toFixed(2)} \u2192 <span style="color: var(--primary-accent); font-size: 1.05rem;">${res.projectedCgpa.toFixed(2)}</span> (${res.deltaCgpa>=0?"+":""}${res.deltaCgpa.toFixed(2)})</strong>
+    </div>
+    <div style="padding: 6px 8px; border-radius: var(--radius-sm); font-size: 0.78rem; background: ${res.classChanged?"rgba(16, 185, 129, 0.15)":"var(--bg-main)"};">
+      ${res.classChanged?`\u{1F389} <strong>Class Standing Upgraded:</strong> ${res.oldStanding} \u2192 <strong>${res.newStanding}</strong>!`:`Class Standing: ${res.newStanding}`}
+    </div>
+  `}function renderGraduationAudit(){const container=document.getElementById("auditChecklistContainer");if(!container)return;const audit=checkDegreeConfermentAudit();container.innerHTML=`
+    <div style="padding: 8px 10px; border-radius: var(--radius-sm); margin-bottom: 8px; font-weight: 700; font-size: 0.82rem; background: ${audit.allPassed?"rgba(16, 185, 129, 0.15)":"rgba(245, 158, 11, 0.15)"}; color: ${audit.allPassed?"var(--success)":"var(--warning)"};">
+      ${audit.allPassed?"\u2705 All Degree Conferment Requirements Satisfied!":"\u26A0\uFE0F Requirements In Progress / Pending"}
+    </div>
+  `;audit.items.forEach(item=>{const div=document.createElement("div");div.className="audit-item "+(item.passed?"audit-passed":"audit-pending");div.innerHTML=`
+      <div>
+        <strong>${item.title}</strong>
+        <div style="font-size: 0.75rem; color: var(--text-secondary);">${item.current} (${item.requirement})</div>
+      </div>
+      <span style="font-weight: 800; font-size: 0.95rem;">${item.passed?"\u2713":"\u2717"}</span>
+    `;container.appendChild(div)})}function renderAcademicRiskAlerts(){const container=document.getElementById("academicRiskAlertsContainer");if(!container)return;const alerts=calculateAcademicRiskAlerts();container.innerHTML="";alerts.forEach(alert2=>{const div=document.createElement("div");div.className=`alert-card alert-${alert2.level}`;let icon="\u2139\uFE0F";if(alert2.level==="danger")icon="\u{1F6A8}";else if(alert2.level==="warning")icon="\u26A0\uFE0F";else if(alert2.level==="success")icon="\u{1F31F}";div.innerHTML=`
+      <div style="display: flex; gap: 8px; align-items: flex-start;">
+        <span style="font-size: 1.1rem; line-height: 1;">${icon}</span>
+        <div>
+          <div style="font-weight: 700; font-size: 0.82rem; margin-bottom: 2px;">${alert2.title}</div>
+          <div style="font-size: 0.76rem; line-height: 1.4;">${alert2.message}</div>
+        </div>
+      </div>
+    `;container.appendChild(div)})}function renderDeansHonors(){const stats=calculateOverallStats();const container=document.getElementById("deansHonorListContainer");if(!container)return;container.innerHTML="";[1,2,3,4].forEach(yr=>{const item=stats.deansHonors[yr];const row=document.createElement("div");row.className="deans-year-row";let badgeClass="badge-slate";let badgeText=item.status;if(item.eligible){badgeClass="badge-gold";badgeText="Eligible \u{1F3C5}"}else if(item.status.includes("Pending")){badgeClass="badge-blue";badgeText="In Progress"}else{badgeClass="badge-rose";badgeText="Not Eligible"}row.innerHTML=`
+      <div class="deans-year-label">
+        <strong>Year ${yr}</strong>
+        <div style="font-size: 0.76rem; color: var(--text-muted);">${item.annualGpa>0?"Annual GPA: "+item.annualGpa.toFixed(2):"No finalized grades"}</div>
+      </div>
+      <div>
+        <span class="metric-badge ${badgeClass}">${badgeText}</span>
+      </div>
+    `;container.appendChild(row)})}function renderSpecializationAdvisor(){const stats=calculateOverallStats();const container=document.getElementById("specializationAdvisorContent");if(!container)return;const spec=stats.specEligibility;const ratioPct=Math.round(spec.ratio*100);container.innerHTML=`
+    <div style="margin-bottom: 6px;">
+      <strong>Chosen Field:</strong> ${DEPARTMENTS[spec.chosenDept]||spec.chosenDept}
+    </div>
+    <div style="margin-bottom: 6px;">
+      <strong>End of 3-1 Cumulative GPA:</strong>
+      <span style="font-weight: 700; color: ${spec.gpaMet?"var(--success)":"var(--danger)"};">
+        ${spec.gpa31.toFixed(2)}
+      </span> (Minimum 2.70 required)
+    </div>
+    <div style="margin-bottom: 8px;">
+      <strong>3rd Year Departmental Elective Progress:</strong>
+      <span style="font-weight: 700; color: ${spec.electiveRatioMet?"var(--success)":"var(--warning)"};">
+        ${ratioPct}%
+      </span> (${spec.electiveDeptCredits} out of ${spec.totalYear3ElectiveCredits} credits in ${spec.chosenDept})
+      <div class="progress-bar-container" style="margin-top: 4px; height: 6px;">
+        <div class="progress-bar-fill" style="width: ${Math.min(100,ratioPct)}%; background: ${spec.electiveRatioMet?"var(--success)":"var(--warning)"};"></div>
+      </div>
+    </div>
+    <div style="padding: 8px 10px; border-radius: var(--radius-sm); font-size: 0.8rem; background: ${spec.gpaMet&&spec.electiveRatioMet?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.1)"}; color: ${spec.gpaMet&&spec.electiveRatioMet?"var(--success)":"var(--danger)"};">
+      ${spec.statusText}
+    </div>
+  `}function renderNgpaList(){const container=document.getElementById("ngpaCoursesList");if(!container)return;container.innerHTML="";const items=[...STATE.orientationCourses];["1-1","1-2"].forEach(sem=>{(STATE.semesters[sem]||[]).forEach(c=>{if(c.isNgpa)items.push(c)})});items.forEach(c=>{const gpv=GRADING_SCALE[c.grade||""]?.gpv||0;const passed=c.grade&&gpv>=1.7;const div=document.createElement("div");div.style.display="flex";div.style.justifyContent="space-between";div.style.padding="4px 0";div.style.borderBottom="1px solid var(--border-color)";div.innerHTML=`
+      <span><code>${c.code}</code> ${c.name}</span>
+      <span style="font-weight: 700; color: ${passed?"var(--success)":"var(--danger)"};">
+        ${c.grade||"Pending"} ${passed?"\u2713":"\u2717"}
+      </span>
+    `;container.appendChild(div)})}function renderElectiveCatalog(){const container=document.getElementById("electiveCoursesListContainer");const searchInput=document.getElementById("electiveSearchInput");const search=(searchInput?.value||"").toLowerCase();if(!container)return;container.innerHTML="";const currentSem=STATE.currentSemester;const registeredCodes=(STATE.semesters[currentSem]||[]).map(c=>c.code);const matchingCourses=[];Object.keys(COURSE_CATALOG).forEach(code=>{const c=COURSE_CATALOG[code];if(c.semester===currentSem&&!c.isCompulsory){if(!search||c.code.toLowerCase().includes(search)||c.name.toLowerCase().includes(search)||c.dept.toLowerCase().includes(search)){matchingCourses.push(c)}}});if(matchingCourses.length===0){container.innerHTML=`<div style="text-align: center; padding: 20px; color: var(--text-muted);">No matching elective courses found for Semester ${currentSem}.</div>`;return}matchingCourses.forEach(course=>{const item=document.createElement("div");item.className="elective-item";const alreadyAdded=registeredCodes.includes(course.code);item.innerHTML=`
+      <div>
+        <span class="code-badge">${course.code}</span>
+        <span style="font-weight: 600; margin-left: 6px;">${course.name}</span>
+        <span style="color: var(--text-muted); font-size: 0.78rem;">(${course.credits} Credits \u2022 ${course.dept})</span>
+      </div>
+      <button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.78rem;" ${alreadyAdded?"disabled":""}>
+        ${alreadyAdded?"Added":"+ Add"}
+      </button>
+    `;if(!alreadyAdded){item.querySelector("button")?.addEventListener("click",()=>{STATE.semesters[currentSem].push({code:course.code,name:course.name,credits:course.credits,dept:course.dept,isNgpa:!!course.isNgpa,isCompulsory:false,grade:"",isRepeat:false,isExcused:false,isExpected:false});saveState();renderAll();renderElectiveCatalog()})}container.appendChild(item)})}function renderAll(){renderProfileHeader();renderPrintHeader();renderDegreeButtons();renderTabs();renderSummaryCards();renderCurrentSemesterView();renderGpaTrendChart();renderGradeDistribution();populateRepeatCoursesDropdown();renderGraduationAudit();renderAcademicRiskAlerts();renderDeansHonors();renderSpecializationAdvisor();renderNgpaList()}function registerPwaServiceWorker(){if("serviceWorker"in navigator&&window.location.protocol.startsWith("http")){navigator.serviceWorker.register("./sw.js").then(()=>{console.log("AgriGPA Service Worker registered for offline use.")}).catch(err=>{console.log("Service Worker registration skipped or failed:",err)})}}function initKeyboardShortcuts(){document.addEventListener("keydown",e=>{const activeTag=document.activeElement?document.activeElement.tagName.toLowerCase():"";if(activeTag==="input"||activeTag==="textarea")return;if(e.altKey){const num=parseInt(e.key,10);if(num>=1&&num<=8){e.preventDefault();const semKeys=["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"];const targetSem=semKeys[num-1];if(targetSem){STATE.currentSemester=targetSem;saveState();renderAll();showToast(`Switched to Semester ${targetSem}`)}}else if(e.key==="0"){e.preventDefault();STATE.currentSemester="all";saveState();renderAll();showToast("Switched to All Semesters Overview")}else if(e.key.toLowerCase()==="a"){e.preventDefault();document.querySelector('#mainNavSwitcher [data-view="advisor"]')?.click()}else if(e.key.toLowerCase()==="s"){e.preventDefault();document.querySelector('#mainNavSwitcher [data-view="workspace"]')?.click()}else if(e.key.toLowerCase()==="p"){e.preventDefault();document.querySelector('#mainNavSwitcher [data-view="analytics"]')?.click()}else if(e.key.toLowerCase()==="c"){e.preventDefault();copyToClipboard(generateAcademicSummaryCardText(),"Academic performance card copied to clipboard!")}}})}function initApp(){initTheme();checkFirstTimeOnboarding();if(!loadState()){STATE.semesters=initDefaultCoursesForDegree(STATE.degree)}renderAll();registerPwaServiceWorker();initKeyboardShortcuts();function switchMainView(viewName){document.querySelectorAll("#mainNavSwitcher .nav-tab-btn").forEach(btn=>{if(btn.getAttribute("data-view")===viewName){btn.classList.add("active")}else{btn.classList.remove("active")}});document.querySelectorAll(".view-panel").forEach(p=>p.style.display="none");const target=document.getElementById(`view-${viewName}`);if(target){target.style.display="block";if(viewName==="analytics"){renderGpaTrendChart();renderGradeDistribution()}else if(viewName==="advisor"){const activeToolBtn=document.querySelector(".tool-tab-btn.active");const tool=activeToolBtn?activeToolBtn.getAttribute("data-tool"):"planner";if(tool==="whatif")renderWhatIfSimulator();if(tool==="repeat"){populateRepeatCoursesDropdown();updateRepeatImpactDisplay()}if(tool==="audit")renderGraduationAudit();renderAcademicRiskAlerts()}}}document.querySelectorAll("#mainNavSwitcher .nav-tab-btn").forEach(btn=>{btn.addEventListener("click",()=>{switchMainView(btn.getAttribute("data-view")||"workspace")})});const btnGoToAdvisor=document.getElementById("btnGoToAdvisor");if(btnGoToAdvisor){btnGoToAdvisor.addEventListener("click",()=>switchMainView("advisor"))}const btnMoreMenu=document.getElementById("btnMoreMenu");const moreDropdown=document.getElementById("moreDropdown");if(btnMoreMenu&&moreDropdown){btnMoreMenu.addEventListener("click",e=>{e.stopPropagation();moreDropdown.classList.toggle("show")});document.addEventListener("click",e=>{const wrapper=document.getElementById("moreMenuWrapper");if(wrapper&&!wrapper.contains(e.target)){moreDropdown.classList.remove("show")}});document.querySelectorAll(".more-dropdown-item").forEach(item=>{item.addEventListener("click",()=>{moreDropdown.classList.remove("show")})})}const btnCopySummaryCard=document.getElementById("btnCopySummaryCard");if(btnCopySummaryCard){btnCopySummaryCard.addEventListener("click",()=>{copyToClipboard(generateAcademicSummaryCardText(),"Academic performance summary copied to clipboard!")})}document.getElementById("btnThemeToggle")?.addEventListener("click",toggleTheme);document.querySelectorAll(".onboarding-opt-btn").forEach(opt=>{opt.addEventListener("click",()=>{document.querySelectorAll(".onboarding-opt-btn").forEach(b=>b.classList.remove("active"));opt.classList.add("active");const deg=opt.getAttribute("data-deg");const onboardSpec=document.getElementById("onboardSpecGroup");if(onboardSpec)onboardSpec.style.display=deg==="GT"?"none":"block"})});document.getElementById("btnCompleteOnboarding")?.addEventListener("click",()=>{const name=document.getElementById("onboardName")?.value.trim()||"Student";const indexNumber=document.getElementById("onboardIndex")?.value.trim()||"0000";const activeDegreeBtn=document.querySelector(".onboarding-opt-btn.active");const degree=activeDegreeBtn?activeDegreeBtn.getAttribute("data-deg"):"ARMT";const specDept=document.getElementById("onboardSpec")?.value||"CS";updateProfileMetadata(name,indexNumber,degree);STATE.specializationDept=specDept;saveState();localStorage.setItem(ONBOARDING_KEY,"true");document.getElementById("onboardingModal")?.classList.remove("show");renderAll()});const profilePillBtn=document.getElementById("profilePillBtn");const profileDropdown=document.getElementById("profileDropdown");if(profilePillBtn&&profileDropdown){profilePillBtn.addEventListener("click",e=>{e.stopPropagation();profileDropdown.classList.toggle("show")});document.addEventListener("click",e=>{const wrapper=document.getElementById("profilePillWrapper");if(wrapper&&!wrapper.contains(e.target)){profileDropdown.classList.remove("show")}})}document.getElementById("btnOpenNewProfileModal")?.addEventListener("click",()=>{isEditingProfile=false;document.getElementById("profileModalTitle").innerText="Create New Student Profile";document.getElementById("profileModalName").value="";document.getElementById("profileModalIndex").value="";document.getElementById("profileModalDegree").value="ARMT";document.getElementById("profileModal")?.classList.add("show");document.getElementById("profileDropdown")?.classList.remove("show")});document.getElementById("btnEditProfileModal")?.addEventListener("click",()=>{isEditingProfile=true;document.getElementById("profileModalTitle").innerText="Edit Active Student Profile";document.getElementById("profileModalName").value=STATE.name;document.getElementById("profileModalIndex").value=STATE.indexNumber;document.getElementById("profileModalDegree").value=STATE.degree;document.getElementById("profileModal")?.classList.add("show");document.getElementById("profileDropdown")?.classList.remove("show")});document.getElementById("btnCloneProfile")?.addEventListener("click",()=>{const cloneName=prompt("Enter a name for the duplicated profile:",`${STATE.name} (Scenario)`);if(cloneName){cloneActiveProfile(cloneName);renderAll();document.getElementById("profileDropdown")?.classList.remove("show");showToast(`Profile cloned: ${cloneName}`)}});document.getElementById("btnDeleteCurrentProfile")?.addEventListener("click",()=>{if(confirm(`Are you sure you want to delete profile "${STATE.name}"?`)){const res=deleteProfile(STATE.id);if(!res.success){alert(res.message||"Cannot delete profile.")}else{renderAll();document.getElementById("profileDropdown")?.classList.remove("show");showToast("Profile deleted")}}});document.getElementById("btnSaveProfileModal")?.addEventListener("click",()=>{const name=document.getElementById("profileModalName").value.trim();const indexNumber=document.getElementById("profileModalIndex").value.trim();const degree=document.getElementById("profileModalDegree").value;if(!name){alert("Please enter a student name.");return}if(isEditingProfile){updateProfileMetadata(name,indexNumber,degree)}else{createNewProfile(name,indexNumber,degree)}document.getElementById("profileModal")?.classList.remove("show");renderAll()});document.getElementById("btnExportCsv")?.addEventListener("click",()=>{const csv=exportTranscriptCsv();const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`Ruhuna_Agri_Transcript_${STATE.indexNumber||"Student"}.csv`;link.click();URL.revokeObjectURL(url);showToast("Transcript exported as CSV")});document.getElementById("btnBackupRestore")?.addEventListener("click",()=>{const choice=confirm('Click "OK" to DOWNLOAD backup JSON.\nClick "Cancel" to RESTORE/IMPORT from file.');if(choice){const json=exportAllProfilesJson();const blob=new Blob([json],{type:"application/json"});const url=URL.createObjectURL(blob);const link=document.createElement("a");link.href=url;link.download=`Ruhuna_Agri_Profiles_Backup_${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(url);showToast("Profile backup downloaded")}else{document.getElementById("jsonFileInput")?.click()}});document.getElementById("jsonFileInput")?.addEventListener("change",e=>{const file=e.target.files?.[0];if(file){const reader=new FileReader;reader.onload=event=>{const content=event.target?.result;const res=importProfileJson(content);if(res.success){alert(`Successfully imported profile data!`);renderAll()}else{alert(`Import failed: ${res.message}`)}};reader.readAsText(file)}});document.querySelectorAll("#degreeBtnGroup .degree-btn").forEach(btn=>{btn.addEventListener("click",e=>{const deg=e.target.getAttribute("data-degree");if(deg&&deg!==STATE.degree){if(confirm(`Switch to ${deg}? Standard semester courses will be re-initialized for ${deg}.`)){STATE.degree=deg;STATE.semesters=initDefaultCoursesForDegree(deg);saveState();renderAll()}}})});const specSelect=document.getElementById("specDeptSelect");if(specSelect){specSelect.addEventListener("change",e=>{const dept=e.target.value;STATE.specializationDept=dept;const spec=SPECIALIZATION_STREAMS[dept];STATE.specializationResearch=spec?.researchCode||"CS42601";if(STATE.semesters["4-1"]){STATE.semesters["4-1"]=STATE.semesters["4-1"].filter(c=>!c.isSpecialization);if(spec&&spec.courses){spec.courses.forEach(code=>{const info=COURSE_CATALOG[code]||{code,name:code,credits:2,dept:spec.dept};STATE.semesters["4-1"].push({code:info.code,name:info.name,credits:info.credits,dept:spec.dept,isNgpa:false,isCompulsory:true,isSpecialization:true,grade:"",isRepeat:false,isExcused:false,isExpected:false})})}}if(STATE.semesters["4-2"]){const resCode=spec?.researchCode||"CS42601";const resInfo=COURSE_CATALOG[resCode]||{code:resCode,name:"Research Project",credits:6,dept};STATE.semesters["4-2"]=STATE.semesters["4-2"].filter(c=>Number(c.credits)!==6);STATE.semesters["4-2"].unshift({code:resInfo.code,name:resInfo.name,credits:resInfo.credits,dept:resInfo.dept,isNgpa:false,isCompulsory:true,grade:"",isRepeat:false,isExcused:false,isExpected:false})}saveState();renderAll();showToast(`Specialization stream updated to ${DEPARTMENTS[dept]||dept}`)})}document.querySelectorAll("#semesterTabsContainer .semester-tab").forEach(btn=>{btn.addEventListener("click",e=>{const sem=e.target.getAttribute("data-sem");if(sem){STATE.currentSemester=sem;saveState();renderAll()}})});const filterInput=document.getElementById("courseFilterInput");if(filterInput){filterInput.addEventListener("input",()=>{filterSemesterCourseRows(filterInput.value)})}document.getElementById("btnMarkAllReal")?.addEventListener("click",()=>{bulkToggleSemesterExpected(false)});document.getElementById("btnFillExpected")?.addEventListener("click",()=>{bulkToggleSemesterExpected(true)});document.getElementById("btnBulkFillA")?.addEventListener("click",()=>{bulkFillSemesterGrades("A")});document.getElementById("btnBulkFillBPlus")?.addEventListener("click",()=>{bulkFillSemesterGrades("B+")});document.getElementById("btnClearSemGrades")?.addEventListener("click",()=>{clearCurrentSemesterGrades()});function switchAdvisorTool(toolName){document.querySelectorAll(".tool-tab-btn").forEach(btn=>{if(btn.getAttribute("data-tool")===toolName){btn.classList.add("active")}else{btn.classList.remove("active")}});document.querySelectorAll(".advisor-tool-pane").forEach(p=>p.style.display="none");const target=document.getElementById(`tool-pane-${toolName}`);if(target)target.style.display="block";if(toolName==="whatif")renderWhatIfSimulator();if(toolName==="repeat"){populateRepeatCoursesDropdown();updateRepeatImpactDisplay()}if(toolName==="audit")renderGraduationAudit()}document.querySelectorAll(".tool-tab-btn").forEach(btn=>{btn.addEventListener("click",e=>{const tool=e.target.getAttribute("data-tool");if(tool)switchAdvisorTool(tool)})});function executeTargetCalculation(){const inputEl=document.getElementById("targetGpaInput");const selectEl=document.getElementById("targetGoalSelect");const rawVal=inputEl?.value||selectEl?.value||"3.70";const val=parseFloat(rawVal);if(isNaN(val)||val<=0||val>4){alert("Please enter a valid target CGPA between 2.00 and 4.00.");return}renderTargetPlannerResult(val)}document.getElementById("btnCalculateTarget")?.addEventListener("click",executeTargetCalculation);document.getElementById("targetGoalSelect")?.addEventListener("change",e=>{const val=e.target.value;const inputEl=document.getElementById("targetGpaInput");if(inputEl)inputEl.value=val;executeTargetCalculation()});document.getElementById("whatIfGradeSelect")?.addEventListener("change",renderWhatIfSimulator);document.getElementById("repeatCourseSelect")?.addEventListener("change",updateRepeatImpactDisplay);document.getElementById("repeatTargetGradeSelect")?.addEventListener("change",updateRepeatImpactDisplay);document.getElementById("repeatExcusedCheck")?.addEventListener("change",updateRepeatImpactDisplay);document.getElementById("btnQuickPaste")?.addEventListener("click",()=>{document.getElementById("quickPasteModal")?.classList.add("show");document.getElementById("pasteInputText").value="";const preview=document.getElementById("pasteResultsPreview");if(preview)preview.innerHTML=""});document.getElementById("pasteInputText")?.addEventListener("input",e=>{const text=e.target.value;const matches=parseTranscriptText(text);const preview=document.getElementById("pasteResultsPreview");if(!preview)return;if(matches.length===0){preview.innerHTML=`<span style="color: var(--text-muted); font-size: 0.8rem;">No recognizable course codes found. Paste raw text containing codes like AS11201, BL11301...</span>`;return}let html=`<div style="font-weight: 700; margin-bottom: 6px; font-size: 0.82rem; color: var(--primary-accent);">Found ${matches.length} Course Match(es):</div><div style="display: flex; flex-wrap: wrap; gap: 6px;">`;matches.forEach(m=>{html+=`<span class="code-badge" style="background: var(--bg-card);">${m.code}: <strong>${m.grade||"No Grade"}</strong></span>`});html+=`</div>`;preview.innerHTML=html});document.getElementById("btnApplyParsedResults")?.addEventListener("click",()=>{const text=document.getElementById("pasteInputText").value;const matches=parseTranscriptText(text);if(matches.length===0){alert("No matching courses found to import.");return}let appliedCount=0;matches.forEach(m=>{if(!m.grade)return;["1-1","1-2","2-1","2-2","3-1","3-2","4-1","4-2"].forEach(sem=>{(STATE.semesters[sem]||[]).forEach(course=>{if(course.code===m.code){course.grade=m.grade;appliedCount++}})});(STATE.orientationCourses||[]).forEach(course=>{if(course.code===m.code){course.grade=m.grade;appliedCount++}})});saveState();renderAll();document.getElementById("quickPasteModal")?.classList.remove("show");showToast(`\u2714 Applied ${appliedCount} grade(s) from transcript text!`)});document.getElementById("btnAddElectiveModalBtn")?.addEventListener("click",()=>{if(STATE.currentSemester==="all"){alert("Please switch to a specific semester tab first.");return}const title=document.getElementById("electiveModalSemesterTitle");if(title)title.innerText=`Semester ${STATE.currentSemester}`;renderElectiveCatalog();document.getElementById("electiveCatalogModal")?.classList.add("show")});document.getElementById("electiveSearchInput")?.addEventListener("input",renderElectiveCatalog);document.getElementById("btnAddCustomCourseBtn")?.addEventListener("click",()=>{if(STATE.currentSemester==="all"){alert("Please switch to a specific semester tab first.");return}const code=prompt("Enter Course Code (e.g. EX31201):","EX31201");if(!code)return;const cleanCode=code.trim().toUpperCase();const name=prompt("Enter Course Title:","Special Agricultural Study")||cleanCode;const creditsStr=prompt("Enter Credit Weight (1 - 6):","2");const credits=parseInt(creditsStr||"2",10)||2;const dept=cleanCode.substring(0,2)||"CC";STATE.semesters[STATE.currentSemester].push({code:cleanCode,name,credits,dept,isNgpa:false,isCompulsory:false,grade:"",isRepeat:false,isExcused:false,isExpected:false});saveState();renderAll();showToast(`Added custom course: ${cleanCode}`)});document.getElementById("btnRestoreCompulsory")?.addEventListener("click",()=>{if(STATE.currentSemester==="all"){alert("Please select a specific semester.");return}if(confirm(`Reset Semester ${STATE.currentSemester} to default compulsory courses? Non-compulsory courses will be preserved.`)){const defaults=initDefaultCoursesForDegree(STATE.degree);const current=STATE.semesters[STATE.currentSemester]||[];const electives=current.filter(c=>!c.isCompulsory&&!c.isSpecialization);STATE.semesters[STATE.currentSemester]=[...defaults[STATE.currentSemester],...electives];saveState();renderAll();showToast("Reset to default compulsory courses")}});document.getElementById("btnLoadSample")?.addEventListener("click",()=>{if(confirm("Load sample student records (Gjay - 7740)? This will populate semesters 1-1 to 3-1 with sample grades.")){loadSampleStudentData();renderAll();showToast("Loaded sample student data")}});document.getElementById("btnResetAll")?.addEventListener("click",()=>{if(confirm("Are you sure you want to RESET all course grades and restore clean degree defaults?")){STATE.semesters=initDefaultCoursesForDegree(STATE.degree);saveState();renderAll();showToast("All course records reset")}});document.getElementById("btnPrintReport")?.addEventListener("click",()=>{window.print()});document.querySelectorAll(".modal-close-btn").forEach(btn=>{btn.addEventListener("click",()=>{const modalId=btn.getAttribute("data-close");if(modalId){document.getElementById(modalId)?.classList.remove("show")}})});document.querySelectorAll(".modal-overlay").forEach(modal=>{modal.addEventListener("click",e=>{if(e.target===modal&&modal.id!=="onboardingModal"){modal.classList.remove("show")}})})}if(typeof document!=="undefined"){if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",initApp)}else{initApp()}}})();
+
+</script>
+</body>
+</html>

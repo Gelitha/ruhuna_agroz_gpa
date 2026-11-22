@@ -1,0 +1,94 @@
+// University of Ruhuna - Faculty of Agriculture
+// GradePath Root Application (11 Core Dedicated Views as per Specification)
+
+import React from 'react';
+import { useGradeStore } from './store/useGradeStore';
+import { Sidebar } from './components/layout/Sidebar';
+import { Header } from './components/layout/Header';
+import { WelcomeModal } from './components/onboarding/WelcomeModal';
+
+// 11 Modular Screen Views
+import { DashboardView } from './components/dashboard/DashboardView';
+import { GpaCalculatorView } from './components/calculator/GpaCalculatorView';
+import { AcademicTranscriptView } from './components/transcript/AcademicTranscriptView';
+import { SemesterPlannerView } from './components/planner/SemesterPlannerView';
+import { CreditProgressView } from './components/progress/CreditProgressView';
+import { DegreeRequirementsView } from './components/requirements/DegreeRequirementsView';
+import { SpecializationEligibilityView } from './components/specialization/SpecializationEligibilityView';
+import { GpaAnalyticsView } from './components/analytics/GpaAnalyticsView';
+import { GradeSimulatorView } from './components/simulator/GradeSimulatorView';
+import { AcademicGoalsView } from './components/goals/AcademicGoalsView';
+import { StudentProfilesView } from './components/profiles/StudentProfilesView';
+import { SettingsView } from './components/settings/SettingsView';
+
+export const GradePathApp: React.FC = () => {
+  const { activeTab, isSidebarExpanded } = useGradeStore();
+
+  const renderCurrentView = () => {
+    switch (activeTab) {
+      // OVERVIEW
+      case 'dashboard':
+        return <DashboardView />;
+      case 'calculator':
+      case 'grades':
+        return <GpaCalculatorView />;
+      case 'transcript':
+        return <AcademicTranscriptView />;
+
+      // ACADEMIC
+      case 'planner':
+        return <SemesterPlannerView />;
+      case 'progress':
+        return <CreditProgressView />;
+      case 'requirements':
+        return <DegreeRequirementsView />;
+      case 'specialization':
+        return <SpecializationEligibilityView />;
+
+      // INSIGHTS
+      case 'analytics':
+        return <GpaAnalyticsView />;
+      case 'simulator':
+      case 'forecast':
+        return <GradeSimulatorView />;
+      case 'goals':
+        return <AcademicGoalsView />;
+
+      // PERSONAL
+      case 'profiles':
+        return <StudentProfilesView />;
+      case 'settings':
+        return <SettingsView />;
+
+      default:
+        return <DashboardView />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-main flex font-sans selection:bg-primary-light selection:text-primary">
+      {/* Persistent Left Sidebar */}
+      <Sidebar />
+
+      {/* Main Content Area */}
+      <div
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+          isSidebarExpanded ? 'md:ml-68' : 'md:ml-20'
+        }`}
+      >
+        {/* Contextual Sticky Header */}
+        <Header />
+
+        {/* View Content (Comfortable, generous sizing) */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+          {renderCurrentView()}
+        </main>
+      </div>
+
+      {/* First-Time Experience & Onboarding Modal */}
+      <WelcomeModal />
+    </div>
+  );
+};
+
+export default GradePathApp;
