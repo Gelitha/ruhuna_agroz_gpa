@@ -5,6 +5,7 @@ import React from 'react';
 import { useGradeStore } from './store/useGradeStore';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { Footer } from './components/layout/Footer';
 import { WelcomeModal } from './components/onboarding/WelcomeModal';
 
 // 11 Modular Screen Views
@@ -83,6 +84,9 @@ export const GradePathApp: React.FC = () => {
         <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden">
           {renderCurrentView()}
         </main>
+
+        {/* Global Platform Footer */}
+        <Footer />
       </div>
 
       {/* First-Time Experience & Onboarding Modal */}

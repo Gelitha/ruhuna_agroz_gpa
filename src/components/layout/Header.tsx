@@ -390,8 +390,9 @@ export const Header: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2 text-xs text-neutral-500 text-center font-medium">
-              Undergraduate Handbook 2023/24
+            <div className="pt-2 text-[11px] text-neutral-500 text-center font-medium space-y-0.5">
+              <div>Curriculum: Undergraduate Handbook 2023/24</div>
+              <div className="text-[10px] text-neutral-400">Powered by Gelitha Jayawickrama (47th Batch)</div>
             </div>
           </div>
         </div>
