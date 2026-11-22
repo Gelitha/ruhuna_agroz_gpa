@@ -70,17 +70,17 @@ export const GradePathApp: React.FC = () => {
       {/* Persistent Left Sidebar */}
       <Sidebar />
 
-      {/* Main Content Area */}
+      {/* Main Content Area - dynamically offset by desktop sidebar */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 w-full min-w-0 ml-0 ${
           isSidebarExpanded ? 'md:ml-68' : 'md:ml-20'
         }`}
       >
         {/* Contextual Sticky Header */}
         <Header />
 
-        {/* View Content (Comfortable, generous sizing) */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
+        {/* View Content (Comfortable, generous sizing, responsive padding) */}
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden">
           {renderCurrentView()}
         </main>
       </div>

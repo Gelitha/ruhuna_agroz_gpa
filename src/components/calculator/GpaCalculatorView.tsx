@@ -333,9 +333,9 @@ export const GpaCalculatorView: React.FC = () => {
         {/* LEFT COLUMN: DENSE COURSE MATRIX & CREDIT CONTROLS (8)  */}
         {/* ====================================================== */}
         <div className="lg:col-span-8 space-y-4">
-          {/* Semester Pill Bar (Enlarged & Comfortable) */}
-          <div className="bg-white border border-neutral-200 rounded-2xl p-2 flex items-center justify-between gap-1.5 overflow-x-auto shadow-sm">
-            <div className="flex items-center gap-1.5">
+          {/* Semester Pill Bar (Enlarged, Responsive & Comfortable) */}
+          <div className="bg-white border border-neutral-200 rounded-2xl p-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-sm">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none w-full sm:w-auto py-0.5">
               {SEMESTERS.map(sem => {
                 const isActive = activeTabKey === sem.key;
                 let sgpaBadge = '';
@@ -355,7 +355,7 @@ export const GpaCalculatorView: React.FC = () => {
                         setSelectedSemesterForCalculator(sem.key);
                       }
                     }}
-                    className={`px-4 py-2 sm:px-4.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                    className={`px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                       isActive
                         ? 'bg-neutral-900 text-white shadow-md'
                         : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
@@ -363,7 +363,7 @@ export const GpaCalculatorView: React.FC = () => {
                   >
                     <span>{sem.label}</span>
                     {sgpaBadge && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold ${
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-mono font-bold ${
                         isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
                       }`}>
                         {sgpaBadge}
@@ -386,7 +386,7 @@ export const GpaCalculatorView: React.FC = () => {
                   e.target.value = '';
                 }}
                 defaultValue=""
-                className="text-xs sm:text-sm bg-neutral-50 hover:bg-neutral-100 border border-neutral-300 rounded-xl px-3 py-2 text-neutral-800 font-semibold cursor-pointer shrink-0 focus:outline-none focus:border-emerald-600 transition"
+                className="text-xs sm:text-sm bg-neutral-50 hover:bg-neutral-100 border border-neutral-300 rounded-xl px-3 py-2 text-neutral-800 font-semibold cursor-pointer shrink-0 focus:outline-none focus:border-emerald-600 transition w-full sm:w-auto"
                 title="Batch set grades for this semester"
               >
                 <option value="" disabled>Fast Fill Grades...</option>
@@ -638,8 +638,8 @@ export const GpaCalculatorView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Micro Grade Segmented Buttons (Scaled Up: h-9 w-9, Vivid Colors) */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                    {/* Micro Grade Segmented Buttons (Scaled Up: h-9 w-9, Vivid Colors, Touch Scrollable) */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 max-w-full scrollbar-none">
                       {GRADE_OPTIONS.map(g => {
                         const isSelected = course.grade === g;
                         return (

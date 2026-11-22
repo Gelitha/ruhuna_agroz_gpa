@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen z-30 flex flex-col justify-between bg-white border-r border-neutral-200 transition-all duration-300 ease-in-out shadow-xs ${
+      className={`hidden md:flex fixed top-0 left-0 h-screen z-30 flex-col justify-between bg-white border-r border-neutral-200 transition-all duration-300 ease-in-out shadow-xs ${
         isSidebarExpanded ? 'w-68' : 'w-20'
       }`}
     >
