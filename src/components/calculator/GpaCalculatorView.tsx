@@ -210,47 +210,47 @@ export const GpaCalculatorView: React.FC = () => {
   return (
     <div className="max-w-[1440px] mx-auto pb-16 space-y-6">
       {/* ======================================================== */}
-      {/* MASSIVE & VIBRANT CUMULATIVE METRICS HERO                */}
+      {/* MOBILE-FIRST & VIBRANT CUMULATIVE METRICS HERO           */}
       {/* ======================================================== */}
-      <div className="bg-gradient-to-br from-[#0F3826] via-[#1B4E38] to-[#123324] text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-700/50 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#0F3826] via-[#1B4E38] to-[#123324] text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl border border-emerald-700/50 relative overflow-hidden">
         {/* Subtle background botanical ambient light */}
         <div className="absolute right-4 -bottom-10 text-9xl text-white/5 pointer-events-none select-none font-serif">
           🌿
         </div>
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8">
           {/* LEFT: BIG CUMULATIVE GPA */}
-          <div className="flex items-start sm:items-center gap-5">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-4xl sm:text-5xl shrink-0 shadow-lg backdrop-blur-md">
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-5">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-2xl sm:text-4xl lg:text-5xl shrink-0 shadow-lg backdrop-blur-md">
               🌿
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-xs uppercase font-extrabold tracking-wider px-3 py-1 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-400/40 shadow-xs">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] sm:text-xs uppercase font-extrabold tracking-wider px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/30 text-emerald-100 border border-emerald-400/40 shadow-xs">
                   {profile.degree} (Hons)
                 </span>
-                <span className="text-sm text-emerald-200 font-medium">
+                <span className="text-xs sm:text-sm text-emerald-200 font-medium truncate max-w-[200px] sm:max-w-none">
                   {profile.name} {profile.registrationNumber ? `• ${profile.registrationNumber}` : ''}
                 </span>
               </div>
 
-              {/* Massive GPA typography */}
-              <div className="flex flex-wrap items-baseline gap-4 mt-2">
+              {/* Massive GPA typography with mobile fluid sizing */}
+              <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-4 mt-1.5 sm:mt-2">
                 <div className="flex items-baseline">
-                  <span className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-white drop-shadow-md">
+                  <span className="text-4xl sm:text-5xl lg:text-6xl font-black font-mono tracking-tight text-white drop-shadow-md">
                     {stats.cgpa.toFixed(2)}
                   </span>
-                  <span className="text-lg sm:text-xl font-bold text-emerald-300/80 ml-2">/ 4.00</span>
+                  <span className="text-base sm:text-xl font-bold text-emerald-300/80 ml-1.5 sm:ml-2">/ 4.00</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="text-sm font-bold px-3.5 py-1.5 rounded-full bg-amber-400/25 text-amber-200 border border-amber-400/40 shadow-sm backdrop-blur-xs flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+                  <span className="text-xs sm:text-sm font-bold px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-amber-400/25 text-amber-200 border border-amber-400/40 shadow-sm backdrop-blur-xs flex items-center gap-1">
                     <span>★</span>
                     <span>{stats.classStanding}</span>
                   </span>
                   {stats.cgpa < 3.70 && stats.cgpa >= 2.00 && (
-                    <span className="text-xs sm:text-sm text-emerald-200 font-medium bg-white/10 px-3 py-1 rounded-full border border-white/15">
+                    <span className="text-[11px] sm:text-sm text-emerald-200 font-medium bg-white/10 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full border border-white/15">
                       {(3.70 - stats.cgpa).toFixed(2)} to 1st Class
                     </span>
                   )}
@@ -260,64 +260,64 @@ export const GpaCalculatorView: React.FC = () => {
           </div>
 
           {/* RIGHT: BIG CUMULATIVE CREDITS & ACTIVE SEMESTER SGPA */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 lg:gap-10 items-center border-t lg:border-t-0 pt-6 lg:pt-0 border-white/15">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 lg:gap-10 items-center border-t lg:border-t-0 pt-4 sm:pt-6 lg:pt-0 border-white/15">
             {/* Metric 1: BIG Cumulative Credits */}
-            <div className="space-y-1.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-200/90 flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-emerald-300" />
+            <div className="space-y-1">
+              <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-200/90 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Degree Credits</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black font-mono text-white">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono text-white">
                   {stats.totalGpaCreditsEarned}
                 </span>
-                <span className="text-base font-semibold text-emerald-300/80">
+                <span className="text-xs sm:text-base font-semibold text-emerald-300/80">
                   / {stats.totalRequiredCredits}
                 </span>
               </div>
-              <div className="w-44 sm:w-52 bg-white/20 h-2.5 rounded-full overflow-hidden mt-2 border border-white/20 shadow-inner">
+              <div className="w-full max-w-[150px] sm:max-w-[200px] bg-white/20 h-2 sm:h-2.5 rounded-full overflow-hidden mt-1.5 border border-white/20 shadow-inner">
                 <div
                   className="bg-gradient-to-r from-emerald-400 to-lime-300 h-full rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${totalCreditsPercent}%` }}
                 />
               </div>
-              <div className="text-xs text-emerald-200/80 pt-0.5 font-medium">
-                {remainingCredits} credits remaining ({totalCreditsPercent}%)
+              <div className="text-[10px] sm:text-xs text-emerald-200/80 pt-0.5 font-medium">
+                {remainingCredits} Cr remaining ({totalCreditsPercent}%)
               </div>
             </div>
 
             {/* Metric 2: Active Semester SGPA */}
-            <div className="space-y-1.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-200/90">
+            <div className="space-y-1">
+              <div className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-200/90">
                 Sem {activeTabKey} SGPA
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black font-mono text-white">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono text-white">
                   {semStats && semStats.gpaCreditsAttempted > 0 ? semStats.sgpa.toFixed(2) : '—'}
                 </span>
-                <span className="text-sm font-semibold text-emerald-300/80">
+                <span className="text-xs sm:text-sm font-semibold text-emerald-300/80">
                   {semStats ? `${semStats.gpaCreditsEarned} Cr` : '0 Cr'}
                 </span>
               </div>
-              <div className="text-xs text-emerald-200/80 font-medium">
-                {semStats?.hasRepeat ? '⚠️ Repeat grades capped' : 'Standard evaluations'}
+              <div className="text-[10px] sm:text-xs text-emerald-200/80 font-medium truncate">
+                {semStats?.hasRepeat ? '⚠️ Repeat capped' : 'Standard'}
               </div>
             </div>
 
             {/* Metric 3: Quick Transcript & Tools */}
-            <div className="col-span-2 sm:col-span-1 flex flex-row sm:flex-col gap-2.5 justify-end">
+            <div className="col-span-2 sm:col-span-1 flex flex-row sm:flex-col gap-2 justify-end">
               <button
                 onClick={() => setActiveTab('transcript')}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-white/25 transition shadow-sm"
+                className="flex-1 sm:w-full px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 transition shadow-sm active:scale-95"
               >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Transcript</span>
               </button>
               <button
                 onClick={() => setActiveTab('simulator')}
-                className="w-full px-4 py-2.5 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-emerald-400/40 transition shadow-sm"
+                className="flex-1 sm:w-full px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-emerald-400/40 transition shadow-sm active:scale-95"
               >
-                <Sliders className="w-4 h-4" />
+                <Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>Forecast</span>
               </button>
             </div>

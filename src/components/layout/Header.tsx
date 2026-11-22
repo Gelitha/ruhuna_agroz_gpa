@@ -296,11 +296,11 @@ export const Header: React.FC = () => {
           {/* Onboarding Guide Trigger */}
           <button
             onClick={() => setShowOnboarding(true)}
-            className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-neutral-900 px-2.5 sm:px-3 py-1.5 rounded-xl border border-neutral-300 hover:bg-neutral-100 transition shadow-2xs"
+            className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-neutral-900 px-2.5 sm:px-3 py-1.5 rounded-xl border border-neutral-300 hover:bg-neutral-100 transition shadow-2xs"
             title="Open Welcome Guide"
           >
             <Sparkles className="w-4 h-4 text-emerald-700" />
-            <span className="hidden sm:inline">Guide</span>
+            <span>Guide</span>
           </button>
         </div>
       </header>

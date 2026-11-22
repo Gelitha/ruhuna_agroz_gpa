@@ -6,6 +6,7 @@ import { useGradeStore } from './store/useGradeStore';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { WelcomeModal } from './components/onboarding/WelcomeModal';
 
 // 11 Modular Screen Views
@@ -80,14 +81,17 @@ export const GradePathApp: React.FC = () => {
         {/* Contextual Sticky Header */}
         <Header />
 
-        {/* View Content (Comfortable, generous sizing, responsive padding) */}
-        <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden">
+        {/* View Content (Comfortable, generous sizing, responsive padding with mobile bottom nav clearance) */}
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden pb-24 md:pb-8">
           {renderCurrentView()}
         </main>
 
         {/* Global Platform Footer */}
         <Footer />
       </div>
+
+      {/* Ergonomic Mobile-First Sticky Bottom Navigation Bar */}
+      <MobileBottomNav />
 
       {/* First-Time Experience & Onboarding Modal */}
       <WelcomeModal />
