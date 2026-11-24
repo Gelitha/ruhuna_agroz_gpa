@@ -14,7 +14,11 @@ import {
   Check,
   Sparkles,
   Search,
-  RotateCcw
+  RotateCcw,
+  MoreVertical,
+  Info,
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { Grade, SemesterKey, Course } from '../../types';
@@ -26,10 +30,15 @@ import {
   getDepartmentStyle,
   getAvailableElectivesForStudent
 } from '../../database';
-import { isCourseGradeConfirmed, ALL_SEMESTER_KEYS } from '../../utils/projectionCalculations';
+import {
+  isCourseGradeConfirmed,
+  calculateEffectiveGpvForGrade,
+  ALL_SEMESTER_KEYS
+} from '../../utils/projectionCalculations';
 import { AppLogo } from '../common/AppLogo';
 import { PlanningTools } from './PlanningTools';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { HorizontalGradeSelector } from '../common/HorizontalGradeSelector';
 import { getCourseRowVisualState } from '../../utils/courseRowStyles';
 
 const SEMESTERS: Array<{ key: SemesterKey | 'ORIENTATION'; label: string }> = [
@@ -88,6 +97,7 @@ export const GpaCalculatorView: React.FC = () => {
     clearSemesterGrades,
     markUnresolvedAsProjected,
     clearSemesterProjections,
+    setCourseGradeAndStatus,
     setActiveTab
   } = useGradeStore();
 
@@ -125,8 +135,94 @@ export const GpaCalculatorView: React.FC = () => {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     };
   }, []);
+
+  // Undo accidental grade changes
+  interface UndoRecord {
+    semKey: SemesterKey;
+    courseCode: string;
+    courseName?: string;
+    previousGrade: Grade;
+    previousIsExpected: boolean;
+    previousIsRepeat?: boolean;
+    previousIsExcused?: boolean;
+    newGrade: Grade;
+  }
+  const [undoRecord, setUndoRecord] = useState<UndoRecord | null>(null);
+  const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sticky Summary Observer on Mobile
+  const [isStickySummaryVisible, setIsStickySummaryVisible] = useState(false);
+  const summaryTopRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = summaryTopRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStickySummaryVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Course Options Modal (3-dot options menu)
+  interface CourseModalState {
+    type: 'menu' | 'credits' | 'info' | 'confirm_clear' | 'confirm_delete';
+    course: Course;
+    semKey: SemesterKey;
+  }
+  const [courseModal, setCourseModal] = useState<CourseModalState | null>(null);
+
+  // Handle single-tap grade change with Undo toast
+  const handleGradeChangeWithUndo = (semKey: SemesterKey, course: Course, newGrade: Grade) => {
+    if (course.grade === newGrade) return;
+
+    const prev: UndoRecord = {
+      semKey,
+      courseCode: course.code,
+      courseName: course.name,
+      previousGrade: course.grade || '',
+      previousIsExpected: !!course.isExpected,
+      previousIsRepeat: !!course.isRepeat,
+      previousIsExcused: !!course.isExcused,
+      newGrade
+    };
+    setUndoRecord(prev);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => {
+      setUndoRecord(null);
+    }, 4500);
+
+    if (isOrientation) {
+      setOrientationGrade(course.code, newGrade);
+    } else {
+      setCourseGrade(semKey, course.code, newGrade);
+    }
+    triggerSaveNotification();
+  };
+
+  const handleUndo = () => {
+    if (!undoRecord) return;
+    const { semKey, courseCode, previousGrade, previousIsExpected, previousIsRepeat, previousIsExcused } = undoRecord;
+    if (isOrientation) {
+      setOrientationGrade(courseCode, previousGrade);
+    } else {
+      setCourseGradeAndStatus(semKey, courseCode, previousGrade, previousIsExpected);
+      if (previousIsRepeat !== undefined) {
+        setCourseRepeat(semKey, courseCode, previousIsRepeat);
+      }
+      if (previousIsExcused !== undefined) {
+        setCourseExcused(semKey, courseCode, previousIsExcused);
+      }
+    }
+    setUndoRecord(null);
+    triggerSaveNotification();
+  };
 
   // Synchronize viewed semester when switching student profiles
   useEffect(() => {
@@ -157,6 +253,31 @@ export const GpaCalculatorView: React.FC = () => {
     }
     return profile.semesters[activeTabKey as SemesterKey] || [];
   }, [profile, activeTabKey, isOrientation]);
+
+  // Semester Completion Indicator Counts (Mutually Exclusive: Confirmed, Projected, Missing)
+  const completionCounts = useMemo(() => {
+    const courses = isOrientation ? profile.orientationCourses || [] : semCourses;
+    let confirmed = 0;
+    let projected = 0;
+    let missing = 0;
+
+    for (const c of courses) {
+      if (c.isExpected && c.grade && GRADING_SCALE[c.grade]) {
+        projected++;
+      } else if (isCourseGradeConfirmed(c) && !c.isExpected) {
+        confirmed++;
+      } else {
+        missing++;
+      }
+    }
+
+    return {
+      total: courses.length,
+      confirmed,
+      projected,
+      missing
+    };
+  }, [semCourses, profile.orientationCourses, isOrientation]);
 
   // Semester Stats (Official confirmed results)
   const semStats = useMemo(() => {
@@ -331,10 +452,43 @@ export const GpaCalculatorView: React.FC = () => {
 
   return (
     <div className="max-w-[1440px] mx-auto pb-16 space-y-4 sm:space-y-5">
+      {/* Compact Sticky Summary on Mobile (< 1024px) when top summary scrolls out of view */}
+      {isStickySummaryVisible && (
+        <div className="block lg:hidden fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] shadow-md px-4 py-2.5 animate-in slide-in-from-top duration-200">
+          <div className="flex items-center justify-between max-w-4xl mx-auto text-xs">
+            <div className="flex items-center gap-3">
+              {/* Actual CGPA (Dominant Green) */}
+              <div className="flex items-baseline gap-1">
+                <span className="text-[10px] uppercase font-bold text-neutral-500">Actual:</span>
+                <span className="font-sans font-tabular font-black text-sm text-[#103B2D]">
+                  {hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'}
+                </span>
+              </div>
+
+              {/* Projected CGPA (Blue, if active) */}
+              {hasAnyProjectedGrades && (
+                <div className="flex items-baseline gap-1 border-l border-neutral-300 pl-3">
+                  <span className="text-[10px] uppercase font-bold text-blue-600">Proj:</span>
+                  <span className="font-sans font-tabular font-black text-sm text-blue-700">
+                    {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 font-bold text-neutral-700">
+              <span className="px-2 py-0.5 rounded-lg bg-neutral-100 border border-neutral-200">
+                Sem {activeTabKey}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* 1. MOBILE COMPACT SUMMARY (<= 1023px)                    */}
       {/* ======================================================== */}
-      <div className="block lg:hidden bg-white border border-[#DCDDD7] rounded-2xl p-4 shadow-subtle space-y-3">
+      <div ref={summaryTopRef} className="block lg:hidden bg-white border border-[#DCDDD7] rounded-2xl p-4 shadow-subtle space-y-3">
         {/* Top Header: Degree & Profile Name */}
         <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#EDF1EC]">
           <div className="flex items-center gap-2 min-w-0">
@@ -644,6 +798,23 @@ export const GpaCalculatorView: React.FC = () => {
               })}
             </select>
             <ChevronDown className="w-4 h-4 absolute right-3.5 top-3.5 text-neutral-500 pointer-events-none" />
+          </div>
+
+          {/* Semester Completion Indicator on Mobile */}
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-600 flex-wrap pt-0.5">
+            <span className="font-bold text-[#242824]">{completionCounts.total} courses</span>
+            <span>•</span>
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              {completionCounts.confirmed} confirmed
+            </span>
+            <span>•</span>
+            <span className="text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+              {completionCounts.projected} projected
+            </span>
+            <span>•</span>
+            <span className="text-neutral-500 font-medium bg-neutral-100 px-1.5 py-0.5 rounded">
+              {completionCounts.missing} missing
+            </span>
           </div>
 
           {/* Quick Actions on Mobile */}
@@ -985,13 +1156,14 @@ export const GpaCalculatorView: React.FC = () => {
                 const isConfirmed = isCourseGradeConfirmed(course);
                 const isConfirmedOfficial = isConfirmed && !course.isExpected;
                 const visual = getCourseRowVisualState(course.isRepeat, course.isExpected);
+                const effectiveGpv = course.grade ? calculateEffectiveGpvForGrade(course.grade, course.isRepeat, course.isExcused) : null;
 
                 return (
                   <div
                     key={course.code}
-                    className={`p-4 rounded-2xl border transition-all shadow-subtle ${visual.className}`}
+                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all shadow-subtle ${visual.className}`}
                   >
-                    {/* Header: Code, Dept, Credits, Delete */}
+                    {/* Top Row: Code, Dept, Core/Elective, Credits & 3-Dot Options Button */}
                     <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#EDF1EC]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono font-black text-sm text-[#242824]">
@@ -1021,107 +1193,49 @@ export const GpaCalculatorView: React.FC = () => {
                             <HelpTooltip id="T06" size="xs" />
                           </span>
                         )}
-                      </div>
-
-                      {/* Credit Stepper */}
-                      {!course.isNgpa && (
-                        <div className="flex items-center gap-1 bg-[#F8F8F4] border border-[#DCDDD7] rounded-lg px-2 py-0.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCourseCredits(
-                                activeTabKey as SemesterKey,
-                                course.code,
-                                Math.max(1, creds - 1)
-                              );
-                              triggerSaveNotification();
-                            }}
-                            className="text-neutral-500 hover:text-neutral-900 p-1 rounded min-w-[24px] min-h-[24px] flex items-center justify-center"
-                            aria-label="Decrease credits"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="font-mono font-bold text-xs text-[#242824] px-1">
+                        {!course.isNgpa && (
+                          <span className="font-mono font-bold text-xs text-[#242824] bg-[#F8F8F4] border border-[#DCDDD7] rounded-lg px-2 py-0.5">
                             {creds} Cr
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCourseCredits(
-                                activeTabKey as SemesterKey,
-                                course.code,
-                                creds + 1
-                              );
-                              triggerSaveNotification();
-                            }}
-                            className="text-neutral-500 hover:text-neutral-900 p-1 rounded min-w-[24px] min-h-[24px] flex items-center justify-center"
-                            aria-label="Increase credits"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {!course.isCompulsory && !course.isNgpa && !isOrientation && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            removeCourseFromSemester(activeTabKey as SemesterKey, course.code);
-                            triggerSaveNotification();
-                          }}
-                          className="p-1 rounded text-neutral-400 hover:text-rose-600 transition"
-                          title="Remove elective"
-                          aria-label="Remove elective"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Full Course Name (Wrapped, Never Truncated) */}
-                    <div className="py-2.5 text-sm font-semibold text-[#242824] leading-snug break-words">
-                      {course.name}
-                    </div>
-
-                    {/* Bottom: Grade Selector & Repeat/Projected Controls */}
-                    <div className="pt-2 border-t border-[#EDF1EC] space-y-2.5">
-                      <div className="flex items-center gap-2">
-                        {/* Native Grade Dropdown with >= 44px Touch Target */}
-                        <div className="relative flex-1">
-                          <select
-                            value={course.grade || ''}
-                            onChange={(e) => {
-                              const newGrade = e.target.value as Grade;
-                              if (isOrientation) {
-                                setOrientationGrade(course.code, newGrade);
-                              } else {
-                                setCourseGrade(activeTabKey as SemesterKey, course.code, newGrade);
-                              }
-                              triggerSaveNotification();
-                            }}
-                            aria-label={`Grade for ${course.code}`}
-                            className={`w-full appearance-none rounded-xl px-3.5 py-2.5 pr-8 text-sm font-bold min-h-[44px] cursor-pointer border transition focus:outline-none ${
-                              course.grade
-                                ? course.isExpected
-                                  ? 'bg-emerald-50/70 text-[#176B45] border-emerald-400 font-extrabold'
-                                  : 'bg-[#EAF2ED] text-[#103B2D] border-[#176B45] font-extrabold'
-                                : 'bg-white text-neutral-600 border-[#DCDDD7]'
-                            }`}
-                          >
-                            <option value="">[ Select grade ▼ ]</option>
-                            {GRADE_OPTIONS.map((g) => (
-                              <option key={g} value={g}>
-                                {g} ({GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="w-4 h-4 absolute right-3 top-3.5 text-neutral-500 pointer-events-none" />
-                        </div>
+                        )}
                       </div>
 
-                      {/* Two Independent Checkboxes: Repeat and Projected (>= 44px Touch Targets) */}
-                      {!course.isNgpa && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
+                      {/* 3-Dot Options Button */}
+                      <button
+                        type="button"
+                        onClick={() => setCourseModal({ type: 'menu', course, semKey: activeTabKey as SemesterKey })}
+                        aria-label={`Options for ${course.code}`}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition min-w-[32px] min-h-[32px] shrink-0"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Middle Row: Full Course Name & Selected Grade Badge */}
+                    <div className="py-2.5 flex items-start justify-between gap-2">
+                      <div className="text-sm font-semibold text-[#242824] leading-snug break-words flex-1">
+                        {course.name}
+                      </div>
+                      {course.grade && (
+                        <div className="shrink-0 text-right">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-black shadow-2xs border ${
+                            course.isExpected
+                              ? 'bg-blue-50 text-blue-900 border-blue-300'
+                              : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                          }`}>
+                            <span>{course.grade}</span>
+                            <span className="text-[10px] font-bold opacity-80 font-sans font-tabular">
+                              ({effectiveGpv !== null ? effectiveGpv.toFixed(1) : ''} GPV)
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Checkboxes Row: Repeat and Projected (Full Words, >= 44px Touch Targets) */}
+                    {!course.isNgpa && (
+                      <div className="pt-2 border-t border-[#EDF1EC] space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <label
                             className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer border min-h-[44px] transition select-none ${
                               course.isRepeat
@@ -1148,7 +1262,7 @@ export const GpaCalculatorView: React.FC = () => {
                           <label
                             className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border min-h-[44px] transition select-none ${
                               course.isExpected
-                                ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300 font-extrabold'
+                                ? 'bg-blue-50 text-blue-900 border-blue-400 ring-1 ring-blue-300 font-extrabold'
                                 : 'bg-white text-neutral-600 border-[#DCDDD7]'
                             } ${isConfirmedOfficial ? 'opacity-60 cursor-not-allowed bg-neutral-100 text-neutral-400' : 'cursor-pointer'}`}
                             title={isConfirmedOfficial ? "This grade is officially confirmed and protected. Use Planning Tools > What-If to explore hypothetical changes." : "Projected / expected grade"}
@@ -1170,40 +1284,53 @@ export const GpaCalculatorView: React.FC = () => {
                             <span>Projected</span>
                           </label>
                         </div>
-                      )}
 
-                      {/* Contextual Repeat Explanation */}
-                      {course.isRepeat && !course.isNgpa && (
-                        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs text-amber-900 space-y-1.5 animate-in fade-in">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-semibold flex items-center gap-1">
-                              <span>
-                                {course.isExcused
-                                  ? 'Medical excused: Cap lifted up to 4.0'
-                                  : 'Capped at Grade C (2.0 GPV)'}
+                        {/* Contextual Repeat Explanation */}
+                        {course.isRepeat && (
+                          <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs text-amber-900 space-y-1.5 animate-in fade-in">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold flex items-center gap-1">
+                                <span>
+                                  {course.isExcused
+                                    ? 'Medical excused: Cap lifted up to 4.0'
+                                    : 'Capped at Grade C (2.0 GPV)'}
+                                </span>
+                                <HelpTooltip id="T29" size="xs" />
                               </span>
-                              <HelpTooltip id="T29" size="xs" />
-                            </span>
-                            <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={!!course.isExcused}
-                                onChange={(e) => {
-                                  setCourseExcused(
-                                    activeTabKey as SemesterKey,
-                                    course.code,
-                                    e.target.checked
-                                  );
-                                  triggerSaveNotification();
-                                }}
-                                className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
-                              />
-                              <span>Senate Medical?</span>
-                              <HelpTooltip id="T03" size="xs" />
-                            </label>
+                              <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!course.isExcused}
+                                  onChange={(e) => {
+                                    setCourseExcused(
+                                      activeTabKey as SemesterKey,
+                                      course.code,
+                                      e.target.checked
+                                    );
+                                    triggerSaveNotification();
+                                  }}
+                                  className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
+                                />
+                                <span>Senate Medical?</span>
+                                <HelpTooltip id="T03" size="xs" />
+                              </label>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom Row: Horizontal Grade Selector (Single-tap, Min 44px Touch Targets, Auto Reveal, Edge Fades) */}
+                    <div className="pt-2.5 mt-2 border-t border-[#EDF1EC]">
+                      <HorizontalGradeSelector
+                        value={course.grade || ''}
+                        onChange={(newGrade) => handleGradeChangeWithUndo(activeTabKey as SemesterKey, course, newGrade)}
+                        isProjected={!!course.isExpected}
+                        isRepeat={!!course.isRepeat}
+                        isExcused={!!course.isExcused}
+                        isConfirmedOfficial={isConfirmedOfficial}
+                        ariaLabel={`Grade for ${course.code}`}
+                      />
                     </div>
                   </div>
                 );
@@ -1343,16 +1470,8 @@ export const GpaCalculatorView: React.FC = () => {
                               key={g}
                               type="button"
                               onClick={() => {
-                                if (isOrientation) {
-                                  setOrientationGrade(course.code, isBtnSelected ? '' : g);
-                                } else {
-                                  setCourseGrade(
-                                    activeTabKey as SemesterKey,
-                                    course.code,
-                                    isBtnSelected ? '' : g
-                                  );
-                                }
-                                triggerSaveNotification();
+                                const targetGrade = isBtnSelected ? '' : g;
+                                handleGradeChangeWithUndo(activeTabKey as SemesterKey, course, targetGrade);
                               }}
                               className={`h-9 w-9 sm:h-9.5 sm:w-9.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center shrink-0 border ${
                                 getGradeStyle(isBtnSelected ? g : undefined, isBtnSelected && course.isExpected)
@@ -1518,6 +1637,242 @@ export const GpaCalculatorView: React.FC = () => {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Lightweight Undo Toast Notification (4.5s auto-dismiss) */}
+      {undoRecord && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 bg-[#103B2D] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-emerald-600/40 animate-in slide-in-from-bottom duration-200 max-w-[92vw]">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="truncate">
+            Grade updated to <strong className="font-extrabold text-white">{undoRecord.newGrade || 'None'}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={handleUndo}
+            className="ml-1 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shadow-xs shrink-0 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span>Undo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setUndoRecord(null)}
+            className="text-emerald-300 hover:text-white p-1 -mr-1 shrink-0"
+            aria-label="Dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Course Options & Action Modal / Bottom Sheet */}
+      {courseModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-150"
+          onClick={() => setCourseModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl bg-white p-5 border border-neutral-200 shadow-2xl text-left animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 space-y-4"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-neutral-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-sm text-[#242824]">
+                    {courseModal.course.code}
+                  </span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    {courseModal.course.credits} Cr
+                  </span>
+                </div>
+                <div className="text-xs font-medium text-neutral-600 mt-1 line-clamp-1">
+                  {courseModal.course.name}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCourseModal(null)}
+                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {courseModal.type === 'menu' && (
+              <div className="space-y-2">
+                {/* Action 1: Course Info */}
+                <button
+                  type="button"
+                  onClick={() => setCourseModal({ ...courseModal, type: 'info' })}
+                  className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition text-xs font-bold text-neutral-800 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-4 h-4 text-emerald-600" />
+                    <span>Course Information</span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-neutral-400" />
+                </button>
+
+                {/* Action 2: Edit Credits */}
+                {!courseModal.course.isNgpa && (
+                  <button
+                    type="button"
+                    onClick={() => setCourseModal({ ...courseModal, type: 'credits' })}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition text-xs font-bold text-neutral-800 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sliders className="w-4 h-4 text-blue-600" />
+                      <span>Change Credits ({courseModal.course.credits} Cr)</span>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-neutral-400" />
+                  </button>
+                )}
+
+                {/* Action 3: Clear Grade */}
+                {courseModal.course.grade && (
+                  <button
+                    type="button"
+                    onClick={() => setCourseModal({ ...courseModal, type: 'confirm_clear' })}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-amber-50 border border-transparent hover:border-amber-200 transition text-xs font-bold text-amber-900 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RotateCcw className="w-4 h-4 text-amber-600" />
+                      <span>Clear Grade ({courseModal.course.grade})</span>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-neutral-400" />
+                  </button>
+                )}
+
+                {/* Action 4: Remove Course (if custom / elective) */}
+                {!courseModal.course.isCompulsory && !courseModal.course.isNgpa && !isOrientation && (
+                  <button
+                    type="button"
+                    onClick={() => setCourseModal({ ...courseModal, type: 'confirm_delete' })}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-rose-50 border border-transparent hover:border-rose-200 transition text-xs font-bold text-rose-700 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <span>Remove Course</span>
+                    </div>
+                    <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-neutral-400" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Credit Edit View */}
+            {courseModal.type === 'credits' && (
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-neutral-700">Select course credits:</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1, 2, 3, 6].map((cr) => (
+                    <button
+                      key={cr}
+                      type="button"
+                      onClick={() => {
+                        setCourseCredits(courseModal.semKey, courseModal.course.code, cr);
+                        triggerSaveNotification();
+                        setCourseModal(null);
+                      }}
+                      className={`py-2 rounded-xl text-xs font-bold border transition ${
+                        courseModal.course.credits === cr
+                          ? 'bg-[#103B2D] text-white border-[#103B2D] shadow-xs'
+                          : 'bg-white border-neutral-300 text-neutral-700 hover:bg-neutral-100'
+                      }`}
+                    >
+                      {cr} Cr
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCourseModal({ ...courseModal, type: 'menu' })}
+                  className="w-full py-2 rounded-xl bg-neutral-100 text-xs font-bold text-neutral-600 hover:bg-neutral-200 transition"
+                >
+                  Back
+                </button>
+              </div>
+            )}
+
+            {/* Course Info View */}
+            {courseModal.type === 'info' && (
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-neutral-50 rounded-xl space-y-1.5 border border-neutral-200">
+                  <div><span className="text-neutral-500">Name:</span> <strong className="text-neutral-900">{courseModal.course.name}</strong></div>
+                  <div><span className="text-neutral-500">Type:</span> <strong className="text-neutral-900">{courseModal.course.isCompulsory ? 'Compulsory (Core)' : 'Elective'}</strong></div>
+                  <div><span className="text-neutral-500">Credits:</span> <strong className="text-neutral-900">{courseModal.course.credits} Credits</strong></div>
+                  <div><span className="text-neutral-500">Status:</span> <strong className="text-neutral-900">{courseModal.course.grade ? (courseModal.course.isExpected ? 'Projected' : 'Confirmed Official') : 'Ungraded'}</strong></div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCourseModal({ ...courseModal, type: 'menu' })}
+                  className="w-full py-2 rounded-xl bg-neutral-100 text-xs font-bold text-neutral-600 hover:bg-neutral-200 transition"
+                >
+                  Back
+                </button>
+              </div>
+            )}
+
+            {/* Confirm Clear View */}
+            {courseModal.type === 'confirm_clear' && (
+              <div className="space-y-3 text-xs">
+                <p className="text-neutral-700">
+                  Are you sure you want to clear the grade for <strong>{courseModal.course.code}</strong>?
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleGradeChangeWithUndo(courseModal.semKey, courseModal.course, '');
+                      setCourseModal(null);
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition"
+                  >
+                    Clear Grade
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCourseModal({ ...courseModal, type: 'menu' })}
+                    className="flex-1 py-2 rounded-xl bg-neutral-100 font-bold text-neutral-600 hover:bg-neutral-200 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Confirm Delete View */}
+            {courseModal.type === 'confirm_delete' && (
+              <div className="space-y-3 text-xs">
+                <p className="text-rose-700 font-semibold">
+                  Are you sure you want to remove <strong>{courseModal.course.code}</strong> from this semester?
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removeCourseFromSemester(courseModal.semKey, courseModal.course.code);
+                      triggerSaveNotification();
+                      setCourseModal(null);
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCourseModal({ ...courseModal, type: 'menu' })}
+                    className="flex-1 py-2 rounded-xl bg-neutral-100 font-bold text-neutral-600 hover:bg-neutral-200 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

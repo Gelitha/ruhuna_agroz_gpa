@@ -28,6 +28,7 @@ import {
   ALL_SEMESTER_KEYS
 } from '../../utils/projectionCalculations';
 import { GRADING_SCALE } from '../../database';
+import { HorizontalGradeSelector } from '../common/HorizontalGradeSelector';
 import { HelpTooltip } from '../common/HelpTooltip';
 
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
@@ -378,32 +379,32 @@ export const PlanningTools: React.FC = () => {
             </div>
           )}
 
-          {/* 3 Streamlined Sub-Tabs Navigation */}
-          <div className="flex items-center gap-2 border-b border-[#EDF1EC] pb-2">
+          {/* 3 Streamlined Sub-Tabs Navigation (Equal-width on Mobile) */}
+          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 border-b border-[#EDF1EC] pb-2">
             <button
               type="button"
               onClick={() => setActiveSubTab('target')}
-              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 ${
+              className={`px-2 sm:px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 text-center ${
                 activeSubTab === 'target'
                   ? 'bg-[#176B45] text-white shadow-sm'
                   : 'text-[#626962] hover:bg-neutral-100'
               }`}
             >
-              <Target className="w-3.5 h-3.5" />
-              <span>Target CGPA</span>
+              <Target className="w-3.5 h-3.5 shrink-0" />
+              <span>Target</span>
               <HelpTooltip id="T23" size="xs" />
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSubTab('forecast')}
-              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 ${
+              className={`px-2 sm:px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 text-center ${
                 activeSubTab === 'forecast'
                   ? 'bg-[#176B45] text-white shadow-sm'
                   : 'text-[#626962] hover:bg-neutral-100'
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5" />
+              <TrendingUp className="w-3.5 h-3.5 shrink-0" />
               <span>Forecast</span>
               <HelpTooltip id="T25" size="xs" />
               {isAssumptionsActive && (
@@ -414,14 +415,14 @@ export const PlanningTools: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveSubTab('impact')}
-              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 ${
+              className={`px-2 sm:px-3.5 py-1.5 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 text-center ${
                 activeSubTab === 'impact'
                   ? 'bg-[#176B45] text-white shadow-sm'
                   : 'text-[#626962] hover:bg-neutral-100'
               }`}
             >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Course Impact</span>
+              <Zap className="w-3.5 h-3.5 shrink-0" />
+              <span>Impact</span>
               {modifiedCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black">
                   {modifiedCount}
@@ -1000,7 +1001,7 @@ export const PlanningTools: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Existing Grade -> Target Grade Dropdown */}
+                          {/* Expected Grade & CGPA Impact Summary */}
                           <div className="flex items-center gap-3 shrink-0">
                             {/* Existing Expected */}
                             <div className="text-right text-xs">
@@ -1012,26 +1013,12 @@ export const PlanningTools: React.FC = () => {
 
                             <ArrowRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
 
-                            {/* Target Dropdown */}
-                            <div className="flex items-center gap-1.5">
-                              <select
-                                value={courseItem.targetGrade}
-                                onChange={e => handleTargetGradeChange(courseItem.key, e.target.value as Grade)}
-                                aria-label={`Target grade for ${courseItem.courseCode}`}
-                                className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border cursor-pointer min-h-[36px] transition focus:outline-none ${
-                                  courseItem.isModified
-                                    ? 'bg-blue-50 text-blue-900 border-blue-400 font-extrabold ring-1 ring-blue-300'
-                                    : 'bg-white text-neutral-800 border-[#DCDDD7]'
-                                }`}
-                              >
-                                <option value="">[ Clear / None ]</option>
-                                {GRADE_OPTIONS.map(g => (
-                                  <option key={g} value={g}>
-                                    {g} ({GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)
-                                  </option>
-                                ))}
-                              </select>
-
+                            {/* Target Display & Reset Button */}
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-[10px] text-[#626962] block">Target:</span>
+                              <span className={`font-bold px-2 py-0.5 rounded ${courseItem.isModified ? 'bg-blue-100 text-blue-900 border border-blue-300' : 'text-[#242824]'}`}>
+                                {courseItem.targetGrade || '—'}
+                              </span>
                               {courseItem.isModified && (
                                 <button
                                   type="button"
@@ -1063,6 +1050,19 @@ export const PlanningTools: React.FC = () => {
                               </span>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Single-tap Horizontal Grade Selector for Course Impact Target */}
+                        <div className="pt-2.5 mt-2 border-t border-[#EDF1EC]">
+                          <HorizontalGradeSelector
+                            value={courseItem.targetGrade}
+                            onChange={(g) => handleTargetGradeChange(courseItem.key, g)}
+                            isProjected={true}
+                            isRepeat={courseItem.isRepeat}
+                            isExcused={courseItem.isExcused}
+                            size="sm"
+                            ariaLabel={`Target grade for ${courseItem.courseCode}`}
+                          />
                         </div>
                       </div>
                     );

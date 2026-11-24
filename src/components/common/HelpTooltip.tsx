@@ -159,70 +159,129 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({
 
       {/* Floating Sinhala & English Tooltip Card */}
       {isOpen && (
-        <div
-          ref={tooltipRef}
-          id={tooltipContentId}
-          role="tooltip"
-          onClick={(e) => e.stopPropagation()}
-          className={`absolute z-50 w-72 sm:w-80 max-w-[calc(100vw-32px)] p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-xl text-left animate-in fade-in zoom-in-95 duration-150 ${
-            position === 'bottom'
-              ? 'top-full mt-2'
-              : position === 'left'
-              ? 'right-full mr-2 top-1/2 -translate-y-1/2'
-              : position === 'right'
-              ? 'left-full ml-2 top-1/2 -translate-y-1/2'
-              : 'bottom-full mb-2'
-          } ${
-            align === 'start'
-              ? 'left-0'
-              : align === 'end'
-              ? 'right-0'
-              : 'left-1/2 -translate-x-1/2'
-          }`}
-          style={{
-            // Keep safe viewport margins
-            maxWidth: 'min(320px, calc(100vw - 32px))'
-          }}
-        >
-          {/* Header with Title and Close Button */}
-          <div className="flex items-start justify-between gap-2 pb-2 border-b border-neutral-100 dark:border-neutral-800">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {entry.id}
-              </span>
-              <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
-                {displayLabel}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                notifyActive(false);
-              }}
-              aria-label="Close explanation"
-              className="p-1 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition -mr-1 -mt-1"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Sinhala Primary Translation */}
+        <>
+          {/* Mobile Bottom Sheet Modal (< 640px) to prevent viewport clipping */}
           <div
-            lang="si"
-            className="pt-2.5 font-sinhala text-[13px] sm:text-[13.5px] leading-[1.7] text-neutral-800 dark:text-neutral-200 font-normal break-words"
+            className="sm:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end justify-center p-3 animate-in fade-in duration-150"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(false);
+              notifyActive(false);
+            }}
           >
-            {entry.sinhala}
+            <div
+              ref={tooltipRef}
+              id={tooltipContentId}
+              role="tooltip"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm p-4 rounded-3xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-2xl text-left animate-in slide-in-from-bottom duration-200 space-y-3"
+            >
+              {/* Header with Title and Close Button */}
+              <div className="flex items-start justify-between gap-2 pb-2 border-b border-neutral-100 dark:border-neutral-800">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    {entry.id}
+                  </span>
+                  <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                    {displayLabel}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    notifyActive(false);
+                  }}
+                  aria-label="Close explanation"
+                  className="p-1 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Sinhala Primary Translation */}
+              <div
+                lang="si"
+                className="pt-1 font-sinhala text-[14px] leading-[1.7] text-neutral-800 dark:text-neutral-200 font-normal break-words"
+              >
+                {entry.sinhala}
+              </div>
+
+              {/* English Context Description */}
+              {entry.english && (
+                <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800/80 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400 font-medium">
+                  {entry.english}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* English Context Description */}
-          {entry.english && (
-            <div className="pt-2 mt-2 border-t border-neutral-100 dark:border-neutral-800/80 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400 font-medium">
-              {entry.english}
+          {/* Desktop Hover/Focus Card (>= 640px) */}
+          <div
+            ref={tooltipRef}
+            id={`${tooltipContentId}-desktop`}
+            role="tooltip"
+            onClick={(e) => e.stopPropagation()}
+            className={`hidden sm:block absolute z-50 w-72 sm:w-80 max-w-[calc(100vw-32px)] p-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-xl text-left animate-in fade-in zoom-in-95 duration-150 ${
+              position === 'bottom'
+                ? 'top-full mt-2'
+                : position === 'left'
+                ? 'right-full mr-2 top-1/2 -translate-y-1/2'
+                : position === 'right'
+                ? 'left-full ml-2 top-1/2 -translate-y-1/2'
+                : 'bottom-full mb-2'
+            } ${
+              align === 'start'
+                ? 'left-0'
+                : align === 'end'
+                ? 'right-0'
+                : 'left-1/2 -translate-x-1/2'
+            }`}
+            style={{
+              maxWidth: 'min(320px, calc(100vw - 32px))'
+            }}
+          >
+            {/* Header with Title and Close Button */}
+            <div className="flex items-start justify-between gap-2 pb-2 border-b border-neutral-100 dark:border-neutral-800">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {entry.id}
+                </span>
+                <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                  {displayLabel}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  notifyActive(false);
+                }}
+                aria-label="Close explanation"
+                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition -mr-1 -mt-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-          )}
-        </div>
+
+            {/* Sinhala Primary Translation */}
+            <div
+              lang="si"
+              className="pt-2.5 font-sinhala text-[13px] sm:text-[13.5px] leading-[1.7] text-neutral-800 dark:text-neutral-200 font-normal break-words"
+            >
+              {entry.sinhala}
+            </div>
+
+            {/* English Context Description */}
+            {entry.english && (
+              <div className="pt-2 mt-2 border-t border-neutral-100 dark:border-neutral-800/80 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400 font-medium">
+                {entry.english}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </span>
   );
