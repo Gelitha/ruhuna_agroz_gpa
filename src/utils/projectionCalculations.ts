@@ -428,7 +428,8 @@ export function calculateAcademicProjections(
   } else if (prevConfirmedGpaCredits > 0) {
     projectedCgpaPending = prevConfirmedPoints / prevConfirmedGpaCredits;
   } else {
-    projectedCgpaPending = actualCgpa;
+    // Strictly zero when no historical credits exist; never leak grades from current/future semesters!
+    projectedCgpaPending = 0;
   }
 
   const currentSemActualSgpa =
@@ -443,16 +444,17 @@ export function calculateAcademicProjections(
   } else if (scopeActualCredits > 0) {
     combinedProjectedCgpa = scopeActualPoints / scopeActualCredits;
   } else {
-    combinedProjectedCgpa = actualCgpa;
+    // Strictly zero when no scope credits exist; never leak grades from future semesters!
+    combinedProjectedCgpa = 0;
   }
 
   // Scenarios: strictly comparable within the same scope (scopeTotalGpaCredits)
   const bestCaseCgpa =
-    scopeTotalGpaCredits > 0 ? bestCasePoints / scopeTotalGpaCredits : actualCgpa;
+    scopeTotalGpaCredits > 0 ? bestCasePoints / scopeTotalGpaCredits : 0;
   const worstCaseCgpa =
-    scopeTotalGpaCredits > 0 ? worstCasePoints / scopeTotalGpaCredits : actualCgpa;
+    scopeTotalGpaCredits > 0 ? worstCasePoints / scopeTotalGpaCredits : 0;
 
-  const deltaCombined = Number((combinedProjectedCgpa - actualCgpa).toFixed(2));
+  const deltaCombined = Number(((combinedCredits > 0 ? combinedProjectedCgpa : 0) - (globalActualCredits > 0 ? actualCgpa : 0)).toFixed(2));
   const projectionCoveragePercent =
     scopeTotalGpaCredits > 0
       ? Math.min(100, Math.round((combinedCredits / scopeTotalGpaCredits) * 100))
@@ -502,6 +504,7 @@ export function calculateAcademicProjections(
     projectionCoveragePercent,
     isCurrentSemComplete,
     isCombinedComplete,
+    isExpectedIncomplete,
     unresolvedCoursesWithoutPredictionCount,
     scenarios: {
       actualOnly: Number((scopeActualCredits > 0 ? scopeActualCgpa : actualCgpa).toFixed(2)),
@@ -613,8 +616,6 @@ export function calculateTargetCgpaRequirement(
     }
   } else {
     // 'at_graduation': degree-wide requirement
-    totalScopeCredits = degreeTotalMinGpaCredits;
-
     // Accumulate all enrolled confirmed and unresolved courses
     let totalEnrolledCredits = 0;
 
@@ -640,7 +641,12 @@ export function calculateTargetCgpaRequirement(
       }
     }
 
-    // Remaining future un-enrolled credits needed to reach degree minimum
+    // According to Faculty of Agriculture regulations, if a student enrols in extra electives
+    // such that total enrolled GPA credits exceed the degree minimum (e.g. 130 vs 126),
+    // the target and CGPA denominator must reflect ALL enrolled GPA credits!
+    totalScopeCredits = Math.max(degreeTotalMinGpaCredits, totalEnrolledCredits);
+
+    // Remaining future un-enrolled credits needed to reach degree minimum (0 if already met/exceeded)
     const unenrolledDegreeCredits = Math.max(0, degreeTotalMinGpaCredits - totalEnrolledCredits);
     unresolvedCreditsInScope += unenrolledDegreeCredits;
     maxAchievablePointsInScope += 4.0 * unenrolledDegreeCredits;

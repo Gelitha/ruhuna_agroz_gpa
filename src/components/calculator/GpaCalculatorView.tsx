@@ -54,7 +54,7 @@ const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-
 
 // Plain language standing generator without misleading "achieved" claims
 function getStandingDisplay(cgpa: number, creditsAttempted: number): { title: string; rangeText: string; color: string } {
-  if (creditsAttempted === 0 || cgpa === 0) {
+  if (creditsAttempted === 0) {
     return { title: 'No Grades Finalized', rangeText: 'Enter official grades to establish your standing', color: '#78827A' };
   }
   if (cgpa >= 3.70) {
@@ -81,6 +81,7 @@ export const GpaCalculatorView: React.FC = () => {
     selectedSemesterForCalculator,
     setSelectedSemesterForCalculator,
     setCurrentSemester,
+    saveCurrentState,
     setCourseGrade,
     setCourseExpectedGrade,
     setCourseCredits,
@@ -121,7 +122,8 @@ export const GpaCalculatorView: React.FC = () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
-    setSaveStatus('Saved');
+    const success = saveCurrentState ? saveCurrentState() : true;
+    setSaveStatus(success ? 'Saved' : 'Save failed');
     saveTimerRef.current = setTimeout(() => {
       setSaveStatus(null);
     }, 2000);
@@ -132,6 +134,13 @@ export const GpaCalculatorView: React.FC = () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
+
+  // Synchronize viewed semester when switching student profiles
+  useEffect(() => {
+    if (profile.currentSemester) {
+      setActiveTabKey(profile.currentSemester);
+    }
+  }, [profile.id, profile.currentSemester]);
 
   // Search & Filter
   const [courseSearch, setCourseSearch] = useState('');
@@ -301,7 +310,7 @@ export const GpaCalculatorView: React.FC = () => {
           <div className="flex items-center gap-2 min-w-0">
             <AppLogo size="sm" />
             <div className="min-w-0">
-              <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
                 {profile.degree} (Hons)
               </span>
             </div>
@@ -312,24 +321,24 @@ export const GpaCalculatorView: React.FC = () => {
             <button
               type="button"
               onClick={() => setCalculatorMode('actual')}
-              className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 calculatorMode === 'actual'
                   ? 'bg-[#103B2D] text-white shadow-xs'
                   : 'text-[#626962]'
               }`}
             >
-              Actual
+              Actual grades
             </button>
             <button
               type="button"
               onClick={() => setCalculatorMode('projection')}
-              className={`px-2.5 py-1 text-xs font-black rounded-lg transition-all flex items-center gap-1 ${
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
                 calculatorMode === 'projection'
                   ? 'bg-[#176B45] text-white shadow-xs'
                   : 'text-[#626962]'
               }`}
             >
-              <Sparkles className="w-3 h-3 text-amber-300" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Projection</span>
             </button>
           </div>
@@ -339,45 +348,50 @@ export const GpaCalculatorView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
           {/* Metric 1: Actual CGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#626962]">
+            <span className="text-xs font-medium text-[#626962]">
               Actual CGPA
             </span>
-            <div className="font-mono font-black text-lg text-[#242824] leading-tight font-tabular mt-0.5">
+            <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
               {hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'}
             </div>
-            <span className="text-[10px] text-[#626962] font-medium leading-none mt-0.5">
+            <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
               {proj.actualGpaCredits} Cr confirmed
             </span>
           </div>
 
           {/* Metric 2: Projected CGPA */}
           <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 flex flex-col justify-center">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800">
-              Projected CGPA
-            </span>
-            <div className="font-mono font-black text-lg text-[#176B45] leading-tight font-tabular mt-0.5">
-              {proj.combinedProjectedCgpa > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs font-medium text-emerald-800">
+                Projected CGPA
+              </span>
+              {proj.isExpectedIncomplete && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Incomplete projection: some courses pending" />
+              )}
             </div>
-            <span className="text-[10px] text-emerald-700 font-medium leading-none mt-0.5">
-              After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined}` : proj.deltaCombined})` : ''}
+            <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5">
+              {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+            </div>
+            <span className="text-[11px] text-emerald-700 font-medium leading-none mt-1">
+              After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}
             </span>
           </div>
 
           {/* Metric 3: Active Semester SGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#626962]">
+            <span className="text-xs font-medium text-[#626962]">
               Sem {activeTabKey} {calculatorMode === 'actual' ? 'Actual' : 'Projected'}
             </span>
-            <div className="font-mono font-black text-lg text-[#242824] leading-tight font-tabular mt-0.5">
+            <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
               {calculatorMode === 'actual'
                 ? semStats && semStats.realCreditsAttempted > 0
                   ? semStats.realSgpa.toFixed(2)
                   : '—'
-                : semProjection && semProjection.projectedSgpa > 0
+                : semProjection && semProjection.predictedGpaCredits > 0
                 ? semProjection.projectedSgpa.toFixed(2)
                 : '—'}
             </div>
-            <span className="text-[10px] text-[#626962] font-medium leading-none mt-0.5">
+            <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
               {calculatorMode === 'actual'
                 ? `${semStats?.realCreditsAttempted || 0} Cr finalized`
                 : `${semProjection?.predictedGpaCredits || 0} Cr projected`}
@@ -389,14 +403,14 @@ export const GpaCalculatorView: React.FC = () => {
             onClick={() => setShowCurrentSemSelector(true)}
             className="p-2.5 rounded-xl bg-[#F8F8F4] hover:bg-neutral-100 border border-[#EDF1EC] flex flex-col justify-center cursor-pointer transition"
           >
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#626962]">
-              Current Sem
+            <span className="text-xs font-medium text-[#626962]">
+              Current semester
             </span>
-            <div className="font-mono font-black text-lg text-[#176B45] leading-tight font-tabular mt-0.5 flex items-center justify-center gap-1">
+            <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5 flex items-center justify-center gap-1">
               <span>{profile.currentSemester}</span>
               <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
             </div>
-            <span className="text-[10px] text-[#176B45] font-semibold leading-none mt-0.5">
+            <span className="text-[11px] text-[#176B45] font-semibold leading-none mt-1">
               Tap to change
             </span>
           </div>
@@ -410,8 +424,8 @@ export const GpaCalculatorView: React.FC = () => {
               : 'Entering expected grades for upcoming or pending examinations. Confirmed grades remain locked.'}
           </span>
           {saveStatus && (
-            <span className="text-[11px] font-bold text-[#176B45] shrink-0 flex items-center gap-1">
-              <Check className="w-3 h-3" /> Saved
+            <span className={`text-[11px] font-bold shrink-0 flex items-center gap-1 ${saveStatus === 'Saved' ? 'text-[#176B45]' : 'text-rose-600'}`}>
+              <Check className="w-3 h-3" /> {saveStatus}
             </span>
           )}
         </div>
@@ -456,12 +470,12 @@ export const GpaCalculatorView: React.FC = () => {
                     {calculatorMode === 'actual' ? 'Actual CGPA' : 'Combined Projected CGPA'}
                   </span>
                   <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-4xl lg:text-5xl font-black font-mono tracking-tight text-white font-tabular">
+                    <span className="text-4xl lg:text-5xl font-black font-sans tracking-tight text-white font-tabular">
                       {calculatorMode === 'actual'
                         ? hasAnyConfirmedGrades
                           ? proj.actualCgpa.toFixed(2)
                           : '—'
-                        : proj.combinedProjectedCgpa > 0
+                        : proj.combinedTotalCredits > 0
                         ? proj.combinedProjectedCgpa.toFixed(2)
                         : '—'}
                     </span>
@@ -474,7 +488,7 @@ export const GpaCalculatorView: React.FC = () => {
                   <div className="text-xs text-emerald-200 font-medium">
                     {calculatorMode === 'actual'
                       ? `${proj.actualGpaCredits} Credits Confirmed`
-                      : `After Sem ${proj.currentSemester} (${proj.combinedTotalCredits} Cr)`}
+                      : `After Sem {proj.currentSemester} (${proj.combinedTotalCredits} Cr)`}
                   </div>
                   <div className="text-xs text-emerald-300/90 font-bold">
                     {calculatorMode === 'actual'
@@ -495,12 +509,12 @@ export const GpaCalculatorView: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-200/80 block">
                 Sem {activeTabKey} {calculatorMode === 'actual' ? 'Actual SGPA' : 'Projected SGPA'}
               </span>
-              <div className="font-mono text-3xl font-black text-white font-tabular">
+              <div className="font-sans text-3xl font-black text-white font-tabular">
                 {calculatorMode === 'actual'
                   ? semStats && semStats.realCreditsAttempted > 0
                     ? semStats.realSgpa.toFixed(2)
                     : '—'
-                  : semProjection && semProjection.projectedSgpa > 0
+                  : semProjection && semProjection.predictedGpaCredits > 0
                   ? semProjection.projectedSgpa.toFixed(2)
                   : '—'}
               </div>

@@ -405,6 +405,7 @@ export interface AcademicProjectionResult {
   projectionCoveragePercent: number;
   isCurrentSemComplete: boolean;
   isCombinedComplete?: boolean;
+  isExpectedIncomplete?: boolean;
   unresolvedCoursesWithoutPredictionCount?: number;
   scenarios: {
     actualOnly: number;

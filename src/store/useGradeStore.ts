@@ -24,7 +24,11 @@ import {
   initDefaultCoursesForDegree,
   initOrientationCourses
 } from '../utils/calculations';
-import { calculateAcademicProjections } from '../utils/projectionCalculations';
+import {
+  calculateAcademicProjections,
+  isCourseGradeConfirmed
+} from '../utils/projectionCalculations';
+import { GRADING_SCALE } from '../database';
 import {
   createCleanProfile,
   createDefaultProfile,
@@ -40,6 +44,10 @@ const STORAGE_KEY_ONBOARDING_DONE = 'gradepath_onboarded_v3';
 // Safe Migration Helper — Clean, Authentic State Without Mock Data
 function loadPersistedProfiles(): { profiles: StudentProfile[]; activeId: string; hasOnboarded: boolean } {
   try {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      const defaultProf = createCleanProfile('ARMT', 'My Profile', '', 1, '1-1');
+      return { profiles: [defaultProf], activeId: defaultProf.id, hasOnboarded: true };
+    }
     const v3Data = localStorage.getItem(STORAGE_KEY_PROFILES_V3);
     const v3ActiveId = localStorage.getItem(STORAGE_KEY_ACTIVE_ID_V3);
     const hasOnboarded = localStorage.getItem(STORAGE_KEY_ONBOARDING_DONE) === 'true';
@@ -130,6 +138,7 @@ interface GradeStoreState {
   exportProfilesJson: () => string;
   importProfilesJson: (jsonStr: string) => boolean;
   resetToFactoryDefaults: () => void;
+  saveCurrentState: () => boolean;
 
   // Smart Academic Projection Management
   setCourseExpectedGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
@@ -157,13 +166,18 @@ interface GradeStoreState {
 const initialHydration = loadPersistedProfiles();
 
 export const useGradeStore = create<GradeStoreState>((set, get) => {
-  // Helper to persist current state
-  const persist = (profiles: StudentProfile[], activeId: string) => {
+  // Helper to persist current state with strict failure detection
+  const persist = (profiles: StudentProfile[], activeId: string): boolean => {
     try {
+      if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+        return false;
+      }
       localStorage.setItem(STORAGE_KEY_PROFILES_V3, JSON.stringify(profiles));
       localStorage.setItem(STORAGE_KEY_ACTIVE_ID_V3, activeId);
+      return true;
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
+      return false;
     }
   };
 
@@ -334,11 +348,11 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
           };
         }
 
-        // Update result status for this semester
+        // Update result status for this semester (excluding legacy isExpected grades!)
         const gpaCourses = nextList.filter(c => !c.isNgpa);
-        const gradedCount = gpaCourses.filter(c => !!c.grade).length;
+        const confirmedCount = gpaCourses.filter(c => isCourseGradeConfirmed(c)).length;
         const newResStatus: SemesterResultStatus =
-          gradedCount === 0 ? 'none' : gradedCount === gpaCourses.length ? 'all_received' : 'partial';
+          confirmedCount === 0 ? 'none' : confirmedCount === gpaCourses.length ? 'all_received' : 'partial';
 
         const updatedResultStatuses = {
           ...(profile.resultStatusBySem || {}),
@@ -688,17 +702,85 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
       return JSON.stringify(stateToExport, null, 2);
     },
 
+    saveCurrentState: () => {
+      return persist(get().profiles, get().activeProfileId);
+    },
+
     importProfilesJson: (jsonStr) => {
       try {
         const parsed = JSON.parse(jsonStr);
         const importedProfiles = parsed.profiles || (Array.isArray(parsed) ? parsed : null);
         if (Array.isArray(importedProfiles) && importedProfiles.length > 0) {
-          const validActiveId = parsed.activeProfileId && importedProfiles.find((p: any) => p.id === parsed.activeProfileId)
-            ? parsed.activeProfileId
-            : importedProfiles[0].id;
+          // Robust validation of imported profile data
+          const validDegrees: Set<string> = new Set(['ARMT', 'ABM', 'GT']);
+          const sanitizedProfiles: StudentProfile[] = [];
 
-          set({ profiles: importedProfiles, activeProfileId: validActiveId });
-          persist(importedProfiles, validActiveId);
+          for (const raw of importedProfiles) {
+            if (!raw || typeof raw !== 'object' || !raw.id || !raw.name) continue;
+            const degree: DegreeCode = validDegrees.has(raw.degree) ? raw.degree : 'ARMT';
+            const semesters: Record<SemesterKey, Course[]> = {} as any;
+            const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+
+            semKeys.forEach(sk => {
+              const courses = Array.isArray(raw.semesters?.[sk]) ? raw.semesters[sk] : [];
+              semesters[sk] = courses.map((c: any) => {
+                const grade: Grade = c.grade && GRADING_SCALE[c.grade] ? c.grade : '';
+                const credits = typeof c.credits === 'number' && c.credits >= 0 ? c.credits : 2;
+                return {
+                  code: String(c.code || 'UNKNOWN').toUpperCase(),
+                  name: String(c.name || c.code || 'Course'),
+                  credits,
+                  dept: c.dept,
+                  isNgpa: !!c.isNgpa,
+                  isCompulsory: !!c.isCompulsory,
+                  isSpecialization: !!c.isSpecialization,
+                  grade,
+                  isRepeat: !!c.isRepeat,
+                  isExcused: !!c.isExcused,
+                  isExpected: !!c.isExpected
+                };
+              });
+            });
+
+            // Validate and clamp quick assumptions
+            let projectionQuickAssumptions: any = undefined;
+            if (raw.projectionQuickAssumptions && typeof raw.projectionQuickAssumptions === 'object') {
+              const prev = Number(raw.projectionQuickAssumptions.remainingPrevAvgGpa);
+              const curr = Number(raw.projectionQuickAssumptions.currentSemAvgGpa);
+              if (!isNaN(prev) && !isNaN(curr)) {
+                projectionQuickAssumptions = {
+                  remainingPrevAvgGpa: Math.min(4.0, Math.max(0.0, prev)),
+                  currentSemAvgGpa: Math.min(4.0, Math.max(0.0, curr))
+                };
+              }
+            }
+
+            // Validate target CGPA
+            let projectionTargetCgpa: number | undefined = undefined;
+            if (typeof raw.projectionTargetCgpa === 'number' && !isNaN(raw.projectionTargetCgpa)) {
+              projectionTargetCgpa = Math.min(4.0, Math.max(0.0, raw.projectionTargetCgpa));
+            }
+
+            sanitizedProfiles.push({
+              ...raw,
+              degree,
+              semesters,
+              projectionQuickAssumptions,
+              projectionTargetCgpa,
+              courseProjections: raw.courseProjections || {},
+              academicStatusBySem: raw.academicStatusBySem || {},
+              resultStatusBySem: raw.resultStatusBySem || {}
+            });
+          }
+
+          if (sanitizedProfiles.length === 0) return false;
+
+          const validActiveId = parsed.activeProfileId && sanitizedProfiles.find((p: any) => p.id === parsed.activeProfileId)
+            ? parsed.activeProfileId
+            : sanitizedProfiles[0].id;
+
+          set({ profiles: sanitizedProfiles, activeProfileId: validActiveId });
+          persist(sanitizedProfiles, validActiveId);
           return true;
         }
       } catch (err) {

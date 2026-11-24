@@ -1,7 +1,7 @@
 // University of Ruhuna - Faculty of Agriculture
 // Planning Tools — Expandable Advanced Academic Strategy & Scenario Suite
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   Target,
@@ -48,6 +48,13 @@ export const PlanningTools: React.FC = () => {
   // Target CGPA Calculator State
   const [targetScope, setTargetScope] = useState<TargetScope>('after_current');
   const [targetCgpa, setTargetCgpa] = useState<number>(profile.projectionTargetCgpa ?? 3.50);
+
+  // Synchronize local state whenever active student profile switches
+  useEffect(() => {
+    setPrevAssumption(profile.projectionQuickAssumptions?.remainingPrevAvgGpa ?? 3.30);
+    setCurrAssumption(profile.projectionQuickAssumptions?.currentSemAvgGpa ?? 3.50);
+    setTargetCgpa(profile.projectionTargetCgpa ?? 3.50);
+  }, [profile.id, profile.projectionQuickAssumptions, profile.projectionTargetCgpa]);
 
   const targetResult = calculateTargetCgpaRequirement(profile, targetCgpa, targetScope);
 
@@ -234,7 +241,7 @@ export const PlanningTools: React.FC = () => {
                       <label className="text-xs font-bold uppercase tracking-wider text-[#626962]">
                         Desired CGPA
                       </label>
-                      <span className="font-mono text-xl font-black text-[#176B45]">
+                      <span className="font-sans font-tabular text-xl font-black text-[#176B45]">
                         {targetCgpa.toFixed(2)}
                       </span>
                     </div>
@@ -317,7 +324,7 @@ export const PlanningTools: React.FC = () => {
                     <span className="text-[10px] uppercase font-bold text-[#626962] block">
                       Required Avg
                     </span>
-                    <span className="font-mono text-xl font-black text-[#176B45]">
+                    <span className="font-sans font-tabular text-xl font-black text-[#176B45]">
                       {targetResult.requiredAverage.toFixed(2)}
                     </span>
                     <span className="text-[10px] text-[#626962] block">
@@ -348,7 +355,7 @@ export const PlanningTools: React.FC = () => {
                         {proj.pendingResultsCount} courses pending from earlier semesters
                       </span>
                     </div>
-                    <span className="font-mono text-lg font-black text-[#176B45]">
+                    <span className="font-sans font-tabular text-lg font-black text-[#176B45]">
                       {prevAssumption.toFixed(2)}
                     </span>
                   </div>
@@ -375,7 +382,7 @@ export const PlanningTools: React.FC = () => {
                         Upcoming examinations in current semester
                       </span>
                     </div>
-                    <span className="font-mono text-lg font-black text-[#176B45]">
+                    <span className="font-sans font-tabular text-lg font-black text-[#176B45]">
                       {currAssumption.toFixed(2)}
                     </span>
                   </div>
@@ -435,49 +442,57 @@ export const PlanningTools: React.FC = () => {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-3.5 rounded-xl bg-white border border-[#DCDDD7]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#626962] block">
+                  <span className="text-xs font-bold text-[#626962] block">
                     Confirmed Only
                   </span>
-                  <div className="font-mono text-xl font-black text-[#242824] font-tabular mt-1">
-                    {proj.scenarios.actualOnly > 0 ? proj.scenarios.actualOnly.toFixed(2) : '—'}
+                  <div className="font-sans font-tabular text-xl font-bold text-[#242824] mt-1">
+                    {(proj.scopeActualCredits && proj.scopeActualCredits > 0) || proj.actualGpaCredits > 0
+                      ? proj.scenarios.actualOnly.toFixed(2)
+                      : '—'}
                   </div>
-                  <span className="text-[10px] text-[#626962] block mt-0.5">
+                  <span className="text-[11px] text-[#626962] block mt-0.5">
                     Official grades only
                   </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                  <span className="text-xs font-bold text-emerald-800 block">
                     Expected Projection
                   </span>
-                  <div className="font-mono text-xl font-black text-[#176B45] font-tabular mt-1">
-                    {proj.scenarios.expected > 0 ? proj.scenarios.expected.toFixed(2) : '—'}
+                  <div className="font-sans font-tabular text-xl font-bold text-[#176B45] mt-1">
+                    {proj.combinedTotalCredits > 0 || (proj.scopeActualCredits && proj.scopeActualCredits > 0)
+                      ? proj.scenarios.expected.toFixed(2)
+                      : '—'}
                   </div>
-                  <span className="text-[10px] text-emerald-700 block mt-0.5">
+                  <span className="text-[11px] text-emerald-700 block mt-0.5">
                     {proj.scenarios.isExpectedIncomplete ? 'Partial coverage' : 'Full projection'}
                   </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white border border-[#DCDDD7]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#626962] block">
+                  <span className="text-xs font-bold text-[#626962] block">
                     Best Case
                   </span>
-                  <div className="font-mono text-xl font-black text-emerald-700 font-tabular mt-1">
-                    {proj.scenarios.bestCase.toFixed(2)}
+                  <div className="font-sans font-tabular text-xl font-bold text-emerald-700 mt-1">
+                    {(proj.scopeTotalGpaCredits && proj.scopeTotalGpaCredits > 0)
+                      ? proj.scenarios.bestCase.toFixed(2)
+                      : '—'}
                   </div>
-                  <span className="text-[10px] text-[#626962] block mt-0.5">
+                  <span className="text-[11px] text-[#626962] block mt-0.5">
                     All remaining A (or C repeat)
                   </span>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white border border-[#DCDDD7]">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#626962] block">
+                  <span className="text-xs font-bold text-[#626962] block">
                     Worst Case
                   </span>
-                  <div className="font-mono text-xl font-black text-rose-700 font-tabular mt-1">
-                    {proj.scenarios.worstCase.toFixed(2)}
+                  <div className="font-sans font-tabular text-xl font-bold text-rose-700 mt-1">
+                    {(proj.scopeTotalGpaCredits && proj.scopeTotalGpaCredits > 0)
+                      ? proj.scenarios.worstCase.toFixed(2)
+                      : '—'}
                   </div>
-                  <span className="text-[10px] text-[#626962] block mt-0.5">
+                  <span className="text-[11px] text-[#626962] block mt-0.5">
                     All remaining E (0.00)
                   </span>
                 </div>
@@ -536,10 +551,10 @@ export const PlanningTools: React.FC = () => {
                             <span className="mx-1 text-neutral-400">→</span>
                             <span className="font-bold text-[#176B45]">{impact.targetGrade}</span>
                           </td>
-                          <td className="py-2.5 px-2 text-right font-mono font-bold text-[#176B45]">
+                          <td className="py-2.5 px-2 text-right font-sans font-tabular font-bold text-[#176B45]">
                             {impact.sgpaGain !== undefined ? `+${impact.sgpaGain.toFixed(2)}` : '—'}
                           </td>
-                          <td className="py-2.5 px-2 text-right font-mono font-bold text-[#176B45]">
+                          <td className="py-2.5 px-2 text-right font-sans font-tabular font-bold text-[#176B45]">
                             +{impact.cgpaGain.toFixed(3)}
                           </td>
                         </tr>

@@ -554,7 +554,197 @@ runTest('Academic classification safeguards prevent misleading achievements', ()
   assert.strictEqual(standingZero.title, 'No Grades Finalized');
 });
 
-console.log(`\n🎉 ALL 40 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
+// 41. Valid zero GPA values display 0.00 when credits > 0
+runTest('Valid zero GPA values display 0.00 when credits > 0 (not treated as missing or empty)', () => {
+  const p = getBaseProfile('ARMT', '1-1');
+  p.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => {
+    c.grade = 'E'; // Grade E = 0.00 GPV
+    c.isExpected = false;
+  });
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.actualCgpa, 0.0);
+  assert.ok(proj.actualGpaCredits > 0, 'Actual GPA credits must be > 0');
+  // Check formatting: credits > 0 allows displaying 0.00
+  const displayedActual = proj.actualGpaCredits > 0 ? proj.actualCgpa.toFixed(2) : '—';
+  assert.strictEqual(displayedActual, '0.00', 'Valid zero GPA must render as 0.00');
+});
+
+// 42. Historical projection does not leak grades from future semesters when past credits are 0
+runTest('Historical projection strictly yields 0 when past credits are 0, never leaking future semesters', () => {
+  const p = getBaseProfile('ARMT', '2-1');
+  // 1-1 and 1-2 have NO confirmed grades
+  p.semesters['1-1'].forEach(c => { c.grade = ''; });
+  p.semesters['1-2'].forEach(c => { c.grade = ''; });
+  // But future semester 2-2 has a confirmed grade
+  p.semesters['2-2'][0].grade = 'A';
+
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.projectedCgpaPending, 0, 'Past projection must be 0, not fall back to global actualCgpa');
+});
+
+// 43. Graduation target denominator when enrolled credits exceed degree minimum
+runTest('Graduation target denominator correctly uses enrolled credits when exceeding degree minimum', () => {
+  const p = getBaseProfile('ARMT', '4-2'); // ARMT degree minimum is 126
+  // Add additional elective credits so enrolled exceeds degree minimum (108 compulsory + 24 extra = 132)
+  for (let i = 1; i <= 8; i++) {
+    p.semesters['4-2'].push({
+      code: `ELEC420${i}`,
+      name: `Elective Course ${i}`,
+      credits: 3,
+      isNgpa: false,
+      grade: '',
+      isCompulsory: false
+    });
+  }
+  const enrolledCredits = ALL_SEMESTER_KEYS.reduce((sum, sk) => {
+    return sum + (p.semesters[sk] || []).filter(c => !c.isNgpa).reduce((s, c) => s + (c.credits || 0), 0);
+  }, 0);
+  assert.ok(enrolledCredits > 126, `Enrolled credits (${enrolledCredits}) should exceed degree minimum (126)`);
+
+  const targetResult = calculateTargetCgpaRequirement(p, 3.50, 'at_graduation');
+  assert.strictEqual(targetResult.totalScopeCredits, enrolledCredits, 'Total scope credits must match enrolled credits when enrolled > minimum');
+  assert.strictEqual(typeof targetResult.requiredAverage, 'number');
+});
+
+// 44. Result-release status derivation excludes legacy isExpected grades
+runTest('Result-release status derivation strictly excludes legacy isExpected grades', () => {
+  const courses = [
+    { code: 'AB1101', name: 'Course 1', credits: 2, isNgpa: false, grade: 'A', isExpected: true },
+    { code: 'AB1102', name: 'Course 2', credits: 2, isNgpa: false, grade: '', isExpected: false }
+  ];
+  const status = calculateSemesterResultStatus(courses, 'exams_completed');
+  assert.strictEqual(status, 'none', 'Courses with only isExpected grades must be considered none received');
+});
+
+// 45. Pending non-GPA results tracked separately without affecting GPA
+runTest('Pending non-GPA results are tracked separately without affecting GPA or GPA credits', () => {
+  const p = getBaseProfile('ARMT', '1-2');
+  // 1-1 has confirmed GPA courses
+  p.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => { c.grade = 'B'; });
+  const initialNgpaCount = p.semesters['1-1'].filter(c => c.isNgpa).length;
+  // Add an unreleased Non-GPA course in 1-1
+  p.semesters['1-1'].push({
+    code: 'ENG1101_TEST',
+    name: 'English Test',
+    credits: 2,
+    dept: 'CC',
+    isNgpa: true,
+    isCompulsory: true,
+    grade: '',
+    isRepeat: false,
+    isExcused: false,
+    isExpected: false
+  });
+
+  const proj = calculateAcademicProjections(p);
+  const sem11Summary = proj.semesterSummaries['1-1'];
+  assert.strictEqual(sem11Summary.ngpaCoursesTotal, initialNgpaCount + 1);
+  assert.ok(sem11Summary.ngpaCoursesPending >= 1);
+  assert.strictEqual(sem11Summary.confirmedGpaCredits, p.semesters['1-1'].filter(c => !c.isNgpa).reduce((s, c) => s + c.credits, 0));
+});
+
+// 46. Incomplete projections correctly distinguished from complete projections
+runTest('Incomplete projections correctly distinguished from complete projections', () => {
+  const p = getBaseProfile('ARMT', '2-1');
+  p.semesters['1-1'].forEach(c => { c.grade = 'A'; });
+  // 1-2 is completely unpredicted and unconfirmed
+  p.semesters['1-2'].forEach(c => { c.grade = ''; });
+  p.courseProjections = {};
+
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.isCombinedComplete, false);
+  assert.strictEqual(proj.isExpectedIncomplete, true);
+});
+
+// 47. Target CGPA requirement engine handles impossible targets gracefully
+runTest('Target CGPA requirement engine handles mathematically impossible targets', () => {
+  const p = getBaseProfile('ARMT', '2-1');
+  // Student had low grades in 1-1 (1.00)
+  p.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => { c.grade = 'D'; });
+  // Desires impossible 3.99 CGPA across 2-1
+  const target = calculateTargetCgpaRequirement(p, 3.99, 'after_current');
+  assert.strictEqual(target.possible, false);
+  assert.ok(target.requiredAverage > 4.0 || !target.possible);
+});
+
+// 48. Target calculation returns required average when target is achievable
+runTest('Target calculation returns required average when target is achievable', () => {
+  const p = getBaseProfile('ARMT', '2-1');
+  p.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => { c.grade = 'B+'; }); // ~3.30
+  const target = calculateTargetCgpaRequirement(p, 3.50, 'after_current');
+  assert.strictEqual(target.possible, true);
+  assert.ok(target.requiredAverage <= 4.0 && target.requiredAverage >= 2.0);
+});
+
+// 49. Production store import validation
+runTest('Store importProfilesJson validates imported grades and sanitizes assumptions', () => {
+  const mockStorage = new Map();
+  global.window = {
+    localStorage: {
+      getItem: (k) => mockStorage.get(k) || null,
+      setItem: (k, v) => mockStorage.set(k, String(v)),
+      removeItem: (k) => mockStorage.delete(k)
+    }
+  };
+  global.localStorage = global.window.localStorage;
+
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  const malformedJson = JSON.stringify({
+    profiles: [
+      {
+        id: 'test-import-1',
+        name: 'Import Test',
+        degree: 'INVALID_DEGREE', // should fall back to ARMT
+        currentSemester: '2-1',
+        semesters: {
+          '1-1': [
+            { code: 'CS1101', name: 'Computer Science', credits: -5, grade: 'INVALID_GRADE' },
+            { code: 'AG1101', name: 'Agriculture', credits: 3, grade: 'A' }
+          ]
+        },
+        projectionQuickAssumptions: {
+          remainingPrevAvgGpa: 9.99, // Should clamp to 4.00
+          currentSemAvgGpa: -2.0     // Should clamp to 0.00
+        },
+        projectionTargetCgpa: 5.5   // Should clamp to 4.00
+      }
+    ]
+  });
+
+  const success = store.importProfilesJson(malformedJson);
+  assert.strictEqual(success, true);
+  const updatedProfiles = useGradeStore.getState().profiles;
+  const imported = updatedProfiles.find(p => p.id === 'test-import-1');
+  assert.ok(imported);
+  assert.strictEqual(imported.degree, 'ARMT');
+  assert.strictEqual(imported.semesters['1-1'][0].grade, '');
+  assert.strictEqual(imported.semesters['1-1'][0].credits, 2); // Fallback for negative
+  assert.strictEqual(imported.semesters['1-1'][1].grade, 'A');
+  assert.strictEqual(imported.projectionQuickAssumptions.remainingPrevAvgGpa, 4.0);
+  assert.strictEqual(imported.projectionQuickAssumptions.currentSemAvgGpa, 0.0);
+  assert.strictEqual(imported.projectionTargetCgpa, 4.0);
+});
+
+// 50. Storage persistence failure detection
+runTest('saveCurrentState reports persistence status reliably', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  
+  // With working storage
+  const successResult = store.saveCurrentState();
+  assert.strictEqual(successResult, true);
+
+  // When storage is unavailable or throws (quota exceeded)
+  const originalSet = global.window.localStorage.setItem;
+  global.window.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+  const failResult = store.saveCurrentState();
+  assert.strictEqual(failResult, false, 'saveCurrentState must return false on storage error');
+  global.window.localStorage.setItem = originalSet;
+});
+
+console.log(`\n🎉 ALL 50 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
 
 // =========================================================================
 // SECTION 35: END-TO-END ACCEPTANCE SCENARIO (Agribusiness Management - ABM)

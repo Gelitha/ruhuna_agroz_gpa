@@ -1,7 +1,7 @@
 // University of Ruhuna - Faculty of Agriculture
 // Academic Projection View — Smart Multi-Semester Forecasting & Examination Cockpit
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   Award,
@@ -21,7 +21,10 @@ import {
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { SemesterKey, Grade, AcademicSemesterStatus } from '../../types';
-import { calculateRequiredGpaForTarget } from '../../utils/projectionCalculations';
+import {
+  calculateRequiredGpaForTarget,
+  calculateTargetCgpaRequirement
+} from '../../utils/projectionCalculations';
 import { GpaJourneyBar } from './GpaJourneyBar';
 import { ResultReleaseTracker } from './ResultReleaseTracker';
 import { ProjectionCourseCard } from './ProjectionCourseCard';
@@ -90,6 +93,13 @@ export const AcademicProjectionView: React.FC = () => {
     profile.projectionTargetCgpa ?? 3.70
   );
 
+  // Synchronize state on profile switch
+  useEffect(() => {
+    setPrevAvgGpa(profile.projectionQuickAssumptions?.remainingPrevAvgGpa ?? 3.4);
+    setCurrentAvgGpa(profile.projectionQuickAssumptions?.currentSemAvgGpa ?? 3.5);
+    setTargetCgpaInput(profile.projectionTargetCgpa ?? 3.70);
+  }, [profile.id, profile.projectionQuickAssumptions, profile.projectionTargetCgpa]);
+
   const toggleSemesterExpand = (key: SemesterKey) => {
     setExpandedSemesters(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -97,12 +107,11 @@ export const AcademicProjectionView: React.FC = () => {
   const currentSem = profile.currentSemester || '1-1';
   const totalDegreeCredits = DEGREE_INFO[profile.degree]?.totalMinGpaCredits || 126;
 
-  // Calculate Target CGPA feasibility
-  const targetFeasibility = calculateRequiredGpaForTarget(
-    projection.actualCgpa,
-    projection.actualGpaCredits,
-    totalDegreeCredits,
-    targetCgpaInput
+  // Calculate Target CGPA feasibility using unified engine
+  const targetFeasibility = calculateTargetCgpaRequirement(
+    profile,
+    targetCgpaInput,
+    'after_current'
   );
 
   // Pending Previous Semesters List
