@@ -14,6 +14,7 @@ import {
   RegulationRiskAlert,
   AcademicSemesterStatus,
   SemesterResultStatus,
+  CourseProjectionData,
   AcademicProjectionResult
 } from '../types';
 import {
@@ -131,14 +132,16 @@ interface GradeStoreState {
   resetToFactoryDefaults: () => void;
 
   // Smart Academic Projection Management
+  setCourseExpectedGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
   setCoursePredictedGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
   setCourseTargetGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
   setCourseExamStatus: (semKey: SemesterKey, courseCode: string, status: 'upcoming' | 'in_progress' | 'completed') => void;
   setCourseResultPending: (semKey: SemesterKey, courseCode: string, isPending: boolean) => void;
   setAcademicSemesterStatus: (semKey: SemesterKey, status: AcademicSemesterStatus) => void;
   setSemesterResultStatus: (semKey: SemesterKey, status: SemesterResultStatus) => void;
-  setProjectionQuickAssumptions: (assumptions: { remainingPrevAvgGpa: number; currentSemAvgGpa: number }) => void;
+  setProjectionQuickAssumptions: (assumptions: { remainingPrevAvgGpa: number; currentSemAvgGpa: number } | undefined) => void;
   setProjectionTargetCgpa: (target: number) => void;
+  resetQuickAssumptions: () => void;
   resetCourseProjection: (semKey: SemesterKey, courseCode: string) => void;
   resetSemesterProjections: (semKey: SemesterKey) => void;
   resetAllProjections: () => void;
@@ -304,7 +307,7 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         const semList = profile.semesters[semKey] || [];
         const nextList = semList.map(c => {
           if (c.code === courseCode) {
-            return { ...c, grade };
+            return { ...c, grade, isExpected: false };
           }
           return c;
         });
@@ -316,10 +319,10 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         const existingProjections = { ...(profile.courseProjections || {}) };
         const currentProj = existingProjections[projKey];
 
-        if (grade && currentProj && currentProj.predictedGrade) {
+        if (grade && currentProj) {
           existingProjections[projKey] = {
             ...currentProj,
-            historicalPrediction: currentProj.historicalPrediction || currentProj.predictedGrade,
+            historicalPrediction: currentProj.historicalPrediction || currentProj.predictedGrade || currentProj.targetGrade,
             isResultPending: false,
             lastUpdated: new Date().toISOString()
           };
@@ -728,6 +731,65 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     // Smart Academic Projection Actions
     // ========================================================
 
+    setCourseExpectedGrade: (semKey, courseCode, grade) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const currentSem = profile.currentSemester || '1-1';
+        const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+        const currentIndex = semKeys.indexOf(currentSem);
+        const semIndex = semKeys.indexOf(semKey);
+        const isPast = semIndex < currentIndex;
+
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = profile.courseProjections || {};
+        const current = existing[projKey] || { courseCode, semesterKey: semKey };
+
+        const examStatus = current.examStatus || (isPast ? 'completed' : 'upcoming');
+        const isCompletedExam = isPast || examStatus === 'completed';
+
+        let updatedEntry: CourseProjectionData;
+        if (!grade) {
+          updatedEntry = {
+            ...current,
+            predictedGrade: undefined,
+            targetGrade: undefined,
+            lastUpdated: new Date().toISOString()
+          };
+        } else if (isCompletedExam) {
+          updatedEntry = {
+            ...current,
+            predictedGrade: grade,
+            isResultPending: true,
+            examStatus: 'completed',
+            lastUpdated: new Date().toISOString()
+          };
+        } else {
+          updatedEntry = {
+            ...current,
+            targetGrade: grade,
+            predictedGrade: grade,
+            isResultPending: true,
+            lastUpdated: new Date().toISOString()
+          };
+        }
+
+        const updatedProjections = {
+          ...existing,
+          [projKey]: updatedEntry
+        };
+
+        return {
+          ...profile,
+          courseProjections: updatedProjections,
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
     setCoursePredictedGrade: (semKey, courseCode, grade) => {
       const activeId = get().activeProfileId;
       const updatedProfiles = get().profiles.map(profile => {
@@ -884,6 +946,20 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         return {
           ...profile,
           projectionTargetCgpa: target,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    resetQuickAssumptions: () => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          projectionQuickAssumptions: undefined,
           updatedAt: new Date().toISOString()
         };
       });

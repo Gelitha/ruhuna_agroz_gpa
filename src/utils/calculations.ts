@@ -35,6 +35,10 @@ import {
 } from '../database';
 
 // 1. Calculate Course GPV taking Repeat Capping into account
+export function isCourseGradeConfirmed(course: Course): boolean {
+  return Boolean(course.grade && !course.isExpected);
+}
+
 export function calculateCourseGpv(course: Course): number | null {
   if (!course.grade || !GRADING_SCALE[course.grade]) {
     return null;
@@ -215,14 +219,14 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
         }
       } else {
         const gpv = calculateCourseGpv(c);
-        if (gpv !== null && gpv >= 1.7) {
+        if (gpv !== null && gpv >= 1.7 && !c.isExpected) {
           if (c.isCompulsory) {
             totalCompulsoryEarned += Number(c.credits) || 0;
           } else {
             totalElectiveEarned += Number(c.credits) || 0;
           }
         }
-        if (c.grade === 'E') {
+        if (c.grade === 'E' && !c.isExpected) {
           unredeemedFailCount++;
         }
       }
@@ -947,7 +951,7 @@ export function calculateAcademicRiskAlerts(profile: StudentProfile): Regulation
   const failCourses: string[] = [];
   semKeys.forEach(semKey => {
     (profile.semesters[semKey] || []).forEach(c => {
-      if (!c.isNgpa && c.grade === 'E') {
+      if (!c.isNgpa && c.grade === 'E' && !c.isExpected) {
         failCourses.push(`${c.code} (${semKey})`);
       }
     });
@@ -966,7 +970,7 @@ export function calculateAcademicRiskAlerts(profile: StudentProfile): Regulation
   const conditionalCourses: string[] = [];
   semKeys.forEach(semKey => {
     (profile.semesters[semKey] || []).forEach(c => {
-      if (!c.isNgpa && (c.grade === 'D' || c.grade === 'D+')) {
+      if (!c.isNgpa && (c.grade === 'D' || c.grade === 'D+') && !c.isExpected) {
         conditionalCourses.push(`${c.code} [${c.grade}]`);
       }
     });

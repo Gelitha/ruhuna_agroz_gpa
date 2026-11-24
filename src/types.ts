@@ -304,14 +304,24 @@ export interface SemesterProjectionSummary {
   academicStatus: AcademicSemesterStatus;
   resultStatus: SemesterResultStatus;
   totalCourses: number;
-  actualResultsCount: number;
-  pendingResultsCount: number;
+  // GPA Course counts & credits
+  gpaCoursesTotal: number;
+  gpaCoursesConfirmed: number;
+  gpaCoursesPending: number;
   totalGpaCredits: number;
   confirmedGpaCredits: number;
   predictedGpaCredits: number;
+  // Non-GPA Course counts
+  ngpaCoursesTotal: number;
+  ngpaCoursesConfirmed: number;
+  ngpaCoursesPending: number;
+  // SGPAs
   actualSgpa: number;
   projectedSgpa: number;
   isComplete: boolean;
+  // Backward compatibility aliases
+  actualResultsCount: number;
+  pendingResultsCount: number;
 }
 
 export interface CourseImpactAnalysis {
@@ -324,10 +334,29 @@ export interface CourseImpactAnalysis {
   targetGrade: Grade;
   targetGpv: number;
   gpvDifference: number;
-  cgpaGain: number;
+  cgpaGain: number; // Scope-specific CGPA gain (after current semester)
+  sgpaGain?: number; // Current semester SGPA gain (if in current semester)
+  scopeCgpaGain?: number; // Gain after current semester
+  gradCgpaGain?: number; // Graduation CGPA gain
   impactScore: number; // credits * gpvDifference
   isCompulsory: boolean;
   advice: string;
+}
+
+export type TargetScope = 'after_pending' | 'after_current' | 'at_graduation';
+
+export interface TargetCgpaCalculationResult {
+  possible: boolean;
+  requiredAverage: number;
+  neededGradePoints: number;
+  remainingCredits: number;
+  totalScopeCredits: number;
+  confirmedCreditsInScope: number;
+  confirmedPointsInScope: number;
+  maxAchievableCgpa: number;
+  scope: TargetScope;
+  isRepeatCapRestricted: boolean;
+  explanation: string;
 }
 
 export interface PredictionAccuracyEntry {
@@ -354,24 +383,35 @@ export interface PredictionAccuracyReport {
 export interface AcademicProjectionResult {
   actualCgpa: number;
   actualGpaCredits: number;
+  scopeActualCgpa?: number;
+  scopeActualCredits?: number;
+  scopeTotalGpaCredits?: number;
   projectedCgpaPending: number;
   pendingResultsCount: number;
   pendingGpaCredits: number;
+  prevConfirmedGpaCredits?: number;
+  prevUnresolvedGpaCredits?: number;
+  prevPredictedGpaCredits?: number;
   currentSemester: SemesterKey;
   currentSemActualSgpa: number;
   currentSemProjectedSgpa: number;
   currentSemTotalCredits: number;
+  currentSemConfirmedCredits?: number;
+  currentSemUnresolvedCredits?: number;
   currentSemGradedCredits: number;
   combinedProjectedCgpa: number;
   combinedTotalCredits: number;
   deltaCombined: number;
   projectionCoveragePercent: number;
   isCurrentSemComplete: boolean;
+  isCombinedComplete?: boolean;
+  unresolvedCoursesWithoutPredictionCount?: number;
   scenarios: {
     actualOnly: number;
     expected: number;
     bestCase: number;
     worstCase: number;
+    isExpectedIncomplete?: boolean;
   };
   semesterSummaries: Record<SemesterKey, SemesterProjectionSummary>;
   courseImpacts: CourseImpactAnalysis[];
