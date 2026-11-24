@@ -2,6 +2,8 @@
 // GradePath Academic Dashboard View — Fully Responsive Multi-Device Command Center
 // Features: Responsive Breakpoints, Previous Semesters SGPA Tracking, Real-Time Alerts
 
+import { AppLogo } from '../common/AppLogo';
+
 import React from 'react';
 import {
   Award,
@@ -86,7 +88,7 @@ export const DashboardView: React.FC = () => {
       <div className="p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 shadow-xs">
         <div className="space-y-2 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xl sm:text-2xl shrink-0">🌿</span>
+            <AppLogo size="sm" />
             <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase text-emerald-800 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-100 border border-emerald-300 truncate">
               {profile.degree} (Hons) Undergraduate
             </span>

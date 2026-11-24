@@ -2,8 +2,9 @@
 // Platform Footer: Curriculum Details, Attribution & Disclaimer
 
 import React from 'react';
-import { BookOpen, Sparkles, AlertCircle, ShieldAlert } from 'lucide-react';
+import { BookOpen, AlertCircle } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
+import { AppLogo } from '../common/AppLogo';
 
 export const Footer: React.FC = () => {
   const { setActiveTab, setShowOnboarding } = useGradeStore();
@@ -16,11 +17,11 @@ export const Footer: React.FC = () => {
           {/* Brand & Creator Attribution */}
           <div className="md:col-span-4 space-y-1.5 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="text-lg">🌿</span>
-              <span className="font-black text-neutral-900 text-sm tracking-tight">
+              <AppLogo size="sm" />
+              <span className="font-extrabold text-[#242824] text-sm tracking-tight">
                 Ruhuna Agri GPA
               </span>
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                 UoR
               </span>
             </div>

@@ -142,10 +142,10 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
   return {
     profiles: initialHydration.profiles,
     activeProfileId: initialHydration.activeId,
-    activeTab: 'grades',
+    activeTab: 'calculator',
     isSidebarExpanded: true,
     isMobileDrawerOpen: false,
-    showOnboarding: !initialHydration.hasOnboarded,
+    showOnboarding: false,
     selectedSemesterForCalculator: '1-1',
     searchQuery: '',
 

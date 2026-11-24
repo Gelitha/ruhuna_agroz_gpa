@@ -4,20 +4,21 @@
 
 @layer base {
   :root {
-    --bg-main: #F7F8F5;
-    --primary: #245C45;
-    --primary-hover: #194A36;
+    --bg-main: #F8F8F4;
+    --primary: #176B45;
+    --primary-deep: #103B2D;
     --surface: #FFFFFF;
     --surface-subtle: #F0F3EF;
-    --text-main: #202923;
-    --text-muted: #78827A;
-    --border: #E6EAE5;
+    --text-main: #242824;
+    --text-muted: #626962;
+    --border: #DCDDD7;
+    --gold: #B28A38;
   }
 
   body {
-    background-color: #F7F8F5;
-    color: #202923;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #F8F8F4;
+    color: #242824;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
@@ -35,11 +36,25 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D9DFD9;
+  background: #DCDDD7;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #B6C2B7;
+  background: #B28A38;
+}
+
+/* Safe Area Insets for iOS & Android Mobile Navigation */
+.safe-area-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.safe-area-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+/* Tabular Numerals for GPA & Credit Display */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Clean print styling for Academic Transcript */
@@ -60,4 +75,3 @@
     padding: 0 !important;
   }
 }
-

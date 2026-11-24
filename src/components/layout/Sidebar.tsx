@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { NavView } from '../../types';
+import { AppLogo } from '../common/AppLogo';
 
 interface NavSection {
   title: string;
@@ -99,22 +100,20 @@ export const Sidebar: React.FC = () => {
         {/* Brand Header */}
         <div className="h-18 px-4 flex items-center justify-between border-b border-neutral-200 shrink-0">
           <div
-            className="flex items-center gap-3 overflow-hidden cursor-pointer group"
+            className="flex items-center gap-2.5 overflow-hidden cursor-pointer group"
             onClick={() => setActiveTab('dashboard')}
-            title="GradePath Dashboard"
+            title="Ruhuna Agri GPA Dashboard"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-700 to-green-700 flex items-center justify-center text-white shrink-0 shadow-md shadow-emerald-700/20 transition-transform group-hover:scale-105">
-              <span className="text-xl">🌿</span>
-            </div>
+            <AppLogo size="md" />
             {isSidebarExpanded && (
               <div className="flex flex-col min-w-0">
-                <span className="font-black text-neutral-900 text-base tracking-tight leading-none flex items-center gap-1.5">
+                <span className="font-extrabold text-[#242824] text-sm tracking-tight leading-none flex items-center gap-1.5">
                   Ruhuna Agri GPA
-                  <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                     UoR
                   </span>
                 </span>
-                <span className="text-xs text-neutral-500 truncate mt-1 font-medium">
+                <span className="text-[11px] text-[#626962] truncate mt-1 font-medium">
                   Faculty of Agriculture
                 </span>
               </div>

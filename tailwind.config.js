@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       spacing: {
@@ -11,23 +12,34 @@ export default {
         '68': '17rem',
       },
       colors: {
-        background: '#F7F8F5',
+        background: '#F8F8F4',
         surface: '#FFFFFF',
         'surface-subtle': '#F0F3EF',
-        border: '#E6EAE5',
+        border: '#DCDDD7',
         'border-subtle': '#EDF1EC',
-        main: '#202923',
-        secondary: '#78827A',
+        main: '#242824',
+        secondary: '#626962',
         primary: {
-          DEFAULT: '#245C45',
-          hover: '#194A36',
+          DEFAULT: '#176B45',
+          hover: '#103B2D',
+          deep: '#103B2D',
           light: '#EAF2ED',
-          border: '#D0DEC9'
+          border: '#DCDDD7'
+        },
+        brand: {
+          green: '#176B45',
+          deep: '#103B2D',
+          bg: '#F8F8F4',
+          surface: '#FFFFFF',
+          text: '#242824',
+          muted: '#626962',
+          border: '#DCDDD7',
+          gold: '#B28A38'
         },
         accent: {
-          success: '#27845B',
+          success: '#176B45',
           'success-light': '#E9F5EF',
-          warning: '#C58A35',
+          warning: '#B28A38',
           'warning-light': '#FDF6E9',
           danger: '#C65A55',
           'danger-light': '#FDF0EF',
@@ -56,4 +68,3 @@ export default {
   },
   plugins: [],
 }
-

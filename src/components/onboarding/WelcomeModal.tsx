@@ -22,6 +22,7 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { DegreeCode, SemesterKey, Grade, Course } from '../../types';
 import { DEGREE_INFO, GRADING_SCALE, getDepartmentStyle } from '../../database';
 import { initDefaultCoursesForDegree, calculateSemesterStats } from '../../utils/calculations';
+import { AppLogo } from '../common/AppLogo';
 
 const SEM_KEYS: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
 const GRADE_CHOICES: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
@@ -156,8 +157,8 @@ export const WelcomeModal: React.FC = () => {
           {/* STEP 0: Welcome Screen */}
           {step === 'welcome' && (
             <div className="space-y-5 text-center py-2 sm:py-4">
-              <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-br from-emerald-600 to-green-700 text-white flex items-center justify-center text-3xl shadow-lg shadow-emerald-700/20">
-                🌿
+              <div className="flex justify-center">
+                <AppLogo size="xl" />
               </div>
 
               <div className="space-y-1.5">
