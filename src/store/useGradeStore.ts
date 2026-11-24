@@ -58,13 +58,41 @@ function loadPersistedProfiles(): { profiles: StudentProfile[]; activeId: string
       const realProfiles = parsed.filter(p => p.id !== 'prof_gjay' && p.name !== 'Gjay');
       if (Array.isArray(realProfiles) && realProfiles.length > 0) {
         const validActive = realProfiles.find(p => p.id === v3ActiveId) ? (v3ActiveId as string) : realProfiles[0].id;
-        // Migration: ensure projection fields exist safely
-        const migrated = realProfiles.map(p => ({
-          ...p,
-          courseProjections: p.courseProjections || {},
-          academicStatusBySem: p.academicStatusBySem || {},
-          resultStatusBySem: p.resultStatusBySem || {}
-        }));
+        // Migration: ensure projection fields exist safely and migrate existing predicted grades to course.grade with isExpected = true
+        const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+        const migrated = realProfiles.map(p => {
+          const courseProjections = p.courseProjections || {};
+          const semesters = { ...p.semesters };
+
+          semKeys.forEach(sk => {
+            if (Array.isArray(semesters[sk])) {
+              semesters[sk] = semesters[sk].map(course => {
+                const projKey = `${sk}:${course.code}`;
+                const proj = courseProjections[projKey];
+                // If course has no confirmed grade, but has a predicted or target grade, safely migrate it to isExpected
+                if (!course.grade && proj && (proj.predictedGrade || proj.targetGrade)) {
+                  return {
+                    ...course,
+                    grade: (proj.predictedGrade || proj.targetGrade) as Grade,
+                    isExpected: true
+                  };
+                }
+                return {
+                  ...course,
+                  isExpected: !!course.isExpected
+                };
+              });
+            }
+          });
+
+          return {
+            ...p,
+            semesters,
+            courseProjections,
+            academicStatusBySem: p.academicStatusBySem || {},
+            resultStatusBySem: p.resultStatusBySem || {}
+          };
+        });
         return { profiles: migrated, activeId: validActive, hasOnboarded };
       }
     }
@@ -131,6 +159,8 @@ interface GradeStoreState {
   setSpecializationDept: (dept: string) => void;
   bulkSetSemesterGrades: (semKey: SemesterKey, grade: Grade) => void;
   clearSemesterGrades: (semKey: SemesterKey) => void;
+  markUnresolvedAsProjected: (semKey: SemesterKey) => void;
+  clearSemesterProjections: (semKey: SemesterKey) => void;
   applyTargetMixPlan: (allocations: Array<{ semKey: SemesterKey; courseCode: string; grade: Grade }>) => void;
   clearAppliedTargetMix: () => void;
 
@@ -319,33 +349,59 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         if (profile.id !== activeId) return profile;
 
         const semList = profile.semesters[semKey] || [];
+        const targetCourse = semList.find(c => c.code === courseCode);
+        const isProj = targetCourse ? !!targetCourse.isExpected : false;
+
         const nextList = semList.map(c => {
           if (c.code === courseCode) {
-            return { ...c, grade, isExpected: false };
+            // Keep the current isExpected state of this course row!
+            return { ...c, grade };
           }
           return c;
         });
 
         // Smart Automatic Transition:
-        // When an official grade arrives, preserve any existing predicted grade into historicalPrediction
-        // and mark the course result as received without requiring manual cleanup.
+        // Update projection tracking and preserve historical predictions
         const projKey = `${semKey}:${courseCode}`;
         const existingProjections = { ...(profile.courseProjections || {}) };
         const currentProj = existingProjections[projKey];
 
-        if (grade && currentProj) {
-          existingProjections[projKey] = {
-            ...currentProj,
-            historicalPrediction: currentProj.historicalPrediction || currentProj.predictedGrade || currentProj.targetGrade,
-            isResultPending: false,
-            lastUpdated: new Date().toISOString()
-          };
-        } else if (!grade && currentProj) {
-          existingProjections[projKey] = {
-            ...currentProj,
-            isResultPending: true,
-            lastUpdated: new Date().toISOString()
-          };
+        if (isProj) {
+          if (grade) {
+            existingProjections[projKey] = {
+              ...(currentProj || {
+                courseCode,
+                semesterKey: semKey,
+                examStatus: 'upcoming'
+              }),
+              predictedGrade: grade,
+              isResultPending: true,
+              lastUpdated: new Date().toISOString()
+            };
+          } else if (currentProj) {
+            existingProjections[projKey] = {
+              ...currentProj,
+              predictedGrade: undefined,
+              isResultPending: true,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+        } else {
+          // Official confirmed grade entered
+          if (grade && currentProj) {
+            existingProjections[projKey] = {
+              ...currentProj,
+              historicalPrediction: currentProj.historicalPrediction || currentProj.predictedGrade || currentProj.targetGrade,
+              isResultPending: false,
+              lastUpdated: new Date().toISOString()
+            };
+          } else if (!grade && currentProj) {
+            existingProjections[projKey] = {
+              ...currentProj,
+              isResultPending: true,
+              lastUpdated: new Date().toISOString()
+            };
+          }
         }
 
         // Update result status for this semester (excluding legacy isExpected grades!)
@@ -435,6 +491,9 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         if (profile.id !== activeId) return profile;
 
         const semList = profile.semesters[semKey] || [];
+        const targetCourse = semList.find(c => c.code === courseCode);
+        if (!targetCourse) return profile;
+
         const nextList = semList.map(c => {
           if (c.code === courseCode) {
             return { ...c, isExpected };
@@ -442,12 +501,60 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
           return c;
         });
 
+        const projKey = `${semKey}:${courseCode}`;
+        const existingProjections = { ...(profile.courseProjections || {}) };
+        const currentProj = existingProjections[projKey];
+
+        if (isExpected) {
+          // Marked as projected
+          if (targetCourse.grade) {
+            existingProjections[projKey] = {
+              ...(currentProj || {
+                courseCode,
+                semesterKey: semKey,
+                examStatus: 'upcoming'
+              }),
+              predictedGrade: targetCourse.grade,
+              isResultPending: true,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+        } else {
+          // Unticked Proj -> converted to Official Confirmed!
+          if (targetCourse.grade) {
+            const predToKeep = currentProj?.predictedGrade || currentProj?.targetGrade || targetCourse.grade;
+            existingProjections[projKey] = {
+              ...(currentProj || {
+                courseCode,
+                semesterKey: semKey,
+                examStatus: 'completed'
+              }),
+              historicalPrediction: currentProj?.historicalPrediction || predToKeep,
+              isResultPending: false,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+        }
+
+        // Update result status for this semester
+        const gpaCourses = nextList.filter(c => !c.isNgpa);
+        const confirmedCount = gpaCourses.filter(c => isCourseGradeConfirmed(c)).length;
+        const newResStatus: SemesterResultStatus =
+          confirmedCount === 0 ? 'none' : confirmedCount === gpaCourses.length ? 'all_received' : 'partial';
+
+        const updatedResultStatuses = {
+          ...(profile.resultStatusBySem || {}),
+          [semKey]: newResStatus
+        };
+
         return {
           ...profile,
           semesters: {
             ...profile.semesters,
             [semKey]: nextList
           },
+          courseProjections: existingProjections,
+          resultStatusBySem: updatedResultStatuses,
           updatedAt: new Date().toISOString()
         };
       });
@@ -619,6 +726,78 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
       persist(updatedProfiles, activeId);
     },
 
+    markUnresolvedAsProjected: (semKey) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+
+        const semList = profile.semesters[semKey] || [];
+        const nextList = semList.map(c => {
+          // Only mark unresolved courses as projected — NEVER overwrite confirmed grades!
+          if (!isCourseGradeConfirmed(c)) {
+            return { ...c, isExpected: true };
+          }
+          return c;
+        });
+
+        return {
+          ...profile,
+          semesters: {
+            ...profile.semesters,
+            [semKey]: nextList
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    clearSemesterProjections: (semKey) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+
+        const semList = profile.semesters[semKey] || [];
+        const existingProjections = { ...(profile.courseProjections || {}) };
+
+        const nextList = semList.map(c => {
+          // Clear only projected/hypothetical courses — preserve confirmed grades, repeats, credits!
+          if (c.isExpected) {
+            const projKey = `${semKey}:${c.code}`;
+            delete existingProjections[projKey];
+            return { ...c, grade: '' as Grade, isExpected: false };
+          }
+          return c;
+        });
+
+        const gpaCourses = nextList.filter(c => !c.isNgpa);
+        const confirmedCount = gpaCourses.filter(c => isCourseGradeConfirmed(c)).length;
+        const newResStatus: SemesterResultStatus =
+          confirmedCount === 0 ? 'none' : confirmedCount === gpaCourses.length ? 'all_received' : 'partial';
+
+        const updatedResultStatuses = {
+          ...(profile.resultStatusBySem || {}),
+          [semKey]: newResStatus
+        };
+
+        return {
+          ...profile,
+          semesters: {
+            ...profile.semesters,
+            [semKey]: nextList
+          },
+          courseProjections: existingProjections,
+          resultStatusBySem: updatedResultStatuses,
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
     applyTargetMixPlan: (allocations) => {
       const activeId = get().activeProfileId;
       const allocMap = new Map<string, Grade>();
@@ -724,8 +903,14 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
             semKeys.forEach(sk => {
               const courses = Array.isArray(raw.semesters?.[sk]) ? raw.semesters[sk] : [];
               semesters[sk] = courses.map((c: any) => {
-                const grade: Grade = c.grade && GRADING_SCALE[c.grade] ? c.grade : '';
                 const credits = typeof c.credits === 'number' && c.credits >= 0 ? c.credits : 2;
+                const rawGrade = c.grade && GRADING_SCALE[c.grade] ? c.grade : '';
+                const fallbackProjGrade = raw.courseProjections?.[`${sk}:${c.code}`]?.predictedGrade || '';
+                const finalGrade: Grade = rawGrade || fallbackProjGrade;
+                const isExpected = c.isExpected !== undefined
+                  ? !!c.isExpected
+                  : Boolean(!rawGrade && fallbackProjGrade);
+
                 return {
                   code: String(c.code || 'UNKNOWN').toUpperCase(),
                   name: String(c.name || c.code || 'Course'),
@@ -734,10 +919,10 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
                   isNgpa: !!c.isNgpa,
                   isCompulsory: !!c.isCompulsory,
                   isSpecialization: !!c.isSpecialization,
-                  grade,
+                  grade: finalGrade,
                   isRepeat: !!c.isRepeat,
                   isExcused: !!c.isExcused,
-                  isExpected: !!c.isExpected
+                  isExpected
                 };
               });
             });

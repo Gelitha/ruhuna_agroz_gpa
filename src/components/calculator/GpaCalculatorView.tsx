@@ -1,25 +1,19 @@
 // University of Ruhuna - Faculty of Agriculture
-// Ruhuna Agri GPA — Unified GPA Calculator & Multi-Semester Academic Workspace
-// One calculator. Two grade modes (Actual | Projection). Powerful tools on demand.
+// Ruhuna Agri GPA — Simplified Unified GPA Calculator & Academic Workspace
+// Core principle: One calculator. One course list. One grade selector. Two independent checkboxes: Rep and Proj.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Printer,
   Plus,
   Trash2,
-  ShieldCheck,
-  Award,
-  Search,
   Sliders,
   Minus,
   PlusCircle,
-  CheckCircle2,
-  Sparkles,
   ChevronDown,
   Check,
-  Lock,
-  ArrowRight,
-  TrendingUp,
+  Sparkles,
+  Search,
   RotateCcw
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
@@ -32,10 +26,8 @@ import {
   getDepartmentStyle,
   getAvailableElectivesForStudent
 } from '../../database';
-import { calculateCourseGpv } from '../../utils/calculations';
 import { isCourseGradeConfirmed, ALL_SEMESTER_KEYS } from '../../utils/projectionCalculations';
 import { AppLogo } from '../common/AppLogo';
-import { PendingResultsShortcut } from './PendingResultsShortcut';
 import { PlanningTools } from './PlanningTools';
 
 const SEMESTERS: Array<{ key: SemesterKey | 'ORIENTATION'; label: string }> = [
@@ -83,7 +75,7 @@ export const GpaCalculatorView: React.FC = () => {
     setCurrentSemester,
     saveCurrentState,
     setCourseGrade,
-    setCourseExpectedGrade,
+    setCourseExpected,
     setCourseCredits,
     setCourseRepeat,
     setCourseExcused,
@@ -92,6 +84,8 @@ export const GpaCalculatorView: React.FC = () => {
     setOrientationGrade,
     bulkSetSemesterGrades,
     clearSemesterGrades,
+    markUnresolvedAsProjected,
+    clearSemesterProjections,
     setActiveTab
   } = useGradeStore();
 
@@ -100,10 +94,7 @@ export const GpaCalculatorView: React.FC = () => {
   const proj = getAcademicProjections();
   const degInfo = DEGREE_INFO[profile.degree] || DEGREE_INFO.ARMT;
 
-  // 1. Two Calculator Modes: 'actual' (Official Results) | 'projection' (Expected Grades)
-  const [calculatorMode, setCalculatorMode] = useState<'actual' | 'projection'>('actual');
-
-  // 2. Active Tab (defaults to current academic semester if unset)
+  // Active Tab (defaults to current academic semester if unset)
   const [activeTabKey, setActiveTabKey] = useState<SemesterKey | 'ORIENTATION'>(() => {
     if (selectedSemesterForCalculator && selectedSemesterForCalculator !== 'ALL') {
       return selectedSemesterForCalculator;
@@ -144,7 +135,7 @@ export const GpaCalculatorView: React.FC = () => {
 
   // Search & Filter
   const [courseSearch, setCourseSearch] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'ungraded' | 'repeat'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'ungraded' | 'repeat' | 'projected'>('all');
 
   // Fast inline course add state
   const [showAddCustom, setShowAddCustom] = useState(false);
@@ -165,7 +156,7 @@ export const GpaCalculatorView: React.FC = () => {
     return profile.semesters[activeTabKey as SemesterKey] || [];
   }, [profile, activeTabKey, isOrientation]);
 
-  // Semester Stats
+  // Semester Stats (Official confirmed results)
   const semStats = useMemo(() => {
     if (isOrientation) return null;
     return getSemesterStats(activeTabKey as SemesterKey);
@@ -176,6 +167,15 @@ export const GpaCalculatorView: React.FC = () => {
     if (isOrientation) return null;
     return proj.semesterSummaries[activeTabKey as SemesterKey];
   }, [activeTabKey, isOrientation, proj]);
+
+  // Check whether any projected grades or assumptions exist across the student's profile
+  const hasAnyProjectedGrades = useMemo(() => {
+    const hasExpectedCourse = ALL_SEMESTER_KEYS.some(sk =>
+      (profile.semesters[sk] || []).some(c => c.isExpected && c.grade)
+    );
+    const hasCustomAssumptions = !!profile.projectionQuickAssumptions;
+    return hasExpectedCourse || hasCustomAssumptions;
+  }, [profile]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
@@ -189,10 +189,13 @@ export const GpaCalculatorView: React.FC = () => {
       if (!matchesSearch) return false;
 
       if (filterType === 'ungraded') {
-        return !isCourseGradeConfirmed(course);
+        return !course.grade;
       }
       if (filterType === 'repeat') {
         return !!course.isRepeat;
+      }
+      if (filterType === 'projected') {
+        return !!course.isExpected;
       }
       return true;
     });
@@ -258,9 +261,13 @@ export const GpaCalculatorView: React.FC = () => {
   };
 
   // Grade button styles on Desktop
-  const getGradeStyle = (grade: Grade | undefined) => {
+  const getGradeStyle = (grade: Grade | undefined, isExpected = false) => {
     if (!grade) {
       return 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300 hover:border-neutral-400';
+    }
+    // Projected style uses dashed ring or emerald styling with Proj indicator
+    if (isExpected) {
+      return 'bg-gradient-to-br from-emerald-700 to-teal-800 text-white font-black shadow-md border-emerald-500 ring-2 ring-emerald-300 ring-offset-1';
     }
     switch (grade) {
       case 'A+':
@@ -292,20 +299,41 @@ export const GpaCalculatorView: React.FC = () => {
 
   const hasAnyConfirmedGrades = proj.actualGpaCredits > 0;
   const standingInfo = getStandingDisplay(proj.actualCgpa, proj.actualGpaCredits);
-  const totalCreditsPercent = Math.min(
-    100,
-    Math.round((stats.totalGpaCreditsEarned / stats.totalRequiredCredits) * 100)
-  );
-  const remainingCredits = Math.max(0, stats.totalRequiredCredits - stats.totalGpaCreditsEarned);
+
+  // Status for each semester tab
+  const getSemesterStatusInfo = (semKey: SemesterKey | 'ORIENTATION') => {
+    if (semKey === 'ORIENTATION') {
+      return { text: 'Non-GPA', badgeClass: 'text-neutral-500' };
+    }
+    const semIndex = ALL_SEMESTER_KEYS.indexOf(semKey as SemesterKey);
+    const currentIndex = ALL_SEMESTER_KEYS.indexOf(profile.currentSemester || '1-1');
+    const summary = proj.semesterSummaries[semKey as SemesterKey];
+
+    if (semKey === profile.currentSemester) {
+      if (summary && summary.pendingResultsCount > 0) {
+        return { text: `${summary.pendingResultsCount} pending`, badgeClass: 'bg-amber-100 text-amber-900 font-bold' };
+      }
+      return { text: 'Current', badgeClass: 'bg-emerald-100 text-[#176B45] font-bold' };
+    }
+    if (semIndex < currentIndex) {
+      if (summary && summary.pendingResultsCount > 0) {
+        return { text: `${summary.pendingResultsCount} pending`, badgeClass: 'bg-amber-100 text-amber-900 font-bold' };
+      }
+      if (summary && summary.confirmedGpaCredits > 0) {
+        return { text: 'Complete', badgeClass: 'bg-neutral-100 text-neutral-600 font-medium' };
+      }
+      return { text: 'Awaiting', badgeClass: 'bg-amber-50 text-amber-800' };
+    }
+    return { text: 'Not started', badgeClass: 'text-neutral-400' };
+  };
 
   return (
     <div className="max-w-[1440px] mx-auto pb-16 space-y-4 sm:space-y-5">
       {/* ======================================================== */}
       {/* 1. MOBILE COMPACT SUMMARY (<= 1023px)                    */}
-      {/* High-density, Unified Actual & Projected Metrics         */}
       {/* ======================================================== */}
       <div className="block lg:hidden bg-white border border-[#DCDDD7] rounded-2xl p-4 shadow-subtle space-y-3">
-        {/* Top Header: Degree, Profile Name & Mode Selector */}
+        {/* Top Header: Degree & Profile Name */}
         <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[#EDF1EC]">
           <div className="flex items-center gap-2 min-w-0">
             <AppLogo size="sm" />
@@ -315,36 +343,14 @@ export const GpaCalculatorView: React.FC = () => {
               </span>
             </div>
           </div>
-
-          {/* Mode Switcher on Mobile */}
-          <div className="flex items-center p-0.5 bg-[#F8F8F4] border border-[#DCDDD7] rounded-xl shrink-0">
-            <button
-              type="button"
-              onClick={() => setCalculatorMode('actual')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                calculatorMode === 'actual'
-                  ? 'bg-[#103B2D] text-white shadow-xs'
-                  : 'text-[#626962]'
-              }`}
-            >
-              Actual grades
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalculatorMode('projection')}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
-                calculatorMode === 'projection'
-                  ? 'bg-[#176B45] text-white shadow-xs'
-                  : 'text-[#626962]'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Projection</span>
-            </button>
+          <div className="text-right">
+            <span className="text-xs font-semibold text-neutral-600 truncate block max-w-[160px]">
+              {profile.name}
+            </span>
           </div>
         </div>
 
-        {/* 4 Compact Metrics Grid: Actual CGPA, Projected CGPA, Active SGPA, Credits */}
+        {/* Compact Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
           {/* Metric 1: Actual CGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
@@ -359,42 +365,54 @@ export const GpaCalculatorView: React.FC = () => {
             </span>
           </div>
 
-          {/* Metric 2: Projected CGPA */}
-          <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 flex flex-col justify-center">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-xs font-medium text-emerald-800">
-                Projected CGPA
+          {/* Metric 2: Projected CGPA (or Degree Credits when no projections exist) */}
+          {hasAnyProjectedGrades ? (
+            <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200 flex flex-col justify-center">
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs font-medium text-emerald-800">
+                  Projected CGPA
+                </span>
+                {proj.isExpectedIncomplete && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Incomplete projection: some courses pending" />
+                )}
+              </div>
+              <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5">
+                {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+              </div>
+              <span className="text-[11px] text-emerald-700 font-medium leading-none mt-1">
+                After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}
               </span>
-              {proj.isExpectedIncomplete && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Incomplete projection: some courses pending" />
-              )}
             </div>
-            <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5">
-              {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+          ) : (
+            <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
+              <span className="text-xs font-medium text-[#626962]">
+                Degree Credits
+              </span>
+              <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
+                {stats.totalGpaCreditsEarned}
+              </div>
+              <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
+                of {stats.totalRequiredCredits} required
+              </span>
             </div>
-            <span className="text-[11px] text-emerald-700 font-medium leading-none mt-1">
-              After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}
-            </span>
-          </div>
+          )}
 
           {/* Metric 3: Active Semester SGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
             <span className="text-xs font-medium text-[#626962]">
-              Sem {activeTabKey} {calculatorMode === 'actual' ? 'Actual' : 'Projected'}
+              Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected' : 'SGPA'}
             </span>
             <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
-              {calculatorMode === 'actual'
-                ? semStats && semStats.realCreditsAttempted > 0
-                  ? semStats.realSgpa.toFixed(2)
-                  : '—'
-                : semProjection && semProjection.predictedGpaCredits > 0
+              {semProjection && semProjection.predictedGpaCredits > 0
                 ? semProjection.projectedSgpa.toFixed(2)
+                : semStats && semStats.realCreditsAttempted > 0
+                ? semStats.realSgpa.toFixed(2)
                 : '—'}
             </div>
             <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
-              {calculatorMode === 'actual'
-                ? `${semStats?.realCreditsAttempted || 0} Cr finalized`
-                : `${semProjection?.predictedGpaCredits || 0} Cr projected`}
+              {semProjection && semProjection.predictedGpaCredits > 0
+                ? `${semProjection.predictedGpaCredits} Cr projected`
+                : `${semStats?.realCreditsAttempted || 0} Cr finalized`}
             </span>
           </div>
 
@@ -416,12 +434,12 @@ export const GpaCalculatorView: React.FC = () => {
           </div>
         </div>
 
-        {/* Mode Guidance Bar */}
+        {/* Guidance / Status Bar */}
         <div className="p-2.5 rounded-xl text-xs font-medium flex items-center justify-between gap-2 border bg-neutral-50/80 border-[#EDF1EC]">
           <span className="text-[#626962]">
-            {calculatorMode === 'actual'
-              ? 'Entering official grades. Confirmed results are locked in your permanent record.'
-              : 'Entering expected grades for upcoming or pending examinations. Confirmed grades remain locked.'}
+            {hasAnyProjectedGrades
+              ? 'Proj checked grades are included in projected GPA and excluded from official transcripts.'
+              : 'Official confirmed grades. Check Proj to test expected examination grades.'}
           </span>
           {saveStatus && (
             <span className={`text-[11px] font-bold shrink-0 flex items-center gap-1 ${saveStatus === 'Saved' ? 'text-[#176B45]' : 'text-rose-600'}`}>
@@ -432,12 +450,11 @@ export const GpaCalculatorView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* 2. DESKTOP UNIFIED COCKPIT HERO (>= 1024px)              */}
-      {/* Retains Familiar Botanical Theme with Mode Switching     */}
+      {/* 2. DESKTOP COCKPIT HERO (>= 1024px)                      */}
       {/* ======================================================== */}
       <div className="hidden lg:block bg-gradient-to-br from-[#103B2D] via-[#174E38] to-[#123324] text-white rounded-3xl p-6 lg:p-7 shadow-xl border border-emerald-700/50 relative overflow-hidden">
         <div className="relative z-10 flex items-center justify-between gap-6">
-          {/* LEFT: Branding, Degree, Profile, Mode Toggle */}
+          {/* LEFT: Branding, Degree, Profile, CGPA */}
           <div className="flex items-center gap-5 min-w-0">
             <div className="w-16 h-16 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center p-2 shrink-0 shadow-lg backdrop-blur-md">
               <AppLogo size="lg" />
@@ -467,16 +484,16 @@ export const GpaCalculatorView: React.FC = () => {
               <div className="flex items-baseline gap-6">
                 <div>
                   <span className="text-xs uppercase font-bold tracking-wider text-emerald-200/80 block">
-                    {calculatorMode === 'actual' ? 'Actual CGPA' : 'Combined Projected CGPA'}
+                    {hasAnyProjectedGrades ? 'Combined Projected CGPA' : 'Actual CGPA'}
                   </span>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="text-4xl lg:text-5xl font-black font-sans tracking-tight text-white font-tabular">
-                      {calculatorMode === 'actual'
-                        ? hasAnyConfirmedGrades
-                          ? proj.actualCgpa.toFixed(2)
+                      {hasAnyProjectedGrades
+                        ? proj.combinedTotalCredits > 0
+                          ? proj.combinedProjectedCgpa.toFixed(2)
                           : '—'
-                        : proj.combinedTotalCredits > 0
-                        ? proj.combinedProjectedCgpa.toFixed(2)
+                        : hasAnyConfirmedGrades
+                        ? proj.actualCgpa.toFixed(2)
                         : '—'}
                     </span>
                     <span className="text-lg font-bold text-emerald-300/80">/ 4.00</span>
@@ -486,144 +503,98 @@ export const GpaCalculatorView: React.FC = () => {
                 {/* Scope Comparison */}
                 <div className="border-l border-white/15 pl-5 space-y-0.5">
                   <div className="text-xs text-emerald-200 font-medium">
-                    {calculatorMode === 'actual'
-                      ? `${proj.actualGpaCredits} Credits Confirmed`
-                      : `After Sem {proj.currentSemester} (${proj.combinedTotalCredits} Cr)`}
+                    {hasAnyProjectedGrades
+                      ? `After Sem ${proj.currentSemester} (${proj.combinedTotalCredits} Cr)`
+                      : `${proj.actualGpaCredits} Credits Confirmed`}
                   </div>
                   <div className="text-xs text-emerald-300/90 font-bold">
-                    {calculatorMode === 'actual'
-                      ? standingInfo.title
-                      : proj.deltaCombined >= 0
-                      ? `+${proj.deltaCombined.toFixed(2)} vs confirmed`
-                      : `${proj.deltaCombined.toFixed(2)} vs confirmed`}
+                    {hasAnyProjectedGrades
+                      ? `Actual: ${hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'} (${proj.deltaCombined >= 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})`
+                      : standingInfo.title}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: Active Semester SGPA & Mode Switcher */}
+          {/* RIGHT: Active Semester SGPA & Tools */}
           <div className="flex items-center gap-6 shrink-0 border-l border-white/15 pl-6">
             {/* Active Semester Metric */}
             <div className="text-right space-y-0.5">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-200/80 block">
-                Sem {activeTabKey} {calculatorMode === 'actual' ? 'Actual SGPA' : 'Projected SGPA'}
+                Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected SGPA' : 'Actual SGPA'}
               </span>
               <div className="font-sans text-3xl font-black text-white font-tabular">
-                {calculatorMode === 'actual'
-                  ? semStats && semStats.realCreditsAttempted > 0
-                    ? semStats.realSgpa.toFixed(2)
-                    : '—'
-                  : semProjection && semProjection.predictedGpaCredits > 0
+                {semProjection && semProjection.predictedGpaCredits > 0
                   ? semProjection.projectedSgpa.toFixed(2)
+                  : semStats && semStats.realCreditsAttempted > 0
+                  ? semStats.realSgpa.toFixed(2)
                   : '—'}
               </div>
               <span className="text-xs text-emerald-200/80 font-medium block">
-                {calculatorMode === 'actual'
-                  ? `${semStats?.realCreditsAttempted || 0} Credits finalized`
-                  : `${semProjection?.predictedGpaCredits || 0} Credits projected`}
+                {semProjection && semProjection.predictedGpaCredits > 0
+                  ? `${semProjection.predictedGpaCredits} Credits projected`
+                  : `${semStats?.realCreditsAttempted || 0} Credits finalized`}
               </span>
             </div>
 
-            {/* Mode Switcher on Desktop */}
+            {/* Quick Actions */}
             <div className="flex flex-col gap-2">
-              <div className="flex items-center p-1 bg-black/20 border border-white/20 rounded-xl backdrop-blur-xs">
-                <button
-                  type="button"
-                  onClick={() => setCalculatorMode('actual')}
-                  className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all ${
-                    calculatorMode === 'actual'
-                      ? 'bg-white text-[#103B2D] shadow-sm'
-                      : 'text-emerald-100 hover:text-white'
-                  }`}
-                >
-                  Actual grades
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCalculatorMode('projection')}
-                  className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                    calculatorMode === 'projection'
-                      ? 'bg-white text-[#103B2D] shadow-sm'
-                      : 'text-emerald-100 hover:text-white'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Projection</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('transcript')}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 border border-white/15 transition"
-                >
-                  <Printer className="w-3 h-3" />
-                  <span>Transcript</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('simulator')}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 border border-white/15 transition"
-                >
-                  <Sliders className="w-3 h-3" />
-                  <span>Forecast</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('transcript')}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition shadow-sm"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Transcript</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('simulator')}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1.5 border border-white/15 transition shadow-sm"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Forecast</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* ======================================================== */}
-      {/* 3. PENDING RESULTS SHORTCUT SECTION                      */}
-      {/* Direct inline resolver for earlier semester grades       */}
+      {/* 3. SEMESTER NAVIGATION & FAST ACTIONS                    */}
       {/* ======================================================== */}
-      <PendingResultsShortcut
-        mode={calculatorMode}
-        onNavigateSemester={(sem) => {
-          setActiveTabKey(sem);
-          setSelectedSemesterForCalculator(sem);
-        }}
-        activeSemester={activeTabKey}
-      />
-
-      {/* ======================================================== */}
-      {/* 4. SEMESTER NAVIGATION (Mobile Dropdown & Desktop Pills) */}
-      {/* ======================================================== */}
-      <div>
-        {/* Mobile Full-width Semester Select */}
+      <div className="space-y-3">
+        {/* Mobile Semester Dropdown */}
         <div className="block lg:hidden bg-white border border-[#DCDDD7] rounded-2xl p-3 shadow-subtle space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#626962]">
-            Select Semester:
-          </label>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#626962] uppercase tracking-wider">
+              Select Semester
+            </span>
+            <span className="text-xs font-semibold text-[#176B45]">
+              {semCourses.length} courses
+            </span>
+          </div>
+
           <div className="relative">
             <select
-              aria-label="Select Semester"
               value={activeTabKey}
               onChange={(e) => {
-                const val = e.target.value as SemesterKey | 'ORIENTATION';
-                setActiveTabKey(val);
-                if (val !== 'ORIENTATION') {
-                  setSelectedSemesterForCalculator(val);
+                const sk = e.target.value as SemesterKey | 'ORIENTATION';
+                setActiveTabKey(sk);
+                if (sk !== 'ORIENTATION') {
+                  setSelectedSemesterForCalculator(sk);
                 }
               }}
               className="w-full appearance-none bg-[#F8F8F4] hover:bg-neutral-100 border border-[#DCDDD7] rounded-xl px-3.5 py-2.5 pr-10 text-sm font-bold text-[#242824] min-h-[44px] cursor-pointer focus:outline-none focus:border-[#176B45]"
             >
               {SEMESTERS.map((sem) => {
-                let badge = '';
-                if (sem.key !== 'ORIENTATION') {
-                  const summary = proj.semesterSummaries[sem.key];
-                  if (summary && summary.pendingResultsCount > 0) {
-                    badge = ` • (${summary.pendingResultsCount} pending)`;
-                  } else if (summary && summary.confirmedGpaCredits > 0) {
-                    badge = ` — SGPA ${summary.actualSgpa.toFixed(2)}`;
-                  }
-                }
+                const status = getSemesterStatusInfo(sem.key);
+                const summary = sem.key !== 'ORIENTATION' ? proj.semesterSummaries[sem.key] : null;
+                const sgpaText = summary && summary.confirmedGpaCredits > 0 ? ` [SGPA ${summary.actualSgpa.toFixed(2)}]` : '';
                 return (
                   <option key={sem.key} value={sem.key}>
-                    {sem.label} {badge}
+                    {sem.label} — {status.text}{sgpaText}
                   </option>
                 );
               })}
@@ -636,10 +607,15 @@ export const GpaCalculatorView: React.FC = () => {
             <div className="flex items-center gap-2 pt-1">
               <select
                 onChange={(e) => {
-                  if (e.target.value === 'clear') {
+                  const val = e.target.value;
+                  if (val === 'clear') {
                     clearSemesterGrades(activeTabKey as SemesterKey);
-                  } else if (e.target.value) {
-                    bulkSetSemesterGrades(activeTabKey as SemesterKey, e.target.value as Grade);
+                  } else if (val === 'mark_proj') {
+                    markUnresolvedAsProjected(activeTabKey as SemesterKey);
+                  } else if (val === 'clear_proj') {
+                    clearSemesterProjections(activeTabKey as SemesterKey);
+                  } else if (val) {
+                    bulkSetSemesterGrades(activeTabKey as SemesterKey, val as Grade);
                   }
                   e.target.value = '';
                   triggerSaveNotification();
@@ -653,7 +629,9 @@ export const GpaCalculatorView: React.FC = () => {
                 <option value="B+">All B+ (3.3)</option>
                 <option value="B">All B (3.0)</option>
                 <option value="C">All C (2.0)</option>
-                <option value="clear">Clear Grades</option>
+                <option value="mark_proj">Mark unresolved as projected</option>
+                <option value="clear_proj">Clear projections</option>
+                <option value="clear">Clear all grades</option>
               </select>
 
               <button
@@ -673,8 +651,8 @@ export const GpaCalculatorView: React.FC = () => {
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none w-auto py-0.5">
             {SEMESTERS.map((sem) => {
               const isActive = activeTabKey === sem.key;
+              const status = getSemesterStatusInfo(sem.key);
               const summary = sem.key !== 'ORIENTATION' ? proj.semesterSummaries[sem.key] : null;
-              const hasPending = summary && summary.pendingResultsCount > 0;
               const sgpa = summary && summary.confirmedGpaCredits > 0 ? summary.actualSgpa.toFixed(2) : '';
 
               return (
@@ -687,19 +665,23 @@ export const GpaCalculatorView: React.FC = () => {
                       setSelectedSemesterForCalculator(sem.key);
                     }
                   }}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-bold transition flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                  className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap ${
                     isActive
                       ? 'bg-[#103B2D] text-white shadow-md'
                       : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                   }`}
                 >
                   <span>{sem.label}</span>
-                  {hasPending && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400" title={`${summary.pendingResultsCount} pending`} />
-                  )}
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      isActive ? 'bg-white/20 text-white' : status.badgeClass
+                    }`}
+                  >
+                    {status.text}
+                  </span>
                   {sgpa && (
                     <span
-                      className={`text-[11px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                      className={`text-[11px] px-1.5 py-0.5 rounded font-sans font-tabular font-bold ${
                         isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
@@ -711,21 +693,26 @@ export const GpaCalculatorView: React.FC = () => {
             })}
           </div>
 
-          {/* Desktop Fast Fill Dropdown */}
+          {/* Desktop Fast Actions Dropdown */}
           {!isOrientation && (
             <select
               onChange={(e) => {
-                if (e.target.value === 'clear') {
+                const val = e.target.value;
+                if (val === 'clear') {
                   clearSemesterGrades(activeTabKey as SemesterKey);
-                } else if (e.target.value) {
-                  bulkSetSemesterGrades(activeTabKey as SemesterKey, e.target.value as Grade);
+                } else if (val === 'mark_proj') {
+                  markUnresolvedAsProjected(activeTabKey as SemesterKey);
+                } else if (val === 'clear_proj') {
+                  clearSemesterProjections(activeTabKey as SemesterKey);
+                } else if (val) {
+                  bulkSetSemesterGrades(activeTabKey as SemesterKey, val as Grade);
                 }
                 e.target.value = '';
                 triggerSaveNotification();
               }}
               defaultValue=""
-              className="text-sm bg-neutral-50 hover:bg-neutral-100 border border-[#DCDDD7] rounded-xl px-3 py-2 text-neutral-800 font-semibold cursor-pointer shrink-0 focus:outline-none focus:border-[#176B45] transition"
-              title="Batch set grades for this semester"
+              className="text-xs sm:text-sm bg-neutral-50 hover:bg-neutral-100 border border-[#DCDDD7] rounded-xl px-3 py-2 text-neutral-800 font-semibold cursor-pointer shrink-0 focus:outline-none focus:border-[#176B45] transition"
+              title="Batch actions for this semester"
             >
               <option value="" disabled>Fast Fill...</option>
               <option value="A">All A (4.0)</option>
@@ -733,7 +720,9 @@ export const GpaCalculatorView: React.FC = () => {
               <option value="B+">All B+ (3.3)</option>
               <option value="B">All B (3.0)</option>
               <option value="C">All C (2.0)</option>
-              <option value="clear">Clear Grades</option>
+              <option value="mark_proj">Mark unresolved as projected</option>
+              <option value="clear_proj">Clear projections</option>
+              <option value="clear">Clear all grades</option>
             </select>
           )}
         </div>
@@ -844,6 +833,15 @@ export const GpaCalculatorView: React.FC = () => {
             </button>
             <button
               type="button"
+              onClick={() => setFilterType('projected')}
+              className={`px-3 py-1.5 rounded-lg transition ${
+                filterType === 'projected' ? 'bg-[#103B2D] text-white font-bold' : 'hover:text-neutral-900'
+              }`}
+            >
+              Projected
+            </button>
+            <button
+              type="button"
               onClick={() => setFilterType('repeat')}
               className={`px-3 py-1.5 rounded-lg transition ${
                 filterType === 'repeat' ? 'bg-[#103B2D] text-white font-bold' : 'hover:text-neutral-900'
@@ -913,8 +911,15 @@ export const GpaCalculatorView: React.FC = () => {
         </form>
       )}
 
+      {/* Helper Guidance Banner */}
+      <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between text-xs text-emerald-900 font-medium">
+        <span>
+          Tick <strong className="font-bold text-[#176B45]">Proj</strong> for expected grades that have not been officially released. Untick <strong className="font-bold text-[#176B45]">Proj</strong> when you receive and enter your official result.
+        </span>
+      </div>
+
       {/* ======================================================== */}
-      {/* 5. COURSE GRADE ENTRY (Desktop & Mobile Adaptive)        */}
+      {/* 4. COURSE GRADE ENTRY (Desktop & Mobile Adaptive)        */}
       {/* ======================================================== */}
       <div className="space-y-3">
         {filteredCourses.length === 0 ? (
@@ -932,18 +937,14 @@ export const GpaCalculatorView: React.FC = () => {
                 const deptStyle = getDepartmentStyle(course.dept);
                 const isConfirmed = isCourseGradeConfirmed(course);
 
-                const projKey = `${activeTabKey}:${course.code}`;
-                const projData = profile.courseProjections?.[projKey];
-                const expectedGrade = projData?.predictedGrade || projData?.targetGrade || (course.isExpected ? course.grade : undefined);
-
                 return (
                   <div
                     key={course.code}
                     className={`p-4 rounded-2xl border transition-all bg-white shadow-subtle ${
-                      isConfirmed
-                        ? 'border-[#176B45]/40 ring-1 ring-[#176B45]/20'
-                        : expectedGrade && calculatorMode === 'projection'
+                      course.isExpected
                         ? 'border-emerald-300 ring-1 ring-emerald-300/40 bg-emerald-50/15'
+                        : isConfirmed
+                        ? 'border-[#176B45]/40'
                         : 'border-[#DCDDD7]'
                     }`}
                   >
@@ -1036,106 +1037,90 @@ export const GpaCalculatorView: React.FC = () => {
                       {course.name}
                     </div>
 
-                    {/* Bottom: Grade Selector & Repeat Controls */}
+                    {/* Bottom: Grade Selector & Repeat/Projected Controls */}
                     <div className="pt-2 border-t border-[#EDF1EC] space-y-2.5">
-                      {/* Projection Mode with Confirmed Grade: Display Locked Official Grade */}
-                      {calculatorMode === 'projection' && isConfirmed ? (
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#EAF2ED] border border-[#176B45]/40 text-[#103B2D]">
-                          <div className="flex items-center gap-2">
-                            <Lock className="w-3.5 h-3.5 text-[#176B45]" />
-                            <span className="text-xs font-bold">
-                              Official Grade: {course.grade} ({GRADING_SCALE[course.grade || '']?.gpv.toFixed(1)} GPV)
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-white text-[#176B45] border border-[#176B45]/20">
-                            Locked
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2.5">
-                          {/* Native Grade Dropdown with >= 44px Touch Target */}
-                          <div className="relative flex-1">
-                            <select
-                              value={
-                                calculatorMode === 'actual'
-                                  ? course.grade || ''
-                                  : expectedGrade || ''
+                      <div className="flex items-center gap-2">
+                        {/* Native Grade Dropdown with >= 44px Touch Target */}
+                        <div className="relative flex-1">
+                          <select
+                            value={course.grade || ''}
+                            onChange={(e) => {
+                              const newGrade = e.target.value as Grade;
+                              if (isOrientation) {
+                                setOrientationGrade(course.code, newGrade);
+                              } else {
+                                setCourseGrade(activeTabKey as SemesterKey, course.code, newGrade);
                               }
-                              onChange={(e) => {
-                                const newGrade = e.target.value as Grade;
-                                if (calculatorMode === 'actual') {
-                                  if (isOrientation) {
-                                    setOrientationGrade(course.code, newGrade);
-                                  } else {
-                                    setCourseGrade(activeTabKey as SemesterKey, course.code, newGrade);
-                                  }
-                                } else {
-                                  setCourseExpectedGrade(activeTabKey as SemesterKey, course.code, newGrade);
-                                }
-                                triggerSaveNotification();
-                              }}
-                              aria-label={`Grade for ${course.code}`}
-                              className={`w-full appearance-none rounded-xl px-3 py-2.5 pr-8 text-sm font-bold min-h-[44px] cursor-pointer border transition focus:outline-none ${
-                                (calculatorMode === 'actual' && isConfirmed) ||
-                                (calculatorMode === 'projection' && expectedGrade)
-                                  ? 'bg-[#EAF2ED] text-[#103B2D] border-[#176B45]'
-                                  : 'bg-white text-neutral-600 border-[#DCDDD7]'
-                              }`}
-                            >
-                              <option value="">
-                                {calculatorMode === 'actual'
-                                  ? '[ Enter official grade ▼ ]'
-                                  : '[ Set expected grade ▼ ]'}
+                              triggerSaveNotification();
+                            }}
+                            aria-label={`Grade for ${course.code}`}
+                            className={`w-full appearance-none rounded-xl px-3.5 py-2.5 pr-8 text-sm font-bold min-h-[44px] cursor-pointer border transition focus:outline-none ${
+                              course.grade
+                                ? course.isExpected
+                                  ? 'bg-emerald-50/70 text-[#176B45] border-emerald-400 font-extrabold'
+                                  : 'bg-[#EAF2ED] text-[#103B2D] border-[#176B45] font-extrabold'
+                                : 'bg-white text-neutral-600 border-[#DCDDD7]'
+                            }`}
+                          >
+                            <option value="">[ Select grade ▼ ]</option>
+                            {GRADE_OPTIONS.map((g) => (
+                              <option key={g} value={g}>
+                                {g} ({GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)
                               </option>
-                              {GRADE_OPTIONS.map((g) => (
-                                <option key={g} value={g}>
-                                  {g} ({GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="w-4 h-4 absolute right-3 top-3.5 text-neutral-500 pointer-events-none" />
-                          </div>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 absolute right-3 top-3.5 text-neutral-500 pointer-events-none" />
+                        </div>
+                      </div>
 
-                          {/* Clear button in projection mode */}
-                          {calculatorMode === 'projection' && expectedGrade && !isConfirmed && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCourseExpectedGrade(activeTabKey as SemesterKey, course.code, '' as Grade);
+                      {/* Two Independent Checkboxes: Repeat and Projected (>= 44px Touch Targets) */}
+                      {!course.isNgpa && (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <label
+                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer border min-h-[44px] transition select-none ${
+                              course.isRepeat
+                                ? 'bg-amber-50 text-amber-900 border-amber-300 font-extrabold'
+                                : 'bg-white text-neutral-600 border-[#DCDDD7]'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!course.isRepeat}
+                              onChange={(e) => {
+                                setCourseRepeat(
+                                  activeTabKey as SemesterKey,
+                                  course.code,
+                                  e.target.checked
+                                );
                                 triggerSaveNotification();
                               }}
-                              className="w-10 h-10 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-600 flex items-center justify-center font-bold text-sm shrink-0"
-                              title="Clear expected grade"
-                            >
-                              ×
-                            </button>
-                          )}
+                              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                            />
+                            <span>Repeat</span>
+                          </label>
 
-                          {/* Repeat Checkbox with >= 44px Touch Target */}
-                          {!course.isNgpa && (
-                            <label
-                              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer border min-h-[44px] shrink-0 transition select-none ${
-                                course.isRepeat
-                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
-                                  : 'bg-white text-neutral-600 border-[#DCDDD7]'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={!!course.isRepeat}
-                                onChange={(e) => {
-                                  setCourseRepeat(
-                                    activeTabKey as SemesterKey,
-                                    course.code,
-                                    e.target.checked
-                                  );
-                                  triggerSaveNotification();
-                                }}
-                                className="w-4 h-4 rounded text-[#176B45] focus:ring-[#176B45]"
-                              />
-                              <span>Repeat</span>
-                            </label>
-                          )}
+                          <label
+                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer border min-h-[44px] transition select-none ${
+                              course.isExpected
+                                ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300 font-extrabold'
+                                : 'bg-white text-neutral-600 border-[#DCDDD7]'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!course.isExpected}
+                              onChange={(e) => {
+                                setCourseExpected(
+                                  activeTabKey as SemesterKey,
+                                  course.code,
+                                  e.target.checked
+                                );
+                                triggerSaveNotification();
+                              }}
+                              className="w-4 h-4 rounded text-[#176B45] focus:ring-[#176B45]"
+                            />
+                            <span>Projected</span>
+                          </label>
                         </div>
                       )}
 
@@ -1148,7 +1133,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 ? 'Medical excused: Cap lifted up to 4.0'
                                 : 'Capped at Grade C (2.0 GPV)'}
                             </span>
-                            <label className="flex items-center gap-1 text-[11px] font-bold cursor-pointer">
+                            <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={!!course.isExcused}
@@ -1182,15 +1167,11 @@ export const GpaCalculatorView: React.FC = () => {
                 const deptStyle = getDepartmentStyle(course.dept);
                 const isConfirmed = isCourseGradeConfirmed(course);
 
-                const projKey = `${activeTabKey}:${course.code}`;
-                const projData = profile.courseProjections?.[projKey];
-                const expectedGrade = projData?.predictedGrade || projData?.targetGrade || (course.isExpected ? course.grade : undefined);
-
                 return (
                   <div
                     key={course.code}
                     className={`p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 hover:bg-neutral-50/80 transition-colors ${
-                      course.grade === 'E' && isConfirmed ? 'bg-rose-50/40' : ''
+                      course.grade === 'E' && isConfirmed ? 'bg-rose-50/40' : course.isExpected ? 'bg-emerald-50/20' : ''
                     }`}
                   >
                     {/* Code, Title, Department & Stepper */}
@@ -1261,6 +1242,12 @@ export const GpaCalculatorView: React.FC = () => {
                             Elective
                           </span>
                         )}
+
+                        {course.isExpected && (
+                          <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            Projected
+                          </span>
+                        )}
                       </div>
 
                       <div className="text-sm font-semibold text-neutral-800 break-words" title={course.name}>
@@ -1268,86 +1255,47 @@ export const GpaCalculatorView: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Grade Chips or Locked Badge */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto py-1 max-w-full scrollbar-none">
-                      {calculatorMode === 'projection' && isConfirmed ? (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#EAF2ED] border border-[#176B45]/40 text-[#103B2D]">
-                          <Lock className="w-3.5 h-3.5 text-[#176B45]" />
-                          <span className="text-xs font-extrabold">
-                            Confirmed Official Grade: {course.grade} ({GRADING_SCALE[course.grade || '']?.gpv.toFixed(1)} GPV)
-                          </span>
-                          <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-white text-[#176B45] border border-[#176B45]/20">
-                            Locked
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 sm:gap-1.5">
-                          {GRADE_OPTIONS.map((g) => {
-                            const isBtnSelected =
-                              calculatorMode === 'actual'
-                                ? course.grade === g
-                                : expectedGrade === g;
-
-                            return (
-                              <button
-                                key={g}
-                                type="button"
-                                onClick={() => {
-                                  if (calculatorMode === 'actual') {
-                                    if (isOrientation) {
-                                      setOrientationGrade(course.code, isBtnSelected ? '' : g);
-                                    } else {
-                                      setCourseGrade(
-                                        activeTabKey as SemesterKey,
-                                        course.code,
-                                        isBtnSelected ? '' : g
-                                      );
-                                    }
-                                  } else {
-                                    setCourseExpectedGrade(
-                                      activeTabKey as SemesterKey,
-                                      course.code,
-                                      isBtnSelected ? '' : g
-                                    );
-                                  }
-                                  triggerSaveNotification();
-                                }}
-                                className={`h-9 w-9 sm:h-9.5 sm:w-9.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center shrink-0 border ${
-                                  getGradeStyle(isBtnSelected ? g : undefined)
-                                }`}
-                                title={`${g} (${GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)`}
-                              >
-                                {g}
-                              </button>
-                            );
-                          })}
-
-                          {calculatorMode === 'projection' && expectedGrade && !isConfirmed && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCourseExpectedGrade(activeTabKey as SemesterKey, course.code, '' as Grade);
-                                triggerSaveNotification();
-                              }}
-                              className="h-9 px-2 rounded-xl text-xs font-bold bg-neutral-100 hover:bg-neutral-200 text-neutral-600 transition shrink-0"
-                              title="Clear expected grade"
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                      )}
+                    {/* Grade Chips */}
+                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 max-w-full scrollbar-none">
+                      {GRADE_OPTIONS.map((g) => {
+                        const isBtnSelected = course.grade === g;
+                        return (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => {
+                              if (isOrientation) {
+                                setOrientationGrade(course.code, isBtnSelected ? '' : g);
+                              } else {
+                                setCourseGrade(
+                                  activeTabKey as SemesterKey,
+                                  course.code,
+                                  isBtnSelected ? '' : g
+                                );
+                              }
+                              triggerSaveNotification();
+                            }}
+                            className={`h-9 w-9 sm:h-9.5 sm:w-9.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center shrink-0 border ${
+                              getGradeStyle(isBtnSelected ? g : undefined, isBtnSelected && course.isExpected)
+                            }`}
+                            title={`${g} (${GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)${course.isExpected ? ' • Projected' : ''}`}
+                          >
+                            {g}
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {/* Right: Repeat Checks & Remove */}
-                    <div className="flex items-center justify-between xl:justify-end gap-3 text-sm shrink-0">
+                    {/* Right: Rep Checkbox, Proj Checkbox & Remove */}
+                    <div className="flex items-center justify-between xl:justify-end gap-2.5 text-sm shrink-0">
                       {!course.isNgpa && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
+                          {/* Rep Checkbox */}
                           <label
-                            className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer border transition ${
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1.5 select-none ${
                               course.isRepeat
                                 ? 'bg-amber-100 text-amber-900 border-amber-400'
-                                : 'bg-white hover:bg-neutral-100 text-neutral-500 border-neutral-300'
+                                : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
                             }`}
                             title="Repeat attempt (Grade C 2.0 cap applies unless medical excused)"
                           >
@@ -1362,9 +1310,9 @@ export const GpaCalculatorView: React.FC = () => {
                                 );
                                 triggerSaveNotification();
                               }}
-                              className="hidden"
+                              className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500"
                             />
-                            <span>{course.isRepeat ? 'Repeat ✓' : 'Rep?'}</span>
+                            <span>Rep</span>
                           </label>
 
                           {course.isRepeat && (
@@ -1389,9 +1337,34 @@ export const GpaCalculatorView: React.FC = () => {
                                 }}
                                 className="hidden"
                               />
-                              <span>{course.isExcused ? 'Med✓' : 'Med?'}</span>
+                              <span>{course.isExcused ? 'Excused ✓' : 'Medical?'}</span>
                             </label>
                           )}
+
+                          {/* Proj Checkbox */}
+                          <label
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1.5 select-none ${
+                              course.isExpected
+                                ? 'bg-emerald-100 text-emerald-900 border-emerald-400 ring-1 ring-emerald-400/40'
+                                : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
+                            }`}
+                            title="Projected / expected grade (excluded from confirmed GPA and transcripts)"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!course.isExpected}
+                              onChange={(e) => {
+                                setCourseExpected(
+                                  activeTabKey as SemesterKey,
+                                  course.code,
+                                  e.target.checked
+                                );
+                                triggerSaveNotification();
+                              }}
+                              className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
+                            />
+                            <span>Proj</span>
+                          </label>
                         </div>
                       )}
 
@@ -1402,9 +1375,9 @@ export const GpaCalculatorView: React.FC = () => {
                             removeCourseFromSemester(activeTabKey as SemesterKey, course.code);
                             triggerSaveNotification();
                           }}
-                          className="text-neutral-400 hover:text-rose-600 transition p-1 rounded"
-                          title="Remove elective course"
-                          aria-label="Remove elective course"
+                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                          title="Remove course"
+                          aria-label="Remove course"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1419,27 +1392,23 @@ export const GpaCalculatorView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* 6. EXPANDABLE PLANNING TOOLS (Section 21)                */}
-      {/* Target CGPA, Quick Assumptions, Scenarios, Leverage      */}
+      {/* 5. ADVANCED PLANNING & FORECAST TOOLS                    */}
+      {/* Target Planning, Assumptions, Scenarios & Course Impact  */}
       {/* ======================================================== */}
       <PlanningTools />
 
-      {/* ======================================================== */}
-      {/* CURRENT SEMESTER SWITCHER MODAL                          */}
-      {/* ======================================================== */}
+      {/* Modal: Change Current Academic Semester */}
       {showCurrentSemSelector && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#DCDDD7] shadow-xl space-y-4">
-            <div>
-              <h3 className="text-base font-extrabold text-[#242824]">
-                Current Academic Semester
-              </h3>
-              <p className="text-xs text-[#626962] font-medium mt-1">
-                Select the semester you are currently studying. Earlier semesters are treated as completed, and upcoming examinations in this semester are projected.
-              </p>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-neutral-200">
+            <h3 className="text-base font-bold text-neutral-900">
+              Set Current Academic Semester
+            </h3>
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Your current semester indicates your active term of study. Earlier semesters are completed, while upcoming terms are planned.
+            </p>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               {ALL_SEMESTER_KEYS.map((sem) => (
                 <button
                   key={sem}
@@ -1447,14 +1416,15 @@ export const GpaCalculatorView: React.FC = () => {
                   onClick={() => {
                     setCurrentSemester(sem);
                     setShowCurrentSemSelector(false);
+                    triggerSaveNotification();
                   }}
-                  className={`p-3 rounded-xl text-center text-xs font-extrabold border transition ${
+                  className={`p-3 rounded-xl text-center text-sm font-bold border transition ${
                     profile.currentSemester === sem
                       ? 'bg-[#103B2D] text-white border-[#103B2D] shadow-sm'
-                      : 'bg-[#F8F8F4] text-[#242824] border-[#DCDDD7] hover:bg-neutral-100'
+                      : 'bg-neutral-50 hover:bg-neutral-100 text-neutral-800 border-neutral-200'
                   }`}
                 >
-                  Semester {sem}
+                  Sem {sem}
                 </button>
               ))}
             </div>
@@ -1462,7 +1432,7 @@ export const GpaCalculatorView: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowCurrentSemSelector(false)}
-              className="w-full py-2.5 rounded-xl border border-[#DCDDD7] text-xs font-bold text-neutral-600 hover:bg-neutral-100 transition"
+              className="w-full py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs transition"
             >
               Cancel
             </button>
@@ -1472,3 +1442,5 @@ export const GpaCalculatorView: React.FC = () => {
     </div>
   );
 };
+
+export default GpaCalculatorView;

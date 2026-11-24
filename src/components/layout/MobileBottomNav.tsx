@@ -46,12 +46,6 @@ export const MobileBottomNav: React.FC = () => {
 
   const planItems = [
     {
-      id: 'projection' as NavView,
-      label: 'Academic Projection',
-      description: 'Predict multi-semester grades & exams',
-      icon: TrendingUp
-    },
-    {
       id: 'planner' as NavView,
       label: 'Semester Planner',
       description: 'Map future course selections',

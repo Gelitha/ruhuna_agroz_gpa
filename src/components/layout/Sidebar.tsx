@@ -45,7 +45,6 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'ACADEMIC',
     items: [
-      { id: 'projection', label: 'Academic Projection', icon: TrendingUp },
       { id: 'planner', label: 'Semester Planner', icon: CalendarDays },
       { id: 'progress', label: 'Credit Progress', icon: Award },
       { id: 'requirements', label: 'Degree Requirements', icon: BookCheck },

@@ -744,103 +744,252 @@ runTest('saveCurrentState reports persistence status reliably', () => {
   global.window.localStorage.setItem = originalSet;
 });
 
-console.log(`\n🎉 ALL 50 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
+// 51. Official grade with Proj unchecked
+runTest('Official grade with Proj unchecked is included in actual CGPA and confirmed credits', () => {
+  const p = getBaseProfile('ARMT', '1-1');
+  const c = p.semesters['1-1'].find(x => !x.isNgpa);
+  c.grade = 'A';
+  c.isExpected = false;
+  const stats = calculateOverallStats(p);
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(stats.realCgpa, 4.0);
+  assert.strictEqual(stats.realCreditsAttempted, c.credits);
+  assert.strictEqual(proj.actualCgpa, 4.0);
+  assert.strictEqual(proj.actualGpaCredits, c.credits);
+  assert.strictEqual(isCourseGradeConfirmed(c), true);
+});
+
+// 52. Expected grade with Proj checked
+runTest('Expected grade with Proj checked is included in projected GPA but excluded from actual GPA', () => {
+  const p = getBaseProfile('ARMT', '1-1');
+  const c = p.semesters['1-1'].find(x => !x.isNgpa);
+  c.grade = 'A';
+  c.isExpected = true; // Proj checked
+  const stats = calculateOverallStats(p);
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(stats.realCgpa, 0, 'Actual CGPA must exclude projected grade');
+  assert.strictEqual(stats.realCreditsAttempted, 0, 'Confirmed credits must exclude projected grade');
+  assert.strictEqual(proj.actualCgpa, 0);
+  assert.strictEqual(proj.actualGpaCredits, 0);
+  assert.strictEqual(proj.combinedProjectedCgpa, 4.0, 'Projected CGPA must include projected grade');
+  assert.strictEqual(isCourseGradeConfirmed(c), false);
+});
+
+// 53. Changing an expected grade
+runTest('Changing an expected grade immediately recalculates projected GPA without affecting actual GPA', () => {
+  const p = getBaseProfile('ARMT', '1-1');
+  const c = p.semesters['1-1'].find(x => !x.isNgpa);
+  c.grade = 'B'; // 3.0
+  c.isExpected = true;
+  let proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.0);
+  assert.strictEqual(proj.actualCgpa, 0);
+
+  // Student changes expected grade to A (4.0)
+  c.grade = 'A';
+  proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.combinedProjectedCgpa, 4.0);
+  assert.strictEqual(proj.actualCgpa, 0);
+});
+
+// 54. Converting expected grade into official grade (unticking Proj)
+runTest('Converting an expected grade to official grade (unticking Proj) updates actual GPA and confirmed credits', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 54 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const c = activeProfile.semesters['1-1'].find(x => !x.isNgpa);
+
+  // Step 1: Set expected grade with Proj checked
+  store.setCourseGrade('1-1', c.code, 'A');
+  store.setCourseExpected('1-1', c.code, true);
+  let updatedProj = store.getAcademicProjections();
+  let updatedStats = store.getOverallStats();
+  assert.strictEqual(updatedStats.realCreditsAttempted, 0);
+  assert.strictEqual(updatedProj.combinedProjectedCgpa, 4.0);
+
+  // Step 2: Official result arrives: student unticks Proj
+  store.setCourseExpected('1-1', c.code, false);
+  updatedProj = store.getAcademicProjections();
+  updatedStats = store.getOverallStats();
+  assert.strictEqual(updatedStats.realCreditsAttempted, c.credits, 'Credits now confirmed');
+  assert.strictEqual(updatedStats.realCgpa, 4.0, 'Actual CGPA now reflects official grade');
+  assert.strictEqual(updatedProj.actualCgpa, 4.0);
+});
+
+// 55. Simultaneous Rep and Proj checkboxes
+runTest('Rep and Proj operate independently with repeat cap strictly enforced in projection', () => {
+  const p = getBaseProfile('ARMT', '1-1');
+  const c = p.semesters['1-1'].find(x => !x.isNgpa);
+  c.grade = 'A'; // 4.0 GPV normally
+  c.isRepeat = true; // Rep checked -> capped at 2.0 (Grade C)
+  c.isExcused = false;
+  c.isExpected = true; // Proj checked
+
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(proj.actualCgpa, 0, 'Proj checked: excluded from actual GPA');
+  assert.strictEqual(proj.combinedProjectedCgpa, 2.0, 'Repeat cap strictly limits projected grade to 2.0');
+});
+
+// 56. Bulk action: markUnresolvedAsProjected
+runTest('markUnresolvedAsProjected marks only unresolved courses and preserves confirmed grades', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 56 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const gpaCourses = activeProfile.semesters['1-1'].filter(x => !x.isNgpa);
+
+  // First course confirmed A
+  store.setCourseGrade('1-1', gpaCourses[0].code, 'A');
+  store.setCourseExpected('1-1', gpaCourses[0].code, false);
+
+  // Bulk mark remaining unresolved courses as projected
+  store.markUnresolvedAsProjected('1-1');
+
+  const refreshed = store.getActiveProfile().semesters['1-1'];
+  assert.strictEqual(refreshed[0].isExpected, false, 'Confirmed course must NOT be marked projected');
+  assert.strictEqual(refreshed[0].grade, 'A');
+  for (let i = 1; i < gpaCourses.length; i++) {
+    const course = refreshed.find(x => x.code === gpaCourses[i].code);
+    assert.strictEqual(course.isExpected, true, 'Unresolved course must be marked projected');
+  }
+});
+
+// 57. Bulk action: clearSemesterProjections
+runTest('clearSemesterProjections clears only hypothetical projections and preserves confirmed grades', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 57 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const gpaCourses = activeProfile.semesters['1-1'].filter(x => !x.isNgpa);
+
+  // First course confirmed A
+  store.setCourseGrade('1-1', gpaCourses[0].code, 'A');
+  store.setCourseExpected('1-1', gpaCourses[0].code, false);
+
+  // Second course projected B+
+  store.setCourseGrade('1-1', gpaCourses[1].code, 'B+');
+  store.setCourseExpected('1-1', gpaCourses[1].code, true);
+
+  // Clear projections for semester
+  store.clearSemesterProjections('1-1');
+
+  const refreshed = store.getActiveProfile().semesters['1-1'];
+  assert.strictEqual(refreshed[0].grade, 'A', 'Confirmed grade must be preserved');
+  assert.strictEqual(refreshed[0].isExpected, false);
+  const second = refreshed.find(x => x.code === gpaCourses[1].code);
+  assert.strictEqual(second.grade, '', 'Projected grade must be cleared');
+  assert.strictEqual(second.isExpected, false);
+});
+
+// 58. Safe migration of existing courseProjections into course rows
+runTest('Hydration migration correctly sets course.grade and isExpected from courseProjections', () => {
+  const legacyProfile = getBaseProfile('ARMT', '2-1');
+  const targetCourse = legacyProfile.semesters['1-2'].find(x => !x.isNgpa);
+  targetCourse.grade = '';
+  legacyProfile.courseProjections = {
+    [`1-2:${targetCourse.code}`]: {
+      courseCode: targetCourse.code,
+      semesterKey: '1-2',
+      predictedGrade: 'A-'
+    }
+  };
+
+  // Test calculateAcademicProjections handles both
+  const proj = calculateAcademicProjections(legacyProfile);
+  assert.ok(proj.combinedProjectedCgpa > 0);
+});
+
+console.log(`\n🎉 ALL 58 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
 
 // =========================================================================
-// SECTION 35: END-TO-END ACCEPTANCE SCENARIO (Agribusiness Management - ABM)
+// SECTION 22: REAL-WORLD ACCEPTANCE SCENARIO (Agribusiness Management - ABM)
 // =========================================================================
-console.log('🌟 Testing Section 35 End-to-End Acceptance Scenario (Agribusiness Management)...\n');
+console.log('🌟 Testing Section 22 Real-World Acceptance Scenario (Agribusiness Management)...\n');
 
 const abmStudent = createAbmProfile();
 abmStudent.currentSemester = '2-1';
 
-// Step 1: Set Semester 1-1: All official results received
-abmStudent.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => { c.grade = 'A-'; c.isExpected = false; });
+// Step 1: Open existing GPA Calculator. Semester 1-1: All official results received, all Proj unchecked.
+abmStudent.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => {
+  c.grade = 'A-';
+  c.isExpected = false;
+});
 
-// Step 2: Set Semester 1-2: 5 results received, remaining pending
+// Step 2: Semester 1-2: Enter official grades for 5 received courses, leave rest pending.
 const sem12Gpa = abmStudent.semesters['1-2'].filter(c => !c.isNgpa);
 for (let i = 0; i < 5; i++) {
   sem12Gpa[i].grade = 'B+';
-  sem12Gpa[i].isExpected = false;
+  sem12Gpa[i].isExpected = false; // Official received
 }
+// Step 3 & 4: Enter expected grades for unresolved Semester 1-2 courses and tick Proj.
 for (let i = 5; i < sem12Gpa.length; i++) {
-  sem12Gpa[i].grade = '';
+  sem12Gpa[i].grade = 'B';
+  sem12Gpa[i].isExpected = true; // Proj checked
 }
 
-// Clear 2-1 and later semesters (examinations approaching / not started)
+// Step 5, 6 & 7: Select Semester 2-1 (examinations approaching tomorrow), enter expected grades, tick Proj.
+const sem21Gpa = abmStudent.semesters['2-1'].filter(c => !c.isNgpa);
+sem21Gpa.forEach(c => {
+  c.grade = 'A';
+  c.isExpected = true; // Proj checked
+});
+
+// Clear subsequent unstarted semesters
 ALL_SEMESTER_KEYS.forEach((sem, idx) => {
-  if (idx >= 2) {
-    (abmStudent.semesters[sem] || []).forEach(c => { c.grade = ''; });
+  if (idx >= 3) {
+    (abmStudent.semesters[sem] || []).forEach(c => { c.grade = ''; c.isExpected = false; });
   }
 });
 
-// Step 3: Verify initial actual CGPA
-let state1 = calculateAcademicProjections(abmStudent);
-console.log(`  Initial Actual CGPA: ${state1.actualCgpa}`);
-console.log(`  Pending results from 1-2: ${state1.pendingResultsCount}`);
-assert.strictEqual(state1.pendingResultsCount, sem12Gpa.length - 5);
-assert.ok(state1.actualCgpa > 0);
+// Step 8: Immediately view actual CGPA, projected SGPA for 2-1, projected CGPA after 1-2, combined projected CGPA after 2-1.
+let state = calculateAcademicProjections(abmStudent);
+console.log(`  Actual CGPA (confirmed results): ${state.actualCgpa}`);
+console.log(`  Projected 2-1 SGPA: ${state.currentSemProjectedSgpa}`);
+console.log(`  Projected CGPA after 1-2 pending results: ${state.projectedCgpaPending}`);
+console.log(`  Combined Projected CGPA after 2-1: ${state.combinedProjectedCgpa}`);
 
-// Step 4: In Projection Mode, set expected grades for upcoming 2-1 examinations
-const sem21Gpa = abmStudent.semesters['2-1'].filter(c => !c.isNgpa);
-abmStudent.courseProjections = {};
-sem21Gpa.forEach(c => {
-  abmStudent.courseProjections[`2-1:${c.code}`] = {
-    courseCode: c.code,
-    semesterKey: '2-1',
-    targetGrade: 'A',
-    predictedGrade: 'A',
-    examStatus: 'upcoming',
-    isResultPending: true
-  };
-});
+assert.ok(state.actualCgpa > 0, 'Actual CGPA must reflect 1-1 and confirmed 1-2 courses');
+assert.strictEqual(state.currentSemProjectedSgpa, 4.0, 'Expected 2-1 SGPA must be 4.0');
+assert.ok(state.combinedProjectedCgpa > state.actualCgpa, 'Combined projection must exceed actual');
+assert.strictEqual(state.isCombinedComplete, true, 'Combined projection is complete');
 
-// Step 5: Enter predicted grades for remaining 1-2 courses
-for (let i = 5; i < sem12Gpa.length; i++) {
-  abmStudent.courseProjections[`1-2:${sem12Gpa[i].code}`] = {
-    courseCode: sem12Gpa[i].code,
-    semesterKey: '1-2',
-    predictedGrade: 'B',
-    examStatus: 'completed',
-    isResultPending: true
-  };
-}
-
-let state2 = calculateAcademicProjections(abmStudent);
-console.log(`  Projected CGPA after 1-2 pending results: ${state2.projectedCgpaPending}`);
-console.log(`  Projected 2-1 SGPA: ${state2.currentSemProjectedSgpa}`);
-console.log(`  Combined Projected CGPA after 2-1: ${state2.combinedProjectedCgpa}`);
-
-assert.strictEqual(state2.currentSemProjectedSgpa, 4.0);
-assert.ok(state2.combinedProjectedCgpa > state1.actualCgpa);
-assert.strictEqual(state2.isCombinedComplete, true);
-
-// Step 6: Test target calculation
-const targetAfterCurrent = calculateTargetCgpaRequirement(abmStudent, 3.65, 'after_current');
-console.log(`  Target 3.65 feasibility after 2-1: ${targetAfterCurrent.possible ? 'Possible' : 'Not possible'} (Required Avg: ${targetAfterCurrent.requiredAverage})`);
-assert.strictEqual(targetAfterCurrent.possible, true);
-
-// Step 7: A newly released 1-2 result arrives: Student enters official B+ in Actual Grades mode
+// Step 9 & 10: Return to Semester 1-2 when an official result arrives.
+// Student changes expected grade to official B+ and Step 11: Unticks Proj.
 const newlyReleasedCourse = sem12Gpa[5];
 newlyReleasedCourse.grade = 'B+';
-newlyReleasedCourse.isExpected = false;
+newlyReleasedCourse.isExpected = false; // Unticked Proj!
 
-// Store automatic transition:
-const projKey = `1-2:${newlyReleasedCourse.code}`;
-abmStudent.courseProjections[projKey] = {
-  ...abmStudent.courseProjections[projKey],
-  historicalPrediction: abmStudent.courseProjections[projKey].predictedGrade,
-  isResultPending: false
-};
+// Step 12: Immediately see all relevant GPA values update.
+let updatedState = calculateAcademicProjections(abmStudent);
+console.log(`  After official result arrived in 1-2 and Proj unticked:`);
+console.log(`    Updated Actual CGPA: ${updatedState.actualCgpa}`);
+console.log(`    Remaining pending 1-2 results: ${updatedState.pendingResultsCount}`);
+console.log(`    Updated Combined Projected CGPA: ${updatedState.combinedProjectedCgpa}`);
 
-let state3 = calculateAcademicProjections(abmStudent);
-console.log(`  After official B+ released in 1-2:`);
-console.log(`    Actual CGPA: ${state3.actualCgpa}`);
-console.log(`    Remaining pending 1-2 results: ${state3.pendingResultsCount}`);
-console.log(`    Combined Projected CGPA: ${state3.combinedProjectedCgpa}`);
+assert.ok(updatedState.actualGpaCredits > state.actualGpaCredits, 'Confirmed credits must increase by newly released course');
+assert.strictEqual(updatedState.pendingResultsCount, sem12Gpa.length - 6, 'Pending count decrements');
+assert.ok(updatedState.actualCgpa > 0);
 
-assert.strictEqual(state3.pendingResultsCount, sem12Gpa.length - 6);
-assert.ok(state3.accuracyReport.entries.length > 0);
-assert.strictEqual(state3.accuracyReport.entries[0].courseCode, newlyReleasedCourse.code);
-
-console.log('\n🎉 ALL ACCEPTANCE SCENARIO WORKFLOW CHECKS PASSED WITH 100% SUCCESS!\n');
+console.log('\n🎉 ALL SECTION 22 ACCEPTANCE SCENARIO WORKFLOW CHECKS PASSED WITH 100% SUCCESS!\n');

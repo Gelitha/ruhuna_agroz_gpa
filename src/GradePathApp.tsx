@@ -20,7 +20,6 @@ import { SpecializationEligibilityView } from './components/specialization/Speci
 import { GpaAnalyticsView } from './components/analytics/GpaAnalyticsView';
 import { GradeSimulatorView } from './components/simulator/GradeSimulatorView';
 import { AcademicGoalsView } from './components/goals/AcademicGoalsView';
-import { AcademicProjectionView } from './components/projection/AcademicProjectionView';
 import { StudentProfilesView } from './components/profiles/StudentProfilesView';
 import { SettingsView } from './components/settings/SettingsView';
 
@@ -40,7 +39,7 @@ export const GradePathApp: React.FC = () => {
 
       // ACADEMIC
       case 'projection':
-        return <AcademicProjectionView />;
+        return <GpaCalculatorView />;
       case 'planner':
         return <SemesterPlannerView />;
       case 'progress':
