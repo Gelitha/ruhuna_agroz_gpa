@@ -112,6 +112,12 @@ function loadPersistedProfiles(): { profiles: StudentProfile[]; activeId: string
   };
 }
 
+export interface ProfileModalState {
+  isOpen: boolean;
+  mode: 'onboarding' | 'create' | 'edit';
+  profileId?: string;
+}
+
 interface GradeStoreState {
   profiles: StudentProfile[];
   activeProfileId: string;
@@ -119,6 +125,7 @@ interface GradeStoreState {
   isSidebarExpanded: boolean;
   isMobileDrawerOpen: boolean;
   showOnboarding: boolean;
+  profileModalState: ProfileModalState;
   selectedSemesterForCalculator: SemesterKey | 'ALL';
   searchQuery: string;
 
@@ -128,6 +135,8 @@ interface GradeStoreState {
   setSidebarExpanded: (expanded: boolean) => void;
   setMobileDrawerOpen: (open: boolean) => void;
   setShowOnboarding: (show: boolean) => void;
+  openProfileModal: (mode: 'onboarding' | 'create' | 'edit', profileId?: string) => void;
+  closeProfileModal: () => void;
   completeOnboarding: () => void;
   setSelectedSemesterForCalculator: (sem: SemesterKey | 'ALL') => void;
   setSearchQuery: (query: string) => void;
@@ -221,7 +230,11 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     activeTab: 'calculator',
     isSidebarExpanded: true,
     isMobileDrawerOpen: false,
-    showOnboarding: false,
+    showOnboarding: !initialHydration.hasOnboarded,
+    profileModalState: {
+      isOpen: !initialHydration.hasOnboarded,
+      mode: 'onboarding'
+    },
     selectedSemesterForCalculator: '1-1',
     searchQuery: '',
 
@@ -229,13 +242,15 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     toggleSidebar: () => set(state => ({ isSidebarExpanded: !state.isSidebarExpanded })),
     setSidebarExpanded: (expanded: boolean) => set({ isSidebarExpanded: expanded }),
     setMobileDrawerOpen: (open: boolean) => set({ isMobileDrawerOpen: open }),
-    setShowOnboarding: (show: boolean) => set({ showOnboarding: show }),
+    setShowOnboarding: (show: boolean) => set({ showOnboarding: show, profileModalState: { isOpen: show, mode: 'onboarding' } }),
+    openProfileModal: (mode, profileId) => set({ profileModalState: { isOpen: true, mode, profileId } }),
+    closeProfileModal: () => set(state => ({ profileModalState: { ...state.profileModalState, isOpen: false } })),
 
     completeOnboarding: () => {
       try {
         localStorage.setItem(STORAGE_KEY_ONBOARDING_DONE, 'true');
       } catch (e) { /* ignore */ }
-      set({ showOnboarding: false });
+      set({ showOnboarding: false, profileModalState: { isOpen: false, mode: 'onboarding' } });
     },
 
     setSelectedSemesterForCalculator: (sem) => set({ selectedSemesterForCalculator: sem }),
@@ -244,7 +259,10 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     switchProfile: (id: string) => {
       const found = get().profiles.find(p => p.id === id);
       if (found) {
-        set({ activeProfileId: id });
+        set({
+          activeProfileId: id,
+          selectedSemesterForCalculator: found.currentSemester || '1-1'
+        });
         persist(get().profiles, id);
       }
     },
@@ -299,8 +317,14 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         updatedAt: new Date().toISOString()
       };
 
-      const updated = [...get().profiles, newProf];
-      set({ profiles: updated, activeProfileId: newId });
+      const existing = get().profiles;
+      const isInitialUnconfigured = existing.length === 1 &&
+        (existing[0].name === 'My Academic Profile' || existing[0].name === 'My Profile') &&
+        !existing[0].registrationNumber &&
+        Object.values(existing[0].semesters).every(sem => sem.every(c => !c.grade));
+
+      const updated = isInitialUnconfigured ? [newProf] : [...existing, newProf];
+      set({ profiles: updated, activeProfileId: newId, selectedSemesterForCalculator: semKey });
       persist(updated, newId);
       return newId;
     },

@@ -1,10 +1,9 @@
 // University of Ruhuna - Faculty of Agriculture
 // GradePath Multi-Student Profile Manager
 
-import React, { useState } from 'react';
-import { Users, Plus, Copy, Trash2, CheckCircle2, UserCircle2, ArrowRight } from 'lucide-react';
+import React from 'react';
+import { Users, Plus, Copy, Trash2, CheckCircle2, UserCircle2, ArrowRight, Edit3 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
-import { DegreeCode, SemesterKey } from '../../types';
 import { calculateOverallStats } from '../../utils/calculations';
 import { HelpTooltip } from '../common/HelpTooltip';
 
@@ -13,33 +12,11 @@ export const StudentProfilesView: React.FC = () => {
     profiles,
     activeProfileId,
     switchProfile,
-    createProfile,
     duplicateProfile,
     deleteProfile,
+    openProfileModal,
     setActiveTab
   } = useGradeStore();
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [regNo, setRegNo] = useState('');
-  const [degree, setDegree] = useState<DegreeCode>('ARMT');
-  const [year, setYear] = useState<number>(1);
-  const [sem, setSem] = useState<SemesterKey>('1-1');
-
-  const handleCreate = () => {
-    if (!name.trim()) return;
-    createProfile({
-      name: name.trim(),
-      registrationNumber: regNo.trim(),
-      degree,
-      currentAcademicYear: year,
-      currentSemester: sem,
-      batch: `${year === 1 ? '46th' : year === 2 ? '45th' : '44th'} Batch`
-    });
-    setName('');
-    setRegNo('');
-    setIsCreateModalOpen(false);
-  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
@@ -59,7 +36,7 @@ export const StudentProfilesView: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => openProfileModal('create')}
           className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition"
         >
           <Plus className="w-4 h-4" />
@@ -124,6 +101,13 @@ export const StudentProfilesView: React.FC = () => {
               <div className="pt-2 border-t border-border flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <button
+                    onClick={() => openProfileModal('edit', p.id)}
+                    className="p-1.5 rounded-lg text-secondary hover:text-main hover:bg-surface-subtle transition"
+                    title="Edit profile details"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={() => duplicateProfile(p.id)}
                     className="p-1.5 rounded-lg text-secondary hover:text-main hover:bg-surface-subtle transition"
                     title="Duplicate this profile"
@@ -166,109 +150,6 @@ export const StudentProfilesView: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Create Profile Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-modal p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
-              <h3 className="text-base font-bold text-main">Create New Student Profile</h3>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-1 rounded text-secondary hover:text-main"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-main mb-1">Student Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kasun"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-main focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-main mb-1">Index / Reg Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. AG/2021/7740"
-                  value={regNo}
-                  onChange={(e) => setRegNo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-main focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-main mb-1">Degree Programme</label>
-                <select
-                  value={degree}
-                  onChange={(e) => setDegree(e.target.value as DegreeCode)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-main focus:outline-none focus:border-primary"
-                >
-                  <option value="ARMT">ARMT (126 Credits)</option>
-                  <option value="ABM">ABM (125 Credits)</option>
-                  <option value="GT">Green Technology (125 Credits)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-main mb-1">Year</label>
-                  <select
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-main focus:outline-none focus:border-primary"
-                  >
-                    <option value={1}>Year 1</option>
-                    <option value={2}>Year 2</option>
-                    <option value={3}>Year 3</option>
-                    <option value={4}>Year 4</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-main mb-1">Semester</label>
-                  <select
-                    value={sem}
-                    onChange={(e) => setSem(e.target.value as SemesterKey)}
-                    className="w-full px-3 py-2 rounded-xl bg-surface border border-border text-xs text-main focus:outline-none focus:border-primary"
-                  >
-                    <option value="1-1">Sem 1-1</option>
-                    <option value="1-2">Sem 1-2</option>
-                    <option value="2-1">Sem 2-1</option>
-                    <option value="2-2">Sem 2-2</option>
-                    <option value="3-1">Sem 3-1</option>
-                    <option value="3-2">Sem 3-2</option>
-                    <option value="4-1">Sem 4-1</option>
-                    <option value="4-2">Sem 4-2</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 flex justify-end gap-2 border-t border-border">
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="px-3.5 py-2 rounded-xl border border-border text-xs font-medium text-secondary hover:text-main"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!name.trim()}
-                className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover disabled:opacity-50 transition"
-              >
-                Create Profile
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

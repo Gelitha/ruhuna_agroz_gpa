@@ -52,10 +52,13 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
     if (onSelectGrade) onSelectGrade(g);
     if (onChange) onChange(g as Grade);
   };
-  const isDisabled = disabled || isConfirmedOfficial;
+  // Confirmed grades can be deliberately corrected without being disabled
+  const isDisabled = disabled;
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedBtnRef = useRef<HTMLButtonElement>(null);
   const isInteractingRef = useRef(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isSwipingRef = useRef(false);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -110,14 +113,38 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
     }
   };
 
-  const handleGradeClick = (grade: Grade) => {
-    if (isDisabled) return;
-    triggerHaptic();
-    if (allowClear && currentGrade === grade) {
-      handleSelect('');
-    } else {
-      handleSelect(grade);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    isInteractingRef.current = true;
+    isSwipingRef.current = false;
+    if (e.touches && e.touches.length > 0) {
+      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartPos.current && e.touches && e.touches.length > 0) {
+      const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+      const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+      if (dx > 6 || dy > 6) {
+        isSwipingRef.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartPos.current = null;
+    setTimeout(() => {
+      isInteractingRef.current = false;
+      isSwipingRef.current = false;
+    }, 120);
+  };
+
+  const handleGradeClick = (grade: Grade) => {
+    if (isDisabled || isSwipingRef.current) return;
+    // Selected grades remain unchanged when tapped again (Clear Grade operates separately)
+    if (currentGrade === grade) return;
+    triggerHaptic();
+    handleSelect(grade);
   };
 
   const isTouchSize = size === 'touch';
@@ -130,8 +157,10 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
   return (
     <div
       className={`relative w-full max-w-full group ${className}`}
-      onTouchStart={() => { isInteractingRef.current = true; }}
-      onTouchEnd={() => { setTimeout(() => { isInteractingRef.current = false; }, 300); }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* Subtle edge fades communicating horizontal scrollability */}
       {canScrollLeft && (
@@ -152,8 +181,9 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
         ref={scrollRef}
         role="radiogroup"
         aria-label={ariaLabel || (courseCode ? `Grade selection for ${courseCode}` : 'Grade selection')}
-        className="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 no-scrollbar touch-pan-x scroll-smooth"
+        className="flex items-center gap-1.5 overflow-x-auto py-1 px-0.5 no-scrollbar scroll-smooth"
         style={{
+          touchAction: 'pan-x pan-y',
           WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'

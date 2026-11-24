@@ -37,6 +37,7 @@ export const Header: React.FC = () => {
     getOverallStats,
     setActiveTab,
     setShowOnboarding,
+    openProfileModal,
     profiles,
     activeProfileId,
     switchProfile
@@ -188,7 +189,7 @@ export const Header: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
-                    setShowOnboarding(true);
+                    openProfileModal('create');
                   }}
                   className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-[#176B45] hover:bg-[#EAF2ED] border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition"
                 >
@@ -360,7 +361,7 @@ export const Header: React.FC = () => {
                   <button
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
-                      setShowOnboarding(true);
+                      openProfileModal('create');
                     }}
                     className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-[#176B45] hover:bg-[#EAF2ED] border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition"
                   >

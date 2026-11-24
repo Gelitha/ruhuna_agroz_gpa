@@ -141,6 +141,7 @@ export const GpaCalculatorView: React.FC = () => {
 
   // Undo accidental grade changes
   interface UndoRecord {
+    profileId: string;
     semKey: SemesterKey;
     courseCode: string;
     courseName?: string;
@@ -152,6 +153,13 @@ export const GpaCalculatorView: React.FC = () => {
   }
   const [undoRecord, setUndoRecord] = useState<UndoRecord | null>(null);
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Invalidate undo records and modals on profile change
+  useEffect(() => {
+    setUndoRecord(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setCourseModal(null);
+  }, [profile.id]);
 
   // Sticky Summary Observer on Mobile
   const [isStickySummaryVisible, setIsStickySummaryVisible] = useState(false);
@@ -183,6 +191,7 @@ export const GpaCalculatorView: React.FC = () => {
     if (course.grade === newGrade) return;
 
     const prev: UndoRecord = {
+      profileId: profile.id,
       semKey,
       courseCode: course.code,
       courseName: course.name,
@@ -207,7 +216,7 @@ export const GpaCalculatorView: React.FC = () => {
   };
 
   const handleUndo = () => {
-    if (!undoRecord) return;
+    if (!undoRecord || undoRecord.profileId !== profile.id) return;
     const { semKey, courseCode, previousGrade, previousIsExpected, previousIsRepeat, previousIsExcused } = undoRecord;
     if (isOrientation) {
       setOrientationGrade(courseCode, previousGrade);
@@ -454,7 +463,7 @@ export const GpaCalculatorView: React.FC = () => {
     <div className="max-w-[1440px] mx-auto pb-16 space-y-4 sm:space-y-5">
       {/* Compact Sticky Summary on Mobile (< 1024px) when top summary scrolls out of view */}
       {isStickySummaryVisible && (
-        <div className="block lg:hidden fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] shadow-md px-4 py-2.5 animate-in slide-in-from-top duration-200">
+        <div className="block lg:hidden fixed top-[53px] left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] shadow-md px-4 py-2.5 animate-in slide-in-from-top duration-200">
           <div className="flex items-center justify-between max-w-4xl mx-auto text-xs">
             <div className="flex items-center gap-3">
               {/* Actual CGPA (Dominant Green) */}
@@ -1297,23 +1306,25 @@ export const GpaCalculatorView: React.FC = () => {
                                 </span>
                                 <HelpTooltip id="T29" size="xs" />
                               </span>
-                              <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={!!course.isExcused}
-                                  onChange={(e) => {
-                                    setCourseExcused(
-                                      activeTabKey as SemesterKey,
-                                      course.code,
-                                      e.target.checked
-                                    );
-                                    triggerSaveNotification();
-                                  }}
-                                  className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
-                                />
-                                <span>Senate Medical?</span>
+                              <div className="flex items-center gap-1.5">
+                                <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!course.isExcused}
+                                    onChange={(e) => {
+                                      setCourseExcused(
+                                        activeTabKey as SemesterKey,
+                                        course.code,
+                                        e.target.checked
+                                      );
+                                      triggerSaveNotification();
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
+                                  />
+                                  <span>Senate Medical?</span>
+                                </label>
                                 <HelpTooltip id="T03" size="xs" />
-                              </label>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -1514,30 +1525,32 @@ export const GpaCalculatorView: React.FC = () => {
                             </label>
 
                             {course.isRepeat && (
-                              <label
-                                className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1 ${
-                                  course.isExcused
-                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
-                                    : 'bg-white text-neutral-400 border-neutral-300'
-                                }`}
-                                title="Senate medical excuse lifts repeat cap up to 4.0 GPV"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={!!course.isExcused}
-                                  onChange={(e) => {
-                                    setCourseExcused(
-                                      activeTabKey as SemesterKey,
-                                      course.code,
-                                      e.target.checked
-                                    );
-                                    triggerSaveNotification();
-                                  }}
-                                  className="hidden"
-                                />
-                                <span>{course.isExcused ? 'Excused ✓' : 'Medical?'}</span>
+                              <div className="inline-flex items-center gap-1">
+                                <label
+                                  className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1 ${
+                                    course.isExcused
+                                      ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                                      : 'bg-white text-neutral-400 border-neutral-300'
+                                  }`}
+                                  title="Senate medical excuse lifts repeat cap up to 4.0 GPV"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={!!course.isExcused}
+                                    onChange={(e) => {
+                                      setCourseExcused(
+                                        activeTabKey as SemesterKey,
+                                        course.code,
+                                        e.target.checked
+                                      );
+                                      triggerSaveNotification();
+                                    }}
+                                    className="hidden"
+                                  />
+                                  <span>{course.isExcused ? 'Excused ✓' : 'Medical?'}</span>
+                                </label>
                                 <HelpTooltip id="T03" size="xs" />
-                              </label>
+                              </div>
                             )}
 
                             {/* Projected Checkbox */}
@@ -1643,7 +1656,7 @@ export const GpaCalculatorView: React.FC = () => {
 
       {/* Lightweight Undo Toast Notification (4.5s auto-dismiss) */}
       {undoRecord && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 bg-[#103B2D] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-emerald-600/40 animate-in slide-in-from-bottom duration-200 max-w-[92vw]">
+        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 bg-[#103B2D] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-emerald-600/40 animate-in slide-in-from-bottom duration-200 max-w-[92vw]">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="truncate">
             Grade updated to <strong className="font-extrabold text-white">{undoRecord.newGrade || 'None'}</strong>

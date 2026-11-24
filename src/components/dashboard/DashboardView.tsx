@@ -46,7 +46,8 @@ export const DashboardView: React.FC = () => {
     getRiskAlerts,
     setActiveTab,
     setSelectedSemesterForCalculator,
-    setShowOnboarding
+    setShowOnboarding,
+    openProfileModal
   } = useGradeStore();
 
   const profile = getActiveProfile();
@@ -103,7 +104,7 @@ export const DashboardView: React.FC = () => {
             <span className="text-xs sm:text-sm text-neutral-500 font-semibold flex items-center gap-1.5">
               <span>Year {profile.currentAcademicYear} • Sem {profile.currentSemester}</span>
               <button
-                onClick={() => setShowOnboarding(true)}
+                onClick={() => openProfileModal('edit')}
                 className="text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-0.5 text-xs ml-1"
                 title="Change degree or semester"
               >

@@ -7,7 +7,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
-import { WelcomeModal } from './components/onboarding/WelcomeModal';
+import { ProfileSetupModal } from './components/profiles/ProfileSetupModal';
 
 // 11 Modular Screen Views
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -95,8 +95,8 @@ export const GradePathApp: React.FC = () => {
       {/* Ergonomic Mobile-First Sticky Bottom Navigation Bar */}
       <MobileBottomNav />
 
-      {/* First-Time Experience & Onboarding Modal */}
-      <WelcomeModal />
+      {/* First-Time Experience & Unified Profile Setup Modal */}
+      <ProfileSetupModal />
     </div>
   );
 };
