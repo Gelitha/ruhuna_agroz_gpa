@@ -1036,7 +1036,42 @@ export function calculateAcademicRiskAlerts(profile: StudentProfile): Regulation
     });
   }
 
-  // 5. Positive clearance
+  // 5. Potential Future Risks (Projected expected fail grades)
+  const projectedFailCourses: string[] = [];
+  semKeys.forEach(semKey => {
+    (profile.semesters[semKey] || []).forEach(c => {
+      if (!c.isNgpa && c.grade === 'E' && c.isExpected) {
+        projectedFailCourses.push(`${c.code} (${semKey})`);
+      }
+    });
+  });
+
+  if (projectedFailCourses.length > 0) {
+    alerts.push({
+      level: 'warning',
+      title: 'Potential Future Risk: Expected Fail (E) Grade',
+      message: `You have entered an expected E grade for ${projectedFailCourses.join(', ')}. If confirmed, this course must be repeated for graduation.`,
+      affectedCourses: projectedFailCourses
+    });
+  }
+
+  // 6. Potential Future Risk: Projected CGPA below 2.00
+  if (
+    stats.hasExpectedCourses &&
+    stats.combinedGpaCreditsAttempted &&
+    stats.combinedGpaCreditsAttempted >= 15 &&
+    stats.projectedCgpa !== undefined &&
+    stats.projectedCgpa < 2.00 &&
+    stats.cgpa >= 2.00
+  ) {
+    alerts.push({
+      level: 'warning',
+      title: 'Potential Future Risk: Projected CGPA Below 2.00',
+      message: `Your estimated CGPA (${stats.projectedCgpa.toFixed(2)}) based on projected grades falls below 2.00. Focus on upcoming assessments to safeguard your academic standing.`
+    });
+  }
+
+  // 7. Positive clearance (Only when confirmed record has zero actual alerts)
   if (alerts.length === 0 && stats.totalGpaCreditsAttempted > 0) {
     alerts.push({
       level: 'success',

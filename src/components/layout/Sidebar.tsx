@@ -191,7 +191,7 @@ export const Sidebar: React.FC = () => {
                   {activeProfile.name}
                 </span>
                 <span className="text-xs text-neutral-500 truncate mt-0.5">
-                  {activeProfile.degree} • <span className="font-bold text-emerald-700">{stats.cgpa.toFixed(2)} CGPA</span>
+                  {activeProfile.degree} • <span className="font-bold text-emerald-700">{stats.totalGpaCreditsAttempted > 0 ? `${stats.cgpa.toFixed(2)} CGPA` : 'No Confirmed Grades'}</span>
                 </span>
               </div>
             </div>
@@ -212,7 +212,7 @@ export const Sidebar: React.FC = () => {
         ) : (
           <button
             onClick={() => setActiveTab('profiles')}
-            title={`Active: ${activeProfile.name} (${activeProfile.degree}) • CGPA ${stats.cgpa.toFixed(2)}`}
+            title={`Active: ${activeProfile.name} (${activeProfile.degree}) • CGPA ${stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}`}
             className="w-10 h-10 mx-auto rounded-full bg-emerald-100 text-emerald-800 font-black text-sm flex items-center justify-center border border-emerald-300 hover:ring-2 hover:ring-emerald-500/30 transition shadow-2xs"
           >
             {activeProfile.name.charAt(0).toUpperCase()}

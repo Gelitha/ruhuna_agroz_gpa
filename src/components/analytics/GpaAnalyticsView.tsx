@@ -31,24 +31,46 @@ export const GpaAnalyticsView: React.FC = () => {
 
   const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
 
-  // 1. Line chart data: SGPA vs CGPA progression
-  let runningPoints = 0;
-  let runningCredits = 0;
+  // 1. Progression Data: Confirmed Actual Series (Solid Green) + Projected Series (Dashed Blue)
+  let runningActualPoints = 0;
+  let runningActualCredits = 0;
+  let runningProjectedPoints = 0;
+  let runningProjectedCredits = 0;
+
   const progressionData = semKeys.map(key => {
     const sem = stats.semStats[key];
-    runningPoints += sem.weightedPoints;
-    runningCredits += sem.gpaCreditsAttempted;
-    const runningCgpa = runningCredits > 0 ? runningPoints / runningCredits : 0;
+    const semProj = proj.semesterSummaries[key];
+
+    // Confirmed actuals:
+    runningActualPoints += sem.realWeightedPoints;
+    runningActualCredits += sem.realCreditsAttempted;
+    const actualCgpa = runningActualCredits > 0 ? runningActualPoints / runningActualCredits : null;
+    const actualSgpa = sem.realCreditsAttempted > 0 ? sem.realSgpa : null;
+
+    // Projected (when semester has projected grades):
+    const hasSemProjection = semProj && semProj.predictedGpaCredits > 0;
+    const projectedSgpa = hasSemProjection ? semProj.projectedSgpa : null;
+
+    // Combined running projected CGPA:
+    const semProjCredits = semProj ? semProj.predictedGpaCredits : 0;
+    const semProjPoints = semProj ? semProj.predictedGpaCredits * semProj.projectedSgpa : 0;
+    runningProjectedPoints += sem.realWeightedPoints + semProjPoints;
+    runningProjectedCredits += sem.realCreditsAttempted + semProjCredits;
+    const projectedCgpa = hasSemProjection && runningProjectedCredits > 0
+      ? runningProjectedPoints / runningProjectedCredits
+      : null;
 
     return {
       semester: key,
-      sgpa: sem.gpaCreditsAttempted > 0 ? parseFloat(sem.sgpa.toFixed(2)) : null,
-      cgpa: runningCredits > 0 ? parseFloat(runningCgpa.toFixed(2)) : null,
-      credits: sem.gpaCreditsEarned
+      actualCgpa: actualCgpa !== null ? parseFloat(actualCgpa.toFixed(2)) : null,
+      actualSgpa: actualSgpa !== null ? parseFloat(actualSgpa.toFixed(2)) : null,
+      projectedCgpa: projectedCgpa !== null ? parseFloat(projectedCgpa.toFixed(2)) : null,
+      projectedSgpa: projectedSgpa !== null ? parseFloat(projectedSgpa.toFixed(2)) : null,
+      credits: sem.realCreditsEarned
     };
   });
 
-  // 2. Grade distribution data
+  // 2. Grade distribution data (Confirmed grades only)
   const gradeCounts: Record<string, number> = {
     'A+': 0, 'A': 0, 'A-': 0,
     'B+': 0, 'B': 0, 'B-': 0,
@@ -56,15 +78,15 @@ export const GpaAnalyticsView: React.FC = () => {
     'D+': 0, 'D': 0, 'E': 0
   };
 
-  // 3. Department distribution
+  // 3. Department distribution (Confirmed courses only)
   const deptCredits: Record<string, number> = {};
 
   semKeys.forEach(k => {
     (profile.semesters[k] || []).forEach(c => {
-      if (c.grade && gradeCounts[c.grade] !== undefined) {
+      if (!c.isExpected && c.grade && gradeCounts[c.grade] !== undefined) {
         gradeCounts[c.grade]++;
       }
-      if (!c.isNgpa && c.dept) {
+      if (!c.isExpected && !c.isNgpa && c.dept) {
         const creds = Number(c.credits) || 0;
         deptCredits[c.dept] = (deptCredits[c.dept] || 0) + creds;
       }
@@ -95,11 +117,20 @@ export const GpaAnalyticsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="px-3.5 py-1.5 rounded-xl bg-surface-subtle border border-border text-xs">
-            <span className="text-secondary">Current CGPA: </span>
-            <span className="font-bold text-primary">{stats.cgpa.toFixed(2)}</span>
+            <span className="text-secondary">Actual CGPA: </span>
+            <span className="font-bold text-primary">
+              {stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}
+            </span>
           </div>
+          {stats.hasExpectedCourses && (
+            <div className="px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900">
+              <span className="text-blue-700 font-medium">Projected CGPA: </span>
+              <span className="font-bold font-mono text-blue-900">{proj.combinedProjectedCgpa.toFixed(2)}</span>
+              <span className="text-[10px] text-blue-600 ml-1 font-semibold">(Est.)</span>
+            </div>
+          )}
           <div className="px-3.5 py-1.5 rounded-xl bg-surface-subtle border border-border text-xs">
             <span className="text-secondary">Earned Credits: </span>
             <span className="font-bold text-main">{stats.totalGpaCreditsEarned} / {stats.totalRequiredCredits}</span>
@@ -124,15 +155,27 @@ export const GpaAnalyticsView: React.FC = () => {
             <h3 className="text-sm font-bold text-main">GPA Progression Trajectory</h3>
             <p className="text-xs text-secondary">Semester SGPA vs Cumulative CGPA</p>
           </div>
-          <div className="flex items-center gap-4 text-xs font-medium">
+          <div className="flex items-center gap-4 text-xs font-medium flex-wrap">
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-primary rounded-full" />
-              <span className="text-main">Cumulative CGPA</span>
+              <span className="text-main font-semibold">Actual CGPA (Confirmed)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-0.5 bg-accent-success rounded-full" />
-              <span className="text-secondary">Semester SGPA</span>
+              <span className="w-3 h-0.5 bg-emerald-600 rounded-full" />
+              <span className="text-secondary font-semibold">Actual SGPA (Confirmed)</span>
             </div>
+            {stats.hasExpectedCourses && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-blue-600 rounded-full border-b border-dashed border-blue-600" />
+                  <span className="text-blue-700 font-semibold">Projected CGPA (Est.)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-0.5 bg-blue-400 rounded-full border-b border-dashed border-blue-400" />
+                  <span className="text-blue-500 font-semibold">Projected SGPA (Est.)</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -151,26 +194,51 @@ export const GpaAnalyticsView: React.FC = () => {
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                 }}
               />
+              {/* Confirmed Actual Series: Solid Green */}
               <Line
                 type="monotone"
-                dataKey="cgpa"
+                dataKey="actualCgpa"
                 stroke="#245C45"
                 strokeWidth={2.5}
                 dot={{ r: 4, fill: '#245C45' }}
                 activeDot={{ r: 6 }}
-                name="Cumulative CGPA"
+                name="Actual CGPA (Confirmed)"
                 connectNulls
               />
               <Line
                 type="monotone"
-                dataKey="sgpa"
+                dataKey="actualSgpa"
                 stroke="#27845B"
                 strokeWidth={1.5}
-                strokeDasharray="4 4"
                 dot={{ r: 3, fill: '#27845B' }}
-                name="Semester SGPA"
+                name="Actual SGPA (Confirmed)"
                 connectNulls
               />
+              {/* Projected Series: Dashed Blue */}
+              {stats.hasExpectedCourses && (
+                <>
+                  <Line
+                    type="monotone"
+                    dataKey="projectedCgpa"
+                    stroke="#2563EB"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3, fill: '#2563EB' }}
+                    name="Projected CGPA (Est.)"
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="projectedSgpa"
+                    stroke="#60A5FA"
+                    strokeWidth={1.5}
+                    strokeDasharray="3 3"
+                    dot={{ r: 3, fill: '#60A5FA' }}
+                    name="Projected SGPA (Est.)"
+                    connectNulls
+                  />
+                </>
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>

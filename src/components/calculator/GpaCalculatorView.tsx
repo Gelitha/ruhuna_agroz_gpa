@@ -408,28 +408,24 @@ export const GpaCalculatorView: React.FC = () => {
             </div>
           )}
 
-          {/* Metric 3: Active Semester SGPA */}
+          {/* Metric 3: Active Semester Actual SGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
             <div className="flex items-center justify-center gap-1">
               <span className="text-xs font-medium text-[#626962]">
-                Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected' : 'SGPA'}
+                Sem {activeTabKey} SGPA
               </span>
-              <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T11' : 'T10'} size="xs" />
+              <HelpTooltip id="T10" size="xs" />
             </div>
             <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
-              {semProjection && semProjection.predictedGpaCredits > 0
-                ? semProjection.projectedSgpa.toFixed(2)
-                : semStats && semStats.realCreditsAttempted > 0
-                ? semStats.realSgpa.toFixed(2)
-                : '—'}
+              {semStats && semStats.realCreditsAttempted > 0 ? semStats.realSgpa.toFixed(2) : '—'}
             </div>
             <div className="flex items-center justify-center gap-1 text-[11px] text-[#626962] font-medium leading-none mt-1">
               <span>
                 {semProjection && semProjection.predictedGpaCredits > 0
-                  ? `${semProjection.predictedGpaCredits} Cr projected`
+                  ? `Proj: ${semProjection.projectedSgpa.toFixed(2)} (${semProjection.predictedGpaCredits} Cr)`
                   : `${semStats?.realCreditsAttempted || 0} Cr finalized`}
               </span>
-              <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T13' : 'T12'} size="xs" />
+              <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T11' : 'T12'} size="xs" />
             </div>
           </div>
 
@@ -504,76 +500,84 @@ export const GpaCalculatorView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Big Metrics Display */}
-              <div className="flex items-baseline gap-6">
+              {/* Big Metrics Display: ACTUAL FIRST, PROJECTED SEPARATE */}
+              <div className="flex items-baseline gap-6 flex-wrap">
+                {/* Metric 1: Actual CGPA (Primary Source of Truth) */}
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs uppercase font-bold tracking-wider text-emerald-200/80 block">
-                      {hasAnyProjectedGrades ? 'Combined Projected CGPA' : 'Actual CGPA'}
+                    <span className="text-xs uppercase font-bold tracking-wider text-emerald-200/90 block">
+                      Actual CGPA
                     </span>
-                    <HelpTooltip id={hasAnyProjectedGrades ? 'T09' : 'T08'} size="xs" />
+                    <HelpTooltip id="T08" size="xs" />
                   </div>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="text-4xl lg:text-5xl font-black font-sans tracking-tight text-white font-tabular">
-                      {hasAnyProjectedGrades
-                        ? proj.combinedTotalCredits > 0
-                          ? proj.combinedProjectedCgpa.toFixed(2)
-                          : '—'
-                        : hasAnyConfirmedGrades
-                        ? proj.actualCgpa.toFixed(2)
-                        : '—'}
+                      {hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'}
                     </span>
                     <span className="text-lg font-bold text-emerald-300/80">/ 4.00</span>
                   </div>
+                  <div className="text-xs text-emerald-300/90 font-bold mt-0.5">
+                    {standingInfo.title} • {proj.actualGpaCredits} Cr Confirmed
+                  </div>
                 </div>
 
-                {/* Scope Comparison */}
-                <div className="border-l border-white/15 pl-5 space-y-0.5">
-                  <div className="text-xs text-emerald-200 font-medium flex items-center gap-1">
-                    {hasAnyProjectedGrades ? (
-                      <span>After Sem {proj.currentSemester} ({proj.combinedTotalCredits} Cr)</span>
-                    ) : (
-                      <>
-                        <span>{proj.actualGpaCredits} Credits Confirmed</span>
-                        <HelpTooltip id="T12" size="xs" />
-                      </>
-                    )}
+                {/* Metric 2: Projected CGPA (Displayed Separately When Active) */}
+                {hasAnyProjectedGrades && (
+                  <div className="border-l border-white/20 pl-5 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs uppercase font-bold tracking-wider text-cyan-200 block">
+                        Projected CGPA
+                      </span>
+                      <HelpTooltip id="T09" size="xs" />
+                      <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-900/50 px-1.5 py-0.2 rounded border border-cyan-400/30">
+                        Estimate
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                      <span className="text-3xl lg:text-4xl font-black font-sans tracking-tight text-cyan-100 font-tabular">
+                        {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                      </span>
+                      {proj.deltaCombined !== 0 && (
+                        <span className={`text-xs font-bold font-mono ${proj.deltaCombined > 0 ? 'text-emerald-300' : 'text-amber-300'}`}>
+                          ({proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-emerald-200/80 font-medium">
+                      After Sem {proj.currentSemester} • {Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits)} Cr projected
+                    </div>
                   </div>
-                  <div className="text-xs text-emerald-300/90 font-bold">
-                    {hasAnyProjectedGrades
-                      ? `Actual: ${hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'} (${proj.deltaCombined >= 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})`
-                      : standingInfo.title}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* RIGHT: Active Semester SGPA & Tools */}
           <div className="flex items-center gap-6 shrink-0 border-l border-white/15 pl-6">
-            {/* Active Semester Metric */}
+            {/* Active Semester Metric (Actual SGPA Primary) */}
             <div className="text-right space-y-0.5">
               <div className="flex items-center justify-end gap-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-200/80 block">
-                  Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected SGPA' : 'Actual SGPA'}
+                  Sem {activeTabKey} Actual SGPA
                 </span>
-                <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T11' : 'T10'} size="xs" />
+                <HelpTooltip id="T10" size="xs" />
               </div>
               <div className="font-sans text-3xl font-black text-white font-tabular">
-                {semProjection && semProjection.predictedGpaCredits > 0
-                  ? semProjection.projectedSgpa.toFixed(2)
-                  : semStats && semStats.realCreditsAttempted > 0
-                  ? semStats.realSgpa.toFixed(2)
-                  : '—'}
+                {semStats && semStats.realCreditsAttempted > 0 ? semStats.realSgpa.toFixed(2) : '—'}
               </div>
               <div className="flex items-center justify-end gap-1 text-xs text-emerald-200/80 font-medium">
-                <span>
-                  {semProjection && semProjection.predictedGpaCredits > 0
-                    ? `${semProjection.predictedGpaCredits} Credits projected`
-                    : `${semStats?.realCreditsAttempted || 0} Credits finalized`}
-                </span>
-                <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T13' : 'T12'} size="xs" />
+                <span>{semStats?.realCreditsAttempted || 0} Credits finalized</span>
+                <HelpTooltip id="T12" size="xs" />
               </div>
+
+              {/* Projected SGPA Sub-Indicator (When Active) */}
+              {semProjection && semProjection.predictedGpaCredits > 0 && (
+                <div className="pt-1 mt-0.5 border-t border-white/10 flex items-center justify-end gap-1.5 text-xs text-cyan-200 font-semibold">
+                  <span>Projected: {semProjection.projectedSgpa.toFixed(2)}</span>
+                  <span className="text-[10px] text-cyan-300">({semProjection.predictedGpaCredits} Cr est.)</span>
+                  <HelpTooltip id="T11" size="xs" />
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}

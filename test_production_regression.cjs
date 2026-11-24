@@ -1435,20 +1435,25 @@ runTest('Regression Test Spec: Confirmed CGPA 3.50 + Projected Course A/B/C isol
   assert.strictEqual(proj.combinedTotalCredits, 9, 'Combined projection credits must be 9');
   assert.strictEqual(stats.combinedGpaCreditsAttempted, 9, 'Combined projection credits must be 9');
 
-  // Changing projected grade to Grade C must NOT change Dashboard Cumulative GPA
-  store.setCourseGradeAndStatus('1-1', gpaCourses[2].code, 'C', true);
+  // Step 2: Change Course C's projected grade from A to B
+  store.setCourseGradeAndStatus('1-1', gpaCourses[2].code, 'B', true);
   stats = store.getOverallStats();
   proj = store.getAcademicProjections();
-  assert.strictEqual(stats.cgpa, 3.50, 'Changing projected grade must not change Dashboard Cumulative GPA');
-  assert.strictEqual(stats.totalGpaCreditsAttempted, 6, 'Confirmed credits must remain strictly 6');
-  assert.strictEqual(proj.combinedProjectedCgpa, 3.00, 'Projected CGPA updates to (21+6)/9 = 3.00');
+  assert.strictEqual(stats.cgpa, 3.50, 'Actual CGPA remains strictly 3.50 when changing projected grade to B');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 6, 'Confirmed credits remain strictly 6');
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.33, 'Projected CGPA becomes (12+9+9)/9 = 3.33');
+  assert.strictEqual(stats.totalGpaCreditsEarned, 6, 'Official academic progress remains unchanged (6 credits)');
 
-  // Only converting Course C to confirmed updates actual CGPA
+  // Step 3: Now explicitly confirm Course C's official Grade B
   store.setCourseExpected('1-1', gpaCourses[2].code, false);
   stats = store.getOverallStats();
   proj = store.getAcademicProjections();
-  assert.strictEqual(stats.cgpa, 3.00, 'Converting Course C to confirmed updates Dashboard Cumulative GPA to 3.00');
-  assert.strictEqual(stats.totalGpaCreditsAttempted, 9, 'Confirmed credits update to 9');
+  assert.strictEqual(stats.cgpa, 3.33, 'Actual CGPA becomes 3.33 upon confirming Grade B');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 9, 'Confirmed GPA credits become 9');
+  assert.strictEqual(stats.totalGpaCreditsEarned, 9, 'Confirmed earned credits become 9');
+  assert.strictEqual(stats.hasExpectedCourses, false, 'Course C is no longer counted as projected');
+  assert.strictEqual(proj.combinedTotalCredits, 9);
+  assert.strictEqual(proj.actualGpaCredits, 9);
 });
 
 // 80. Genuine 0.00 GPA vs Missing Confirmed Grades
@@ -1508,6 +1513,98 @@ runTest('Atomic projection updates prevent premature confirmed grade classificat
   assert.strictEqual(courseAfter.isExpected, true);
   assert.strictEqual(stats.totalGpaCreditsAttempted, 0, 'Atomic update must not register confirmed credits');
   assert.strictEqual(stats.cgpa, 0, 'Atomic update must not alter confirmed CGPA');
+});
+
+// 83. Academic Risk Alerts: Confirmed warnings vs Potential Future Risks
+runTest('Academic Risk Alerts: Confirmed failure cannot be cleared by projected pass, projected failure is marked as potential', () => {
+  const { calculateAcademicRiskAlerts } = jiti('./src/utils/calculations.ts');
+  const profile = getBaseProfile('ARMT', '1-1');
+  const gpaCourses = profile.semesters['1-1'].filter(c => !c.isNgpa);
+
+  // Confirmed E grade in course 0
+  gpaCourses[0].grade = 'E';
+  gpaCourses[0].isExpected = false;
+
+  // Projected A grade in course 1
+  gpaCourses[1].grade = 'A';
+  gpaCourses[1].isExpected = true;
+
+  // Projected E grade in course 2
+  gpaCourses[2].grade = 'E';
+  gpaCourses[2].isExpected = true;
+
+  const alerts = calculateAcademicRiskAlerts(profile);
+
+  // Must have danger alert for confirmed E grade
+  const confirmedAlert = alerts.find(a => a.level === 'danger' && a.title.includes('Active Fail'));
+  assert.ok(confirmedAlert, 'Confirmed E grade must produce danger alert');
+  assert.ok(confirmedAlert.affectedCourses.some(c => c.includes(gpaCourses[0].code)));
+  assert.ok(!confirmedAlert.affectedCourses.some(c => c.includes(gpaCourses[2].code)), 'Projected E must not appear in confirmed active fail alert');
+
+  // Must have warning alert for projected E grade clearly marked potential
+  const projectedAlert = alerts.find(a => a.title.includes('Potential Future Risk'));
+  assert.ok(projectedAlert, 'Projected E grade must produce potential future risk alert');
+  assert.ok(projectedAlert.affectedCourses.some(c => c.includes(gpaCourses[2].code)));
+});
+
+// 84. Degree Audit and Specialization strictly evaluate confirmed records
+runTest('Degree Audit and Specialization Eligibility strictly evaluate confirmed data', () => {
+  const profile = getBaseProfile('ARMT', '3-1');
+  const degInfo = DEGREE_INFO['ARMT'];
+
+  // Fill all semesters up to 3-1 with projected grades only
+  ALL_SEMESTER_KEYS.slice(0, 5).forEach(sk => {
+    (profile.semesters[sk] || []).forEach(c => {
+      c.grade = 'A';
+      c.isExpected = true; // All projected!
+    });
+  });
+
+  const audit = generateDegreeAudit(profile);
+  assert.strictEqual(audit.allPassed, false, 'Audit must NOT pass based on projected grades');
+  assert.strictEqual(audit.items[0].passed, false, 'Credits item must not pass on projected grades');
+  assert.strictEqual(audit.items[5].passed, false, 'CGPA requirement must not pass on projected grades');
+
+  const stats = calculateOverallStats(profile);
+  assert.strictEqual(stats.specEligibility.evaluated, false, 'Specialization cannot be evaluated on projected credits');
+});
+
+// 85. JSON Export and Import: Statuses remain separated; import never converts projected to confirmed
+runTest('JSON Export and Import: Preserves explicit separation between confirmed and projected grades', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Export Import Student',
+    degree: 'GT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const gpaCourses = activeProfile.semesters['1-1'].filter(c => !c.isNgpa);
+
+  // Confirmed grade
+  store.setCourseGradeAndStatus('1-1', gpaCourses[0].code, 'A', false);
+  // Projected grade
+  store.setCourseGradeAndStatus('1-1', gpaCourses[1].code, 'B+', true);
+
+  const exportedJson = store.exportProfilesJson();
+  assert.ok(exportedJson.includes('"isExpected": true'));
+  assert.ok(exportedJson.includes('"isExpected": false'));
+
+  // Import into store
+  const importSuccess = store.importProfilesJson(exportedJson);
+  assert.strictEqual(importSuccess, true);
+
+  const importedProfile = useGradeStore.getState().profiles.find(p => p.id === testId);
+  assert.ok(importedProfile);
+  const c0 = importedProfile.semesters['1-1'].find(x => x.code === gpaCourses[0].code);
+  const c1 = importedProfile.semesters['1-1'].find(x => x.code === gpaCourses[1].code);
+  assert.strictEqual(c0.grade, 'A');
+  assert.strictEqual(c0.isExpected, false, 'Confirmed course must remain confirmed on import');
+  assert.strictEqual(c1.grade, 'B+');
+  assert.strictEqual(c1.isExpected, true, 'Projected course must remain projected on import');
 });
 
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);

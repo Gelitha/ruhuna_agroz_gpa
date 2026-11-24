@@ -77,7 +77,9 @@ export const AcademicGoalsView: React.FC = () => {
 
         <div className="px-4 py-2 rounded-xl bg-surface-subtle border border-border text-xs">
           <span className="text-secondary">Current CGPA: </span>
-          <span className="font-extrabold text-primary text-sm">{stats.cgpa.toFixed(2)}</span>
+          <span className="font-extrabold text-primary text-sm">
+            {stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}
+          </span>
           <span className="text-secondary ml-1">({stats.totalGpaCreditsEarned}/{stats.totalRequiredCredits} Cr)</span>
         </div>
       </div>

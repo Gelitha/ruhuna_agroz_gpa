@@ -105,7 +105,7 @@ export const StudentProfilesView: React.FC = () => {
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-lg bg-surface-subtle border border-border">
                     <span className="text-[10px] uppercase font-bold text-secondary">Cumulative GPA</span>
-                    <div className="text-lg font-bold text-main mt-0.5">{pStats.cgpa.toFixed(2)}</div>
+                    <div className="text-lg font-bold text-main mt-0.5">{pStats.totalGpaCreditsAttempted > 0 ? pStats.cgpa.toFixed(2) : '—'}</div>
                     <div className="text-[10px] text-secondary truncate">{pStats.classStanding}</div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-surface-subtle border border-border">

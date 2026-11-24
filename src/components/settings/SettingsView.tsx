@@ -169,7 +169,7 @@ export const SettingsView: React.FC = () => {
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                     <div className="p-3 rounded-xl bg-white border border-neutral-200/80">
                       <span className="text-[10px] font-bold text-neutral-400 uppercase">Cumulative GPA</span>
-                      <div className="text-xl font-black text-neutral-900 font-mono mt-0.5">{pStats.cgpa.toFixed(2)}</div>
+                      <div className="text-xl font-black text-neutral-900 font-mono mt-0.5">{pStats.totalGpaCreditsAttempted > 0 ? pStats.cgpa.toFixed(2) : '—'}</div>
                       <div className="text-[10px] text-emerald-800 font-bold truncate">{pStats.classStanding}</div>
                     </div>
                     <div className="p-3 rounded-xl bg-white border border-neutral-200/80">

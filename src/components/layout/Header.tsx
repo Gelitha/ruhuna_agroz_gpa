@@ -234,10 +234,12 @@ export const Header: React.FC = () => {
           <div
             onClick={() => setActiveTab('calculator')}
             className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-xs font-bold text-emerald-900 shadow-xs hover:border-emerald-400 transition"
-            title="Cumulative GPA • Click to open calculator"
+            title={`Cumulative GPA: ${stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : 'No grades'}${stats.hasExpectedCourses ? ` (Projected: ${stats.projectedCgpa?.toFixed(2)} Est.)` : ''} • Click to open calculator`}
           >
             <span className="text-xs uppercase tracking-wider text-[#626962] font-bold">CGPA:</span>
-            <span className="text-base font-mono font-black text-[#103B2D]">{stats.cgpa.toFixed(2)}</span>
+            <span className="text-base font-mono font-black text-[#103B2D]">
+              {stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}
+            </span>
             <span className="hidden lg:inline text-xs font-black px-2 py-0.5 rounded-full bg-[#176B45] text-white shadow-2xs">
               ★ {stats.classStanding}
             </span>

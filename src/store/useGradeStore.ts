@@ -968,6 +968,9 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
                 const isExpected = c.isExpected !== undefined
                   ? !!c.isExpected
                   : Boolean(!rawGrade && fallbackProjGrade);
+                const confirmedGrade = c.confirmedGrade && GRADING_SCALE[c.confirmedGrade]
+                  ? c.confirmedGrade
+                  : (!isExpected && rawGrade ? rawGrade : undefined);
 
                 return {
                   code: String(c.code || 'UNKNOWN').toUpperCase(),
@@ -980,7 +983,8 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
                   grade: finalGrade,
                   isRepeat: !!c.isRepeat,
                   isExcused: !!c.isExcused,
-                  isExpected
+                  isExpected,
+                  confirmedGrade
                 };
               });
             });

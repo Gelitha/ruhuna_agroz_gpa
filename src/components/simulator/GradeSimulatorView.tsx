@@ -113,7 +113,9 @@ export const GradeSimulatorView: React.FC = () => {
         </div>
 
         <div className="flex items-baseline gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
-          <div className="text-3xl font-black font-mono text-white">{stats.cgpa.toFixed(2)}</div>
+          <div className="text-3xl font-black font-mono text-white">
+            {stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}
+          </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-emerald-200 font-bold">{stats.classStanding}</span>
             <HelpTooltip id="T28" size="xs" />
@@ -170,7 +172,7 @@ export const GradeSimulatorView: React.FC = () => {
           <div className="p-5 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-1">
             <span className="text-[11px] font-bold uppercase text-neutral-400">Current Cumulative CGPA</span>
             <div className="text-3xl font-black text-neutral-900 font-mono">
-              {whatIfResult.currentCgpa.toFixed(2)}
+              {stats.totalGpaCreditsAttempted > 0 ? whatIfResult.currentCgpa.toFixed(2) : '—'}
             </div>
             <span className="text-xs text-neutral-500 font-semibold">{stats.classStanding}</span>
           </div>

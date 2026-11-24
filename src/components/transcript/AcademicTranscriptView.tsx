@@ -171,9 +171,9 @@ export const AcademicTranscriptView: React.FC = () => {
                 Cumulative Performance Summary
               </span>
               <div className="text-3xl font-extrabold text-main tracking-tight">
-                CGPA: {stats.realCreditsAttempted > 0 ? stats.realCgpa.toFixed(2) : '0.00'}
+                CGPA: {stats.realCreditsAttempted > 0 ? stats.realCgpa.toFixed(2) : '—'}
                 <span className="text-sm font-normal text-secondary ml-2">
-                  (Exact: {stats.realCreditsAttempted > 0 ? stats.realCgpaExact.toFixed(4) : '0.0000'})
+                  (Exact: {stats.realCreditsAttempted > 0 ? stats.realCgpaExact.toFixed(4) : '—'})
                 </span>
               </div>
               <div className="text-xs font-semibold text-secondary">
