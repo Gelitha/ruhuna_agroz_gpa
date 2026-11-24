@@ -805,3 +805,193 @@ export function calculateRequiredGpaForTarget(
     explanation: `To reach a CGPA of ${targetCgpa.toFixed(2)} after completing ${totalTargetCredits} credits, you need an average GPA of ${neededAverage.toFixed(2)} across your remaining ${remainingCredits} credits.`
   };
 }
+
+export interface SuggestedCourseGrade {
+  semesterKey: SemesterKey;
+  courseCode: string;
+  courseName: string;
+  credits: number;
+  suggestedGrade: Grade;
+  suggestedGpv: number;
+  isRepeat: boolean;
+  isExcused: boolean;
+}
+
+export interface SuggestedCombinationResult {
+  possible: boolean;
+  courses: SuggestedCourseGrade[];
+  achievedGpa: number;
+  targetCgpa: number;
+  explanation: string;
+}
+
+/**
+ * Generates realistic grade combinations for unresolved courses within a target scope
+ * respecting course credits, grading scales, and repeat grade caps (max 2.0 / Grade C).
+ */
+export function generateSuggestedGradeCombination(
+  profile: StudentProfile,
+  targetCgpa: number,
+  scope: TargetScope
+): SuggestedCombinationResult {
+  const targetResult = calculateTargetCgpaRequirement(profile, targetCgpa, scope);
+
+  if (!targetResult.possible) {
+    return {
+      possible: false,
+      courses: [],
+      achievedGpa: 0,
+      targetCgpa,
+      explanation: targetResult.explanation
+    };
+  }
+
+  const currentSem = profile.currentSemester || '1-1';
+  const currentIndex = ALL_SEMESTER_KEYS.indexOf(currentSem as SemesterKey);
+
+  const unresolvedCourses: Array<{
+    semKey: SemesterKey;
+    course: Course;
+    maxGpv: number;
+  }> = [];
+
+  let semKeysToInclude: SemesterKey[] = [];
+  if (scope === 'after_pending') {
+    semKeysToInclude = ALL_SEMESTER_KEYS.slice(0, Math.max(0, currentIndex));
+  } else if (scope === 'after_current') {
+    semKeysToInclude = ALL_SEMESTER_KEYS.slice(0, currentIndex + 1);
+  } else {
+    semKeysToInclude = [...ALL_SEMESTER_KEYS];
+  }
+
+  for (const semKey of semKeysToInclude) {
+    const semCourses = profile.semesters[semKey] || [];
+    for (const c of semCourses) {
+      if (!c.isNgpa && !isCourseGradeConfirmed(c)) {
+        const maxGpv = c.isRepeat && !c.isExcused ? 2.0 : 4.0;
+        unresolvedCourses.push({
+          semKey,
+          course: c,
+          maxGpv
+        });
+      }
+    }
+  }
+
+  if (unresolvedCourses.length === 0) {
+    return {
+      possible: true,
+      courses: [],
+      achievedGpa: targetResult.maxAchievableCgpa,
+      targetCgpa,
+      explanation: 'No unresolved courses in the selected target scope.'
+    };
+  }
+
+  // Supported grades ordered by descending GPV
+  const GRADE_SCALE_STEPS: Array<{ grade: Grade; gpv: number }> = [
+    { grade: 'A', gpv: 4.0 },
+    { grade: 'A-', gpv: 3.7 },
+    { grade: 'B+', gpv: 3.3 },
+    { grade: 'B', gpv: 3.0 },
+    { grade: 'B-', gpv: 2.7 },
+    { grade: 'C+', gpv: 2.3 },
+    { grade: 'C', gpv: 2.0 },
+    { grade: 'C-', gpv: 1.7 },
+    { grade: 'D+', gpv: 1.3 },
+    { grade: 'D', gpv: 1.0 },
+    { grade: 'E', gpv: 0.0 }
+  ];
+
+  const reqAvg = targetResult.requiredAverage <= 0 ? 2.0 : targetResult.requiredAverage;
+
+  // Initial assignment: step matching reqAvg without exceeding maxGpv
+  let baseStepIdx = GRADE_SCALE_STEPS.findIndex(s => s.gpv <= reqAvg);
+  if (baseStepIdx === -1) baseStepIdx = GRADE_SCALE_STEPS.length - 1;
+
+  const courseStepIndices = unresolvedCourses.map(({ maxGpv }) => {
+    let idx = baseStepIdx;
+    while (idx < GRADE_SCALE_STEPS.length && GRADE_SCALE_STEPS[idx].gpv > maxGpv) {
+      idx++;
+    }
+    return idx;
+  });
+
+  const calcTotalPoints = () => {
+    return unresolvedCourses.reduce((sum, item, i) => {
+      const gpv = GRADE_SCALE_STEPS[courseStepIndices[i]].gpv;
+      return sum + (item.course.credits || 0) * gpv;
+    }, 0);
+  };
+
+  const totalUnresolvedCredits = unresolvedCourses.reduce(
+    (sum, item) => sum + (item.course.credits || 0),
+    0
+  );
+
+  const targetUnresolvedPoints =
+    targetResult.requiredAverage <= 0
+      ? totalUnresolvedCredits * 2.0
+      : targetResult.neededGradePoints > 0
+      ? Math.min(
+          targetResult.neededGradePoints,
+          targetResult.maxAchievableCgpa * targetResult.totalScopeCredits -
+            targetResult.confirmedPointsInScope
+        )
+      : totalUnresolvedCredits * reqAvg;
+
+  let currentPoints = calcTotalPoints();
+
+  // If points are below target, greedily step up courses (higher credits first)
+  if (currentPoints < targetUnresolvedPoints) {
+    const sortedOrder = unresolvedCourses
+      .map((item, idx) => ({ idx, credits: item.course.credits || 0 }))
+      .sort((a, b) => b.credits - a.credits)
+      .map(o => o.idx);
+
+    let progress = true;
+    while (currentPoints < targetUnresolvedPoints && progress) {
+      progress = false;
+      for (const courseIdx of sortedOrder) {
+        const item = unresolvedCourses[courseIdx];
+        const currentStep = courseStepIndices[courseIdx];
+        if (currentStep > 0) {
+          const nextStep = currentStep - 1;
+          if (GRADE_SCALE_STEPS[nextStep].gpv <= item.maxGpv) {
+            courseStepIndices[courseIdx] = nextStep;
+            currentPoints = calcTotalPoints();
+            progress = true;
+            if (currentPoints >= targetUnresolvedPoints) break;
+          }
+        }
+      }
+    }
+  }
+
+  const resultCourses: SuggestedCourseGrade[] = unresolvedCourses.map((item, i) => {
+    const step = GRADE_SCALE_STEPS[courseStepIndices[i]];
+    return {
+      semesterKey: item.semKey,
+      courseCode: item.course.code,
+      courseName: item.course.name,
+      credits: item.course.credits || 0,
+      suggestedGrade: step.grade,
+      suggestedGpv: step.gpv,
+      isRepeat: !!item.course.isRepeat,
+      isExcused: !!item.course.isExcused
+    };
+  });
+
+  const finalAvg =
+    totalUnresolvedCredits > 0
+      ? Number((calcTotalPoints() / totalUnresolvedCredits).toFixed(2))
+      : 0;
+
+  return {
+    possible: true,
+    courses: resultCourses,
+    achievedGpa: finalAvg,
+    targetCgpa,
+    explanation: `Realistic grade combination achieving an average GPA of ${finalAvg.toFixed(2)} across ${totalUnresolvedCredits} unresolved credits.`
+  };
+}

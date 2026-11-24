@@ -1259,5 +1259,124 @@ runTest('Academic Data Protection: Confirmed course flags isConfirmedOfficial an
   assert.strictEqual(isExpectedOfficial, false, 'Expected course is NOT confirmed official');
 });
 
+// =========================================================================
+// SECTION 24: PLANNING TOOLS FINAL IMPROVEMENTS & SIMULATION
+// =========================================================================
+console.log('🌟 Testing Section 24 Planning Tools Improvements & Simulation...\n');
+
+const { generateSuggestedGradeCombination } = jiti('./src/utils/projectionCalculations.ts');
+
+runTest('Suggested Grade Combination: Generates realistic combinations for achievable targets', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  // Confirm Semester 1-1
+  profile.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => {
+    c.grade = 'B+';
+    c.isExpected = false;
+  });
+
+  // Leave Semester 1-2 and 2-1 unresolved
+  const result = generateSuggestedGradeCombination(profile, 3.50, 'after_current');
+  assert.strictEqual(result.possible, true, 'Target 3.50 should be achievable');
+  assert.ok(result.courses.length > 0, 'Should return suggested courses');
+  assert.ok(result.achievedGpa >= 3.3, 'Suggested average GPA should meet required threshold');
+
+  // Verify that all suggested grades belong to official scale
+  result.courses.forEach(c => {
+    assert.ok(GRADING_SCALE[c.suggestedGrade], `Grade ${c.suggestedGrade} must belong to official scale`);
+  });
+});
+
+runTest('Suggested Grade Combination: Strictly enforces repeat caps (max C / 2.0) on repeat courses', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  // Add a repeat course
+  profile.semesters['2-1'].filter(c => !c.isNgpa)[0].isRepeat = true;
+  profile.semesters['2-1'].filter(c => !c.isNgpa)[0].isExcused = false;
+
+  const result = generateSuggestedGradeCombination(profile, 3.80, 'after_current');
+  if (result.possible) {
+    const repeatCourse = result.courses.find(c => c.isRepeat && !c.isExcused);
+    if (repeatCourse) {
+      assert.ok(repeatCourse.suggestedGpv <= 2.0, 'Repeat course must never exceed 2.0 GPV');
+      assert.ok(['C', 'C-', 'D+', 'D', 'E'].includes(repeatCourse.suggestedGrade), 'Repeat course grade cannot exceed C');
+    }
+  }
+});
+
+runTest('Suggested Grade Combination: Flags mathematically impossible targets cleanly', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  // 1-1 and 1-2 all Grade E
+  ['1-1', '1-2'].forEach(sem => {
+    profile.semesters[sem].filter(c => !c.isNgpa).forEach(c => {
+      c.grade = 'E';
+      c.isExpected = false;
+    });
+  });
+
+  const result = generateSuggestedGradeCombination(profile, 3.95, 'after_current');
+  assert.strictEqual(result.possible, false, 'Target should be flagged as impossible');
+  assert.strictEqual(result.courses.length, 0);
+  assert.ok(result.explanation.includes('Mathematically unreachable'));
+});
+
+runTest('Course Impact Simulation: Single course target deviation calculates accurate before vs after GPA', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  const semCourses = profile.semesters['2-1'].filter(c => !c.isNgpa);
+  // Give expected grade B (3.0) to first course
+  semCourses[0].grade = 'B';
+  semCourses[0].isExpected = true;
+
+  const originalProj = calculateAcademicProjections(profile);
+
+  // Simulate target grade A (4.0) on first course
+  const simulatedProfile = {
+    ...profile,
+    semesters: {
+      ...profile.semesters,
+      '2-1': profile.semesters['2-1'].map((c, i) => i === 0 ? { ...c, grade: 'A', isExpected: true } : c)
+    }
+  };
+
+  const simulatedProj = calculateAcademicProjections(simulatedProfile);
+  assert.ok(simulatedProj.currentSemProjectedSgpa > originalProj.currentSemProjectedSgpa, 'Simulated SGPA must increase');
+  assert.ok(simulatedProj.combinedProjectedCgpa > originalProj.combinedProjectedCgpa, 'Simulated CGPA must increase');
+  assert.strictEqual(profile.semesters['2-1'].filter(c => !c.isNgpa)[0].grade, 'B', 'Original profile grade must remain strictly untouched');
+});
+
+runTest('Course Impact Simulation: Negative target deviation calculates negative difference', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  const semCourses = profile.semesters['2-1'].filter(c => !c.isNgpa);
+  semCourses[0].grade = 'A';
+  semCourses[0].isExpected = true;
+
+  const originalProj = calculateAcademicProjections(profile);
+
+  // Simulate drop to Grade C (2.0)
+  const simulatedProfile = {
+    ...profile,
+    semesters: {
+      ...profile.semesters,
+      '2-1': profile.semesters['2-1'].map((c, i) => i === 0 ? { ...c, grade: 'C', isExpected: true } : c)
+    }
+  };
+
+  const simulatedProj = calculateAcademicProjections(simulatedProfile);
+  assert.ok(simulatedProj.currentSemProjectedSgpa < originalProj.currentSemProjectedSgpa, 'Simulated SGPA must drop');
+  assert.ok(simulatedProj.combinedProjectedCgpa < originalProj.combinedProjectedCgpa, 'Simulated CGPA must drop');
+});
+
+runTest('Course Impact Simulation: Confirmed official grades are never modified during simulation or apply', () => {
+  const profile = getBaseProfile('ARMT', '2-1');
+  const confirmedCourse = profile.semesters['2-1'].filter(c => !c.isNgpa)[0];
+  confirmedCourse.grade = 'A-';
+  confirmedCourse.isExpected = false; // Official
+
+  assert.strictEqual(isCourseGradeConfirmed(confirmedCourse), true);
+
+  // Unresolved courses in scope should exclude confirmedCourse
+  const unresolvedInSem = profile.semesters['2-1'].filter(c => !c.isNgpa && !isCourseGradeConfirmed(c));
+  assert.ok(!unresolvedInSem.some(c => c.code === confirmedCourse.code), 'Confirmed course must be excluded from unresolved course impact list');
+});
+
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);
+
 

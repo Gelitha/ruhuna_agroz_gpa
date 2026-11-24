@@ -21,11 +21,13 @@ import { TrendingUp, BarChart3, PieChart as PieIcon, Award } from 'lucide-react'
 import { useGradeStore } from '../../store/useGradeStore';
 import { SemesterKey } from '../../types';
 import { DEPARTMENTS } from '../../database';
+import { GpaJourneyBar } from '../projection/GpaJourneyBar';
 
 export const GpaAnalyticsView: React.FC = () => {
-  const { getActiveProfile, getOverallStats } = useGradeStore();
+  const { getActiveProfile, getOverallStats, getAcademicProjections } = useGradeStore();
   const profile = getActiveProfile();
   const stats = getOverallStats();
+  const proj = getAcademicProjections();
 
   const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
 
@@ -104,6 +106,16 @@ export const GpaAnalyticsView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Cumulative GPA Journey */}
+      <GpaJourneyBar
+        actualCgpa={proj.actualCgpa}
+        projectedPendingCgpa={proj.projectedCgpaPending}
+        combinedProjectedCgpa={proj.combinedProjectedCgpa}
+        targetCgpa={profile.projectionTargetCgpa}
+        pendingCount={proj.pendingResultsCount}
+        currentSemester={proj.currentSemester}
+      />
 
       {/* Chart 1: SGPA vs CGPA Line Chart */}
       <div className="p-6 rounded-2xl bg-surface border border-border shadow-subtle space-y-4">
