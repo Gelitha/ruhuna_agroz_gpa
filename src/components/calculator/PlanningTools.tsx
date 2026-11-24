@@ -40,7 +40,8 @@ export const PlanningTools: React.FC = () => {
     setProjectionTargetCgpa,
     getAcademicProjections,
     setCourseGrade,
-    setCourseExpected
+    setCourseExpected,
+    setCourseGradeAndStatus
   } = useGradeStore();
 
   const profile = getActiveProfile();
@@ -125,8 +126,7 @@ export const PlanningTools: React.FC = () => {
 
     let appliedCount = 0;
     for (const item of suggestedCombination.courses) {
-      setCourseGrade(item.semesterKey, item.courseCode, item.suggestedGrade);
-      setCourseExpected(item.semesterKey, item.courseCode, true);
+      setCourseGradeAndStatus(item.semesterKey, item.courseCode, item.suggestedGrade, true);
       appliedCount++;
     }
 
@@ -321,11 +321,9 @@ export const PlanningTools: React.FC = () => {
     for (const item of evaluatedCourseImpacts) {
       if (item.isModified) {
         if (item.targetGrade) {
-          setCourseGrade(item.semKey, item.courseCode, item.targetGrade);
-          setCourseExpected(item.semKey, item.courseCode, true);
+          setCourseGradeAndStatus(item.semKey, item.courseCode, item.targetGrade, true);
         } else {
-          setCourseGrade(item.semKey, item.courseCode, '');
-          setCourseExpected(item.semKey, item.courseCode, false);
+          setCourseGradeAndStatus(item.semKey, item.courseCode, '', false);
         }
         count++;
       }

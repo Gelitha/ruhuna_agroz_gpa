@@ -1377,6 +1377,139 @@ runTest('Course Impact Simulation: Confirmed official grades are never modified 
   assert.ok(!unresolvedInSem.some(c => c.code === confirmedCourse.code), 'Confirmed course must be excluded from unresolved course impact list');
 });
 
+console.log('🌟 Testing Section 25 Dashboard GPA Isolation & Confirmed Results Verification...\n');
+
+// 79. User Exact Regression Test Specification
+runTest('Regression Test Spec: Confirmed CGPA 3.50 + Projected Course A/B/C isolated accurately', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Section 25 Spec Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const gpaCourses = activeProfile.semesters['1-1'].filter(x => !x.isNgpa);
+  assert.ok(gpaCourses.length >= 3, 'Must have at least 3 GPA courses in 1-1');
+
+  // Setup Course A: 3 credits, Grade A (Confirmed)
+  store.setCourseCredits('1-1', gpaCourses[0].code, 3);
+  store.setCourseGrade('1-1', gpaCourses[0].code, 'A');
+  store.setCourseExpected('1-1', gpaCourses[0].code, false);
+
+  // Setup Course B: 3 credits, Grade B (Confirmed)
+  store.setCourseCredits('1-1', gpaCourses[1].code, 3);
+  store.setCourseGrade('1-1', gpaCourses[1].code, 'B');
+  store.setCourseExpected('1-1', gpaCourses[1].code, false);
+
+  // Check Confirmed State: Actual CGPA = 3.50, Confirmed credits = 6
+  let stats = store.getOverallStats();
+  let proj = store.getAcademicProjections();
+  assert.strictEqual(stats.cgpa, 3.50, 'Actual CGPA must be 3.50');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 6, 'Confirmed GPA credits must be 6');
+  assert.strictEqual(proj.actualCgpa, 3.50);
+  assert.strictEqual(proj.actualGpaCredits, 6);
+
+  // Setup Course C: 3 credits, Grade A (Projected)
+  store.setCourseCredits('1-1', gpaCourses[2].code, 3);
+  store.setCourseGradeAndStatus('1-1', gpaCourses[2].code, 'A', true);
+
+  // Expected results check:
+  // - Dashboard Cumulative GPA: 3.50
+  // - Projected CGPA: 3.67
+  // - Confirmed GPA credits: 6
+  // - Projected credits: 3
+  // - Combined projection credits: 9
+  stats = store.getOverallStats();
+  proj = store.getAcademicProjections();
+  assert.strictEqual(stats.cgpa, 3.50, 'Dashboard Cumulative GPA must remain strictly 3.50');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 6, 'Confirmed GPA credits must remain strictly 6');
+  assert.strictEqual(proj.actualCgpa, 3.50, 'Actual CGPA must remain 3.50');
+  assert.strictEqual(proj.actualGpaCredits, 6, 'Confirmed GPA credits must remain 6');
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.67, 'Projected CGPA must be 3.67');
+  assert.strictEqual(stats.projectedCreditsAttempted, 3, 'Projected credits must be 3');
+  assert.strictEqual(proj.combinedTotalCredits - proj.actualGpaCredits, 3, 'Projected credits must be 3');
+  assert.strictEqual(proj.combinedTotalCredits, 9, 'Combined projection credits must be 9');
+  assert.strictEqual(stats.combinedGpaCreditsAttempted, 9, 'Combined projection credits must be 9');
+
+  // Changing projected grade to Grade C must NOT change Dashboard Cumulative GPA
+  store.setCourseGradeAndStatus('1-1', gpaCourses[2].code, 'C', true);
+  stats = store.getOverallStats();
+  proj = store.getAcademicProjections();
+  assert.strictEqual(stats.cgpa, 3.50, 'Changing projected grade must not change Dashboard Cumulative GPA');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 6, 'Confirmed credits must remain strictly 6');
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.00, 'Projected CGPA updates to (21+6)/9 = 3.00');
+
+  // Only converting Course C to confirmed updates actual CGPA
+  store.setCourseExpected('1-1', gpaCourses[2].code, false);
+  stats = store.getOverallStats();
+  proj = store.getAcademicProjections();
+  assert.strictEqual(stats.cgpa, 3.00, 'Converting Course C to confirmed updates Dashboard Cumulative GPA to 3.00');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 9, 'Confirmed credits update to 9');
+});
+
+// 80. Genuine 0.00 GPA vs Missing Confirmed Grades
+runTest('Genuine 0.00 GPA vs Missing Confirmed Grades distinction', () => {
+  // Case A: 0 confirmed credits attempted (missing grades)
+  const standingA = getClassStanding(0, 0);
+  assert.strictEqual(standingA.title, 'No Grades Finalized');
+  assert.strictEqual(standingA.level, 0);
+
+  // Case B: Genuine 0.00 GPA (attempted 3 credits, got Grade E)
+  const standingB = getClassStanding(0, 3);
+  assert.strictEqual(standingB.title, 'Below Pass (Academic Warning)');
+  assert.strictEqual(standingB.level, -1);
+});
+
+// 81. Academic classification, Dean\'s Honours, and transcripts strictly exclude projected grades
+runTest('Official academic progress, honors, and transcript exclude projected grades', () => {
+  const profile = getBaseProfile('ARMT', '1-1');
+  const gpaCourses = profile.semesters['1-1'].filter(c => !c.isNgpa);
+
+  // Enter Grade A for all courses as projected (isExpected = true)
+  gpaCourses.forEach(c => {
+    c.grade = 'A';
+    c.isExpected = true;
+  });
+
+  const stats = calculateOverallStats(profile);
+  assert.strictEqual(stats.cgpa, 0, 'Cumulative GPA must exclude projected grades');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 0, 'Attempted credits must exclude projected grades');
+  assert.strictEqual(stats.totalGpaCreditsEarned, 0, 'Earned credits must exclude projected grades');
+  assert.strictEqual(stats.classStanding, 'No Grades Finalized');
+  assert.strictEqual(stats.deansHonors[1].eligible, false, 'Dean’s Honor List must exclude projected grades');
+  assert.strictEqual(stats.deansHonors[1].status, 'In Progress');
+});
+
+// 82. Atomic projection updates via setCourseGradeAndStatus
+runTest('Atomic projection updates prevent premature confirmed grade classification', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Atomic Test Student',
+    degree: 'ABM',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const c = activeProfile.semesters['1-1'].find(x => !x.isNgpa);
+
+  // Atomic update to projected grade
+  store.setCourseGradeAndStatus('1-1', c.code, 'A', true);
+
+  const stats = store.getOverallStats();
+  const courseAfter = store.getActiveProfile().semesters['1-1'].find(x => x.code === c.code);
+  assert.strictEqual(courseAfter.grade, 'A');
+  assert.strictEqual(courseAfter.isExpected, true);
+  assert.strictEqual(stats.totalGpaCreditsAttempted, 0, 'Atomic update must not register confirmed credits');
+  assert.strictEqual(stats.cgpa, 0, 'Atomic update must not alter confirmed CGPA');
+});
+
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);
 
 

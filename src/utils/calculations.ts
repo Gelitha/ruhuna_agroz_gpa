@@ -56,7 +56,7 @@ export function calculateCourseGpv(course: Course): number | null {
 
 // 2. Class Standing Cutoffs
 export function getClassStanding(cgpa: number, creditsAttempted = 0): { title: string; color: string; level: number } {
-  if (creditsAttempted === 0 || cgpa === 0) {
+  if (creditsAttempted === 0) {
     return { title: 'No Grades Finalized', color: '#78827A', level: 0 };
   }
   if (cgpa >= 3.70) {
@@ -121,12 +121,6 @@ export function calculateSemesterStats(semesterKey: SemesterKey, courseList: Cou
     }
 
     const creds = Number(course.credits) || 0;
-    gpaCreditsAttempted += creds;
-    weightedPoints += creds * gpv;
-
-    if (gpv >= 1.7) {
-      gpaCreditsEarned += creds;
-    }
 
     if (course.isExpected) {
       expectedCoursesCount++;
@@ -136,16 +130,20 @@ export function calculateSemesterStats(semesterKey: SemesterKey, courseList: Cou
       if (gpv >= 1.7) {
         realCreditsEarned += creds;
       }
-    }
-
-    // Dean's Honor check: Grade B (3.0) or higher
-    if (gpv < 3.0) {
-      allAboveB = false;
+      // Dean's Honor check: Grade B (3.0) or higher on confirmed courses
+      if (gpv < 3.0) {
+        allAboveB = false;
+      }
     }
   });
 
-  const sgpa = gpaCreditsAttempted > 0 ? weightedPoints / gpaCreditsAttempted : 0;
   const realSgpa = realCreditsAttempted > 0 ? realWeightedPoints / realCreditsAttempted : 0;
+
+  // Actual semester stats MUST strictly evaluate confirmed grades only
+  gpaCreditsAttempted = realCreditsAttempted;
+  gpaCreditsEarned = realCreditsEarned;
+  weightedPoints = realWeightedPoints;
+  const sgpa = realSgpa;
 
   return {
     semesterKey,
@@ -184,6 +182,10 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
   let realCreditsEarned = 0;
   let realWeightedPoints = 0;
 
+  let totalProjectedCreditsAttempted = 0;
+  let totalProjectedCreditsEarned = 0;
+  let totalProjectedWeightedPoints = 0;
+
   let totalCompulsoryEarned = 0;
   let totalElectiveEarned = 0;
   let totalExpectedCoursesCount = 0;
@@ -214,8 +216,18 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
 
     list.forEach(c => {
       if (c.isNgpa) {
-        if (!c.grade || (GRADING_SCALE[c.grade]?.gpv ?? 0) < 1.7) {
+        if (!c.isExpected && (!c.grade || (GRADING_SCALE[c.grade]?.gpv ?? 0) < 1.7)) {
           ngpaAllPassed = false;
+        }
+      } else if (c.isExpected && c.grade && GRADING_SCALE[c.grade]) {
+        const cred = Number(c.credits) || 0;
+        const gpv = calculateCourseGpv(c);
+        if (gpv !== null) {
+          totalProjectedCreditsAttempted += cred;
+          totalProjectedWeightedPoints += cred * gpv;
+          if (gpv >= 1.7) {
+            totalProjectedCreditsEarned += cred;
+          }
         }
       } else {
         const gpv = calculateCourseGpv(c);
@@ -234,12 +246,16 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
   });
 
   const cgpa = totalGpaCreditsAttempted > 0 ? totalWeightedPoints / totalGpaCreditsAttempted : 0;
-  const realCgpa = realCreditsAttempted > 0 ? realWeightedPoints / realCreditsAttempted : 0;
+  const realCgpa = cgpa;
   const degInfo = DEGREE_INFO[profile.degree] || DEGREE_INFO.ARMT;
 
+  const combinedCredits = totalGpaCreditsAttempted + totalProjectedCreditsAttempted;
+  const combinedPoints = totalWeightedPoints + totalProjectedWeightedPoints;
+  const projectedCgpa = combinedCredits > 0 ? combinedPoints / combinedCredits : 0;
+  const deltaCgpa = projectedCgpa - cgpa;
+
   const standing = getClassStanding(cgpa, totalGpaCreditsAttempted);
-  const realStanding = getClassStanding(realCgpa, realCreditsAttempted);
-  const deltaCgpa = cgpa - realCgpa;
+  const realStanding = standing;
 
   // 5. Dean's Honor List per Academic Year
   const deansHonors: Record<number, DeansHonorYear> = {};
@@ -370,6 +386,12 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
     realCgpaExact: realCgpa,
     realClassStanding: realStanding.title,
     realClassBadgeColor: realStanding.color,
+
+    projectedCgpa: parseFloat(projectedCgpa.toFixed(2)),
+    projectedCgpaExact: projectedCgpa,
+    projectedCreditsAttempted: totalProjectedCreditsAttempted,
+    combinedGpaCreditsAttempted: combinedCredits,
+    combinedGpaCreditsEarned: totalGpaCreditsEarned + totalProjectedCreditsEarned,
 
     hasExpectedCourses: totalExpectedCoursesCount > 0,
     totalExpectedCoursesCount,

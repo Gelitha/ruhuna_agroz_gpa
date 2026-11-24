@@ -151,7 +151,8 @@ interface GradeStoreState {
   deleteProfile: (id: string) => void;
 
   // Course Grade Operations (on Active Profile)
-  setCourseGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
+  setCourseGrade: (semKey: SemesterKey, courseCode: string, grade: Grade, isExpected?: boolean) => void;
+  setCourseGradeAndStatus: (semKey: SemesterKey, courseCode: string, grade: Grade, isExpected: boolean) => void;
   setCourseRepeat: (semKey: SemesterKey, courseCode: string, isRepeat: boolean) => void;
   setCourseExcused: (semKey: SemesterKey, courseCode: string, isExcused: boolean) => void;
   setCourseExpected: (semKey: SemesterKey, courseCode: string, isExpected: boolean) => void;
@@ -346,19 +347,24 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
       persist(updated, newActiveId);
     },
 
-    setCourseGrade: (semKey, courseCode, grade) => {
+    setCourseGrade: (semKey, courseCode, grade, isExpectedParam) => {
       const activeId = get().activeProfileId;
       const updatedProfiles = get().profiles.map(profile => {
         if (profile.id !== activeId) return profile;
 
         const semList = profile.semesters[semKey] || [];
         const targetCourse = semList.find(c => c.code === courseCode);
-        const isProj = targetCourse ? !!targetCourse.isExpected : false;
+        const isProj = isExpectedParam !== undefined
+          ? isExpectedParam
+          : (targetCourse ? !!targetCourse.isExpected : false);
 
         const nextList = semList.map(c => {
           if (c.code === courseCode) {
-            // Keep the current isExpected and confirmedGrade of this course row!
-            return { ...c, grade };
+            return {
+              ...c,
+              grade,
+              isExpected: isProj
+            };
           }
           return c;
         });
@@ -447,6 +453,10 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
 
       set({ profiles: updatedProfiles });
       persist(updatedProfiles, activeId);
+    },
+
+    setCourseGradeAndStatus: (semKey, courseCode, grade, isExpected) => {
+      get().setCourseGrade(semKey, courseCode, grade, isExpected);
     },
 
     setCourseRepeat: (semKey, courseCode, isRepeat) => {

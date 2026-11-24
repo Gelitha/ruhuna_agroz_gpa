@@ -42,6 +42,7 @@ export const DashboardView: React.FC = () => {
   const {
     getActiveProfile,
     getOverallStats,
+    getAcademicProjections,
     getRiskAlerts,
     setActiveTab,
     setSelectedSemesterForCalculator,
@@ -50,11 +51,18 @@ export const DashboardView: React.FC = () => {
 
   const profile = getActiveProfile();
   const stats = getOverallStats();
+  const proj = getAcademicProjections();
   const alerts = getRiskAlerts();
   const degInfo = DEGREE_INFO[profile.degree] || DEGREE_INFO.ARMT;
 
   const currentYear = profile.currentAcademicYear || 1;
   const currentDeansHonor = stats.deansHonors[currentYear];
+
+  // Check whether any projected grades exist
+  const hasProjections = stats.hasExpectedCourses || (proj && proj.combinedTotalCredits > proj.actualGpaCredits) || (stats.projectedCreditsAttempted ?? 0) > 0;
+  const projectedCgpa = proj && proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? stats.cgpa);
+  const projectedCredits = stats.projectedCreditsAttempted ?? (proj ? Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits) : 0);
+  const deltaCgpa = proj ? proj.deltaCombined : (stats.deltaCgpa ?? 0);
 
   const handleOpenSemester = (semKey: SemesterKey) => {
     setSelectedSemesterForCalculator(semKey);
@@ -182,7 +190,7 @@ export const DashboardView: React.FC = () => {
           </div>
           <div className="my-2.5 sm:my-3">
             <div className="text-3xl sm:text-4xl xl:text-5xl font-black font-mono text-neutral-900 tracking-tight">
-              {stats.cgpa.toFixed(2)}
+              {stats.totalGpaCreditsAttempted > 0 ? stats.cgpa.toFixed(2) : '—'}
               <span className="text-sm sm:text-base font-semibold text-neutral-400 ml-1.5">/ 4.00</span>
             </div>
             <div className="mt-2 flex items-center gap-2">
@@ -197,9 +205,32 @@ export const DashboardView: React.FC = () => {
                 ★ {stats.classStanding}
               </span>
             </div>
+
+            {/* SEPARATE PROJECTED CGPA (ESTIMATE) - ONLY DISPLAYED WHEN PROJECTIONS EXIST */}
+            {hasProjections && (
+              <div className="mt-3 pt-2.5 border-t border-neutral-100 flex items-center justify-between flex-wrap gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+                    <span>Projected:</span>
+                    <span className="font-mono font-black">{projectedCgpa.toFixed(2)}</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold">(Est.)</span>
+                  </span>
+                  {deltaCgpa !== 0 && (
+                    <span className={`text-[11px] font-bold font-mono ${deltaCgpa > 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {deltaCgpa > 0 ? `+${deltaCgpa.toFixed(2)}` : deltaCgpa.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-neutral-400 font-medium">
+                  {projectedCredits} Cr est.
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-xs text-neutral-500 border-t border-neutral-100 pt-3 flex justify-between font-medium">
-            <span>Attempted: {stats.totalGpaCreditsAttempted} Cr</span>
+            <span>
+              {hasProjections ? `Confirmed: ${stats.totalGpaCreditsAttempted} Cr` : `Attempted: ${stats.totalGpaCreditsAttempted} Cr`}
+            </span>
             <span className="text-emerald-700 font-bold group-hover:underline">Calculator &gt;</span>
           </div>
         </div>

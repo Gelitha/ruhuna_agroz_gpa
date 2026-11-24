@@ -108,6 +108,11 @@ export interface OverallStats {
   realCgpaExact: number;
   realClassStanding: string;
   realClassBadgeColor: string;
+  projectedCgpa?: number;
+  projectedCgpaExact?: number;
+  projectedCreditsAttempted?: number;
+  combinedGpaCreditsAttempted?: number;
+  combinedGpaCreditsEarned?: number;
   hasExpectedCourses: boolean;
   totalExpectedCoursesCount: number;
   deltaCgpa: number;
