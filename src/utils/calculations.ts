@@ -36,7 +36,7 @@ import {
 
 // 1. Calculate Course GPV taking Repeat Capping into account
 export function isCourseGradeConfirmed(course: Course): boolean {
-  return Boolean(course.grade && !course.isExpected);
+  return Boolean(course.grade && !course.isExpected && GRADING_SCALE[course.grade]);
 }
 
 export function calculateCourseGpv(course: Course): number | null {
@@ -253,12 +253,13 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
   years.forEach(y => {
     const s1 = semStats[y.sems[0]];
     const s2 = semStats[y.sems[1]];
-    const yrAttempted = s1.gpaCreditsAttempted + s2.gpaCreditsAttempted;
-    const yrPoints = s1.weightedPoints + s2.weightedPoints;
+    // Dean's Honors strictly evaluates officially confirmed grades (first attempt, >= B, min credits)
+    const yrAttempted = s1.realCreditsAttempted + s2.realCreditsAttempted;
+    const yrPoints = s1.realWeightedPoints + s2.realWeightedPoints;
     const yrGpa = yrAttempted > 0 ? yrPoints / yrAttempted : 0;
     const hasRepeats = s1.hasRepeat || s2.hasRepeat;
     const allB = s1.allAboveB && s2.allAboveB;
-    const hasInc = s1.hasIncomplete || s2.hasIncomplete;
+    const hasInc = s1.hasIncomplete || s2.hasIncomplete || s1.hasExpected || s2.hasExpected;
     const creditsMet = yrAttempted >= y.reqCredits;
 
     let status = 'Incomplete';
@@ -309,9 +310,10 @@ export function calculateOverallStats(profile: StudentProfile): OverallStats {
   if (profile.degree === 'ARMT' || profile.degree === 'ABM') {
     let pts31 = 0;
     let creds31 = 0;
+    // Specialization eligibility strictly evaluates confirmed results
     (['1-1', '1-2', '2-1', '2-2', '3-1'] as SemesterKey[]).forEach(k => {
-      pts31 += semStats[k].weightedPoints;
-      creds31 += semStats[k].gpaCreditsAttempted;
+      pts31 += semStats[k].realWeightedPoints;
+      creds31 += semStats[k].realCreditsAttempted;
     });
     const gpaEnd31 = creds31 > 0 ? pts31 / creds31 : 0;
     specEligibility.evaluated = creds31 >= 40;
@@ -866,8 +868,8 @@ export function solveConcreteGradeCombinations(
 export function calculateTargetGpa(profile: StudentProfile, targetCgpa: number): TargetGpaResult {
   const stats = calculateOverallStats(profile);
   const totalRequired = stats.totalRequiredCredits;
-  const attempted = stats.totalGpaCreditsAttempted;
-  const currentPoints = stats.totalWeightedPoints;
+  const attempted = stats.realCreditsAttempted;
+  const currentPoints = stats.realWeightedPoints;
 
   const remainingCredits = Math.max(0, totalRequired - attempted);
 
@@ -878,7 +880,8 @@ export function calculateTargetGpa(profile: StudentProfile, targetCgpa: number):
     };
   }
 
-  const neededPoints = targetCgpa * totalRequired - currentPoints;
+  const denominator = Math.max(totalRequired, attempted + remainingCredits);
+  const neededPoints = targetCgpa * denominator - currentPoints;
   const requiredAverageGpa = neededPoints / remainingCredits;
 
   const userProfile = analyzeUserPerformanceProfile(profile, requiredAverageGpa);
@@ -1096,21 +1099,25 @@ export function calculateRepeatImpact(
 // 11. What-If Simulation Engine
 export function calculateWhatIf(profile: StudentProfile, simulatedUpcomingSgpa: number): WhatIfResult {
   const currentStats = calculateOverallStats(profile);
-  const remainingCredits = Math.max(0, currentStats.totalRequiredCredits - currentStats.totalGpaCreditsAttempted);
+  const baselineCredits = currentStats.realCreditsAttempted;
+  const baselinePoints = currentStats.realWeightedPoints;
+  const baselineCgpa = currentStats.realCgpa;
+  const remainingCredits = Math.max(0, currentStats.totalRequiredCredits - baselineCredits);
 
   const additionalPoints = simulatedUpcomingSgpa * remainingCredits;
-  const totalPoints = currentStats.totalWeightedPoints + additionalPoints;
-  const projectedCgpa = currentStats.totalRequiredCredits > 0 ? totalPoints / currentStats.totalRequiredCredits : 0;
-  const standing = getClassStanding(projectedCgpa, currentStats.totalRequiredCredits);
+  const totalPoints = baselinePoints + additionalPoints;
+  const totalCredits = Math.max(currentStats.totalRequiredCredits, baselineCredits + remainingCredits);
+  const projectedCgpa = totalCredits > 0 ? totalPoints / totalCredits : 0;
+  const standing = getClassStanding(projectedCgpa, totalCredits);
 
   return {
-    currentCgpa: currentStats.cgpa,
+    currentCgpa: baselineCgpa,
     remainingCredits,
     simulatedSgpa: simulatedUpcomingSgpa,
     projectedCgpa: parseFloat(projectedCgpa.toFixed(2)),
     projectedStanding: standing.title,
     standingColor: standing.color,
-    deltaCgpa: parseFloat((projectedCgpa - currentStats.cgpa).toFixed(2))
+    deltaCgpa: parseFloat((projectedCgpa - baselineCgpa).toFixed(2))
   };
 }
 
@@ -1123,8 +1130,8 @@ export function generateDegreeAudit(profile: StudentProfile): DegreeAuditResult 
     {
       title: 'Total Degree GPA Credits',
       requirement: `Minimum ${degInfo.totalMinGpaCredits} Credits`,
-      current: `${stats.totalGpaCreditsEarned} / ${degInfo.totalMinGpaCredits} Credits`,
-      passed: stats.totalGpaCreditsEarned >= degInfo.totalMinGpaCredits
+      current: `${stats.realCreditsEarned} / ${degInfo.totalMinGpaCredits} Credits`,
+      passed: stats.realCreditsEarned >= degInfo.totalMinGpaCredits
     },
     {
       title: 'Compulsory Course Credits',
@@ -1153,8 +1160,8 @@ export function generateDegreeAudit(profile: StudentProfile): DegreeAuditResult 
     {
       title: 'Minimum Cumulative GPA (CGPA) for Degree Award',
       requirement: 'CGPA ≥ 2.00 (General Pass)',
-      current: `CGPA: ${stats.cgpa.toFixed(2)} (${stats.classStanding})`,
-      passed: stats.cgpa >= 2.00
+      current: `CGPA: ${stats.realCgpa.toFixed(2)} (${stats.realClassStanding})`,
+      passed: stats.realCreditsAttempted > 0 && stats.realCgpa >= 2.00
     }
   ];
 

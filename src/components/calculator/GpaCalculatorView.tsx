@@ -1105,6 +1105,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300 font-extrabold'
                                 : 'bg-white text-neutral-600 border-[#DCDDD7]'
                             }`}
+                            title={isConfirmed ? "Confirmed academic grade is protected. Use Planning Tools > What-If for hypothetical scenarios." : "Projected / expected grade"}
                           >
                             <input
                               type="checkbox"
@@ -1348,7 +1349,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 ? 'bg-emerald-100 text-emerald-900 border-emerald-400 ring-1 ring-emerald-400/40'
                                 : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
                             }`}
-                            title="Projected / expected grade (excluded from confirmed GPA and transcripts)"
+                            title={isConfirmed ? "Confirmed academic grade is protected. Use Planning Tools > What-If for hypothetical scenarios." : "Projected / expected grade (excluded from confirmed GPA and transcripts)"}
                           >
                             <input
                               type="checkbox"

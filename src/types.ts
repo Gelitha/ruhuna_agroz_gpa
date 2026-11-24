@@ -44,6 +44,7 @@ export interface Course {
   isRepeat?: boolean;
   isExcused?: boolean;
   notes?: string;
+  confirmedGrade?: Grade;
 }
 
 export interface SemesterStats {

@@ -20,7 +20,10 @@ const {
   calculateOverallStats,
   calculateSemesterStats,
   calculateCourseGpv,
-  getClassStanding
+  getClassStanding,
+  generateDegreeAudit,
+  calculateWhatIf,
+  calculateTargetGpa
 } = jiti('./src/utils/calculations.ts');
 
 const {
@@ -921,7 +924,177 @@ runTest('Hydration migration correctly sets course.grade and isExpected from cou
   assert.ok(proj.combinedProjectedCgpa > 0);
 });
 
-console.log(`\n🎉 ALL 58 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
+// 59. isCourseGradeConfirmed strictly validates supported grading scale
+runTest('isCourseGradeConfirmed validates that the grade belongs to the supported grading scale', () => {
+  const validCourse = { code: 'AG1101', name: 'Valid', credits: 2, grade: 'A', isExpected: false };
+  const invalidGradeCourse = { code: 'AG1102', name: 'Invalid', credits: 2, grade: 'PENDING', isExpected: false };
+  const expectedCourse = { code: 'AG1103', name: 'Expected', credits: 2, grade: 'A', isExpected: true };
+  const emptyCourse = { code: 'AG1104', name: 'Empty', credits: 2, grade: '', isExpected: false };
+
+  assert.strictEqual(isCourseGradeConfirmed(validCourse), true);
+  assert.strictEqual(isCourseGradeConfirmed(invalidGradeCourse), false, 'Non-grading scale grade must NOT be confirmed');
+  assert.strictEqual(isCourseGradeConfirmed(expectedCourse), false, 'Expected course must NOT be confirmed');
+  assert.strictEqual(isCourseGradeConfirmed(emptyCourse), false, 'Empty grade must NOT be confirmed');
+});
+
+// 60. Protecting confirmed academic grades from accidental overwrite or deletion
+runTest('Checking Proj on confirmed course and clearing projections protects confirmed grade', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 60 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const c = activeProfile.semesters['1-1'].find(x => !x.isNgpa);
+
+  // 1. Enter official confirmed grade A
+  store.setCourseGrade('1-1', c.code, 'A');
+  store.setCourseExpected('1-1', c.code, false);
+
+  let refreshed = store.getActiveProfile().semesters['1-1'].find(x => x.code === c.code);
+  assert.strictEqual(refreshed.grade, 'A');
+  assert.strictEqual(refreshed.confirmedGrade, 'A');
+  assert.strictEqual(refreshed.isExpected, false);
+
+  // 2. User checks Proj on this confirmed course
+  store.setCourseExpected('1-1', c.code, true);
+  refreshed = store.getActiveProfile().semesters['1-1'].find(x => x.code === c.code);
+  assert.strictEqual(refreshed.confirmedGrade, 'A', 'Official grade must remain protected in confirmedGrade');
+  assert.strictEqual(refreshed.isExpected, true);
+
+  // 3. User clears projections for the semester
+  store.clearSemesterProjections('1-1');
+  refreshed = store.getActiveProfile().semesters['1-1'].find(x => x.code === c.code);
+  assert.strictEqual(refreshed.grade, 'A', 'Confirmed grade must be restored, not deleted!');
+  assert.strictEqual(refreshed.isExpected, false, 'Proj is unticked, restored to official');
+  assert.strictEqual(isCourseGradeConfirmed(refreshed), true);
+});
+
+// 61. Clearing an expected grade removes active projections while preserving analytics
+runTest('Clearing expected grade removes active projection values and isolates historical analytics', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 61 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const c = activeProfile.semesters['1-1'].find(x => !x.isNgpa);
+
+  // Set expected grade
+  store.setCourseGrade('1-1', c.code, 'B+');
+  store.setCourseExpected('1-1', c.code, true);
+
+  let proj = store.getAcademicProjections();
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.3);
+
+  // Clear the expected grade
+  store.setCourseGrade('1-1', c.code, '');
+  proj = store.getAcademicProjections();
+  assert.strictEqual(proj.combinedProjectedCgpa, 0, 'No active projection should remain');
+
+  const projData = store.getActiveProfile().courseProjections?.[`1-1:${c.code}`];
+  assert.strictEqual(projData?.predictedGrade, undefined, 'Active predictedGrade must be undefined');
+  assert.strictEqual(projData?.targetGrade, undefined, 'Active targetGrade must be undefined');
+});
+
+// 62. Preserve original prediction before recording official result for accuracy analysis
+runTest('Preserve original prediction before recording official result for prediction accuracy analysis', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+  const testId = store.createProfile({
+    name: 'Scenario 62 Student',
+    degree: 'ARMT',
+    year: 1,
+    currentSemester: '1-1'
+  });
+  store.switchProfile(testId);
+
+  const activeProfile = store.getActiveProfile();
+  const c = activeProfile.semesters['1-1'].find(x => !x.isNgpa);
+
+  // Student predicted B (3.0)
+  store.setCourseGrade('1-1', c.code, 'B');
+  store.setCourseExpected('1-1', c.code, true);
+
+  // Official result arrives: student receives B+ (3.3) and unticks Proj
+  store.setCourseGrade('1-1', c.code, 'B+');
+  store.setCourseExpected('1-1', c.code, false);
+
+  const proj = store.getAcademicProjections();
+  const projData = store.getActiveProfile().courseProjections?.[`1-1:${c.code}`];
+  assert.strictEqual(projData?.historicalPrediction, 'B', 'Original prediction B must be preserved');
+  assert.strictEqual(projData?.predictedGrade, undefined, 'Active prediction must be removed');
+  assert.strictEqual(proj.accuracyReport.totalCompared, 1);
+  assert.strictEqual(proj.accuracyReport.entries[0].predictedGrade, 'B');
+  assert.strictEqual(proj.accuracyReport.entries[0].actualGrade, 'B+');
+  assert.strictEqual(proj.accuracyReport.entries[0].deltaGpv, 0.3);
+});
+
+// 63. Confirmed standing, Dean's Honors, and degree audit strictly exclude projections
+runTest('Confirmed academic standing, Deans Honors, and degree audit exclude projected grades', () => {
+  const p = getBaseProfile('ARMT', '1-2');
+  // 1-1 has 2 confirmed A grades, 1 expected A grade
+  const gpa11 = p.semesters['1-1'].filter(c => !c.isNgpa);
+  gpa11[0].grade = 'A';
+  gpa11[0].isExpected = false;
+  gpa11[1].grade = 'A';
+  gpa11[1].isExpected = false;
+  gpa11[2].grade = 'A';
+  gpa11[2].isExpected = true; // Projected!
+
+  const stats = calculateOverallStats(p);
+  const confirmedCredits = gpa11[0].credits + gpa11[1].credits;
+  assert.strictEqual(stats.realCreditsAttempted, confirmedCredits, 'realCreditsAttempted must exclude projected');
+
+  // Deans Honors for Year 1 must be In Progress because 1-1 has expected courses and 1-2 is incomplete
+  assert.strictEqual(stats.deansHonors[1].eligible, false);
+  assert.strictEqual(stats.deansHonors[1].status, 'In Progress');
+
+  // Degree audit
+  const audit = generateDegreeAudit(p);
+  const gpaCreditAudit = audit.items.find(i => i.title.includes('Total Degree GPA Credits'));
+  assert.strictEqual(gpaCreditAudit.passed, false);
+  assert.ok(gpaCreditAudit.current.startsWith(`${stats.realCreditsEarned} /`));
+});
+
+// 64. What-If and Target GPA tools use confirmed baseline calculations
+runTest('What-If and Target GPA tools use confirmed baseline calculations without distortion from projections', () => {
+  const p = getBaseProfile('ARMT', '2-1');
+  p.semesters['1-1'].filter(c => !c.isNgpa).forEach(c => { c.grade = 'B+'; c.isExpected = false; });
+  // Add a projected course in 2-1
+  const c21 = p.semesters['2-1'].find(x => !x.isNgpa);
+  c21.grade = 'A';
+  c21.isExpected = true;
+
+  const whatIf = calculateWhatIf(p, 3.5);
+  // Baseline CGPA in whatIf should be confirmed CGPA (~3.30), not distorted by projected 2-1
+  assert.ok(whatIf.currentCgpa > 3.25 && whatIf.currentCgpa < 3.35);
+
+  const target = calculateTargetGpa(p, 3.5);
+  assert.strictEqual(target.possible, true);
+  assert.ok(target.requiredAverageGpa <= 4.0);
+});
+
+// 65. Legacy Academic Projection navigation redirects cleanly without duplicate state
+runTest('Legacy Academic Projection navigation redirects to calculator without duplicate navigation states', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  store.setActiveTab('projection');
+  assert.strictEqual(store.activeTab, 'calculator', 'setActiveTab("projection") must redirect to "calculator"');
+});
+
+console.log(`\n🎉 ALL 65 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
 
 // =========================================================================
 // SECTION 22: REAL-WORLD ACCEPTANCE SCENARIO (Agribusiness Management - ABM)

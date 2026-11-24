@@ -5,7 +5,7 @@ import React from 'react';
 import { Printer, Download, Share2, Award, ShieldCheck, CheckCircle, FileText } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { DEGREE_INFO, DEPARTMENTS } from '../../database';
-import { calculateCourseGpv } from '../../utils/calculations';
+import { calculateCourseGpv, isCourseGradeConfirmed } from '../../utils/calculations';
 import { SemesterKey } from '../../types';
 
 export const AcademicTranscriptView: React.FC = () => {
@@ -74,7 +74,7 @@ export const AcademicTranscriptView: React.FC = () => {
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-secondary">Academic Standing</span>
-            <div className="font-bold text-primary text-sm">{stats.classStanding}</div>
+            <div className="font-bold text-primary text-sm">{stats.realClassStanding}</div>
           </div>
         </div>
 
@@ -83,7 +83,7 @@ export const AcademicTranscriptView: React.FC = () => {
           {semKeys.map(semKey => {
             const courses = profile.semesters[semKey] || [];
             const semStat = stats.semStats[semKey];
-            if (courses.length === 0 && semStat.gpaCreditsAttempted === 0) return null;
+            if (courses.length === 0 && semStat.realCreditsAttempted === 0) return null;
 
             return (
               <div key={semKey} className="space-y-2">
@@ -92,8 +92,8 @@ export const AcademicTranscriptView: React.FC = () => {
                     Semester {semKey}
                   </h4>
                   <div className="text-xs font-semibold text-main">
-                    SGPA: <span className="font-bold text-primary">{semStat.gpaCreditsAttempted > 0 ? semStat.sgpa.toFixed(2) : '—'}</span>
-                    <span className="text-secondary ml-3">Credits: {semStat.gpaCreditsEarned} / {semStat.gpaCreditsAttempted}</span>
+                    SGPA: <span className="font-bold text-primary">{semStat.realCreditsAttempted > 0 ? semStat.realSgpa.toFixed(2) : '—'}</span>
+                    <span className="text-secondary ml-3">Credits: {semStat.realCreditsEarned} / {semStat.realCreditsAttempted}</span>
                   </div>
                 </div>
 
@@ -110,9 +110,10 @@ export const AcademicTranscriptView: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
                     {courses.map(c => {
-                      const gpv = calculateCourseGpv(c);
+                      const isConfirmed = isCourseGradeConfirmed(c);
+                      const gpv = isConfirmed ? calculateCourseGpv(c) : null;
                       const creds = Number(c.credits) || 0;
-                      const points = gpv !== null && !c.isNgpa ? creds * gpv : null;
+                      const points = isConfirmed && gpv !== null && !c.isNgpa ? creds * gpv : null;
 
                       return (
                         <tr key={c.code} className="hover:bg-surface-subtle">
@@ -122,7 +123,7 @@ export const AcademicTranscriptView: React.FC = () => {
                             {c.isNgpa ? '0 (NGPA)' : creds}
                           </td>
                           <td className="py-1.5 px-2 text-center font-bold">
-                            {c.grade || <span className="text-secondary font-normal">—</span>}
+                            {isConfirmed ? c.grade : <span className="text-secondary font-normal">—</span>}
                           </td>
                           <td className="py-1.5 px-2 text-center text-main">
                             {c.isNgpa ? '—' : gpv !== null ? gpv.toFixed(1) : '—'}
@@ -166,13 +167,13 @@ export const AcademicTranscriptView: React.FC = () => {
                 Cumulative Performance Summary
               </span>
               <div className="text-3xl font-extrabold text-main tracking-tight">
-                CGPA: {stats.cgpa.toFixed(2)}
+                CGPA: {stats.realCreditsAttempted > 0 ? stats.realCgpa.toFixed(2) : '0.00'}
                 <span className="text-sm font-normal text-secondary ml-2">
-                  (Exact: {stats.cgpaExact.toFixed(4)})
+                  (Exact: {stats.realCreditsAttempted > 0 ? stats.realCgpaExact.toFixed(4) : '0.0000'})
                 </span>
               </div>
               <div className="text-xs font-semibold text-secondary">
-                Total GPA Credits Earned: <span className="text-main font-bold">{stats.totalGpaCreditsEarned}</span> / {stats.totalRequiredCredits}
+                Total GPA Credits Earned: <span className="text-main font-bold">{stats.realCreditsEarned}</span> / {stats.totalRequiredCredits}
               </div>
             </div>
 
@@ -181,7 +182,7 @@ export const AcademicTranscriptView: React.FC = () => {
                 Conferred Honours Standing
               </span>
               <div className="text-xl font-extrabold text-primary">
-                {stats.classStanding}
+                {stats.realClassStanding}
               </div>
               <div className="text-[11px] text-secondary">
                 {stats.ngpaAllPassed ? '✓ All Non-GPA Modules Satisfied' : '⚠️ Non-GPA Modules Incomplete'}

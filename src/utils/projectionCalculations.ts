@@ -30,7 +30,7 @@ export const ALL_SEMESTER_KEYS: SemesterKey[] = [
  * (Must have a valid grade AND NOT have the legacy isExpected flag)
  */
 export function isCourseGradeConfirmed(course: Course): boolean {
-  return Boolean(course.grade && !course.isExpected);
+  return Boolean(course.grade && !course.isExpected && GRADING_SCALE[course.grade]);
 }
 
 /**
@@ -256,33 +256,29 @@ export function calculateAcademicProjections(
         }
       }
 
-      // 3. Projected Grade Resolution following strict precedence:
-      // 1. Confirmed actual grade
-      // 2. Predicted grade
-      // 3. Target grade
-      // 4. Legacy isExpected grade fallback
-      // 5. Active quick assumption (with repeat capping enforced)
-      // 6. Unspecified (missing, null)
+      // 3. Projected Grade Resolution following strict authoritative hierarchy:
+      // 1. Confirmed actual grade (validated against grading scale, isExpected = false)
+      // 2. Active expected grade on course (authoritative single source: course.isExpected && course.grade)
+      // 3. Active quick assumption (with repeat capping enforced)
+      // 4. Unspecified (missing, null) - active predictions never conflict, leak, or use historical archives
       let effectiveProjectionGpv: number | null = null;
       let effectiveGrade: Grade = '';
 
       if (isConfirmed && actualGpv !== null) {
         effectiveProjectionGpv = actualGpv;
         effectiveGrade = course.grade || '';
-      } else if (predictedGpv !== null) {
-        effectiveProjectionGpv = predictedGpv;
-        effectiveGrade = projData?.predictedGrade || '';
-      } else if (targetGpv !== null) {
-        effectiveProjectionGpv = targetGpv;
-        effectiveGrade = projData?.targetGrade || '';
-      } else if (course.isExpected && course.grade) {
-        // Safe backward-compatible fallback for legacy expected grades
+      } else if (course.isExpected && course.grade && GRADING_SCALE[course.grade]) {
+        // Authoritative single source of truth for active projected grades
         effectiveProjectionGpv = calculateEffectiveGpvForGrade(
           course.grade,
           course.isRepeat,
           course.isExcused
         );
         effectiveGrade = course.grade;
+      } else if (!course.grade && predictedGpv !== null) {
+        // Backward-compatible fallback for unhydrated legacy profiles with active predictedGrade
+        effectiveProjectionGpv = predictedGpv;
+        effectiveGrade = projData?.predictedGrade || '';
       } else if (isPast && customAssumptions?.remainingPrevAvgGpa !== undefined) {
         let assumedGpv = customAssumptions.remainingPrevAvgGpa;
         // Strict repeat cap enforcement on quick assumptions!
