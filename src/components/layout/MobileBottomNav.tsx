@@ -18,6 +18,7 @@ import {
   Users,
   Settings,
   ShieldCheck,
+  TrendingUp,
   ChevronRight
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
@@ -44,6 +45,12 @@ export const MobileBottomNav: React.FC = () => {
   const [activeModal, setActiveModal] = useState<SubNavModalState | null>(null);
 
   const planItems = [
+    {
+      id: 'projection' as NavView,
+      label: 'Academic Projection',
+      description: 'Predict multi-semester grades & exams',
+      icon: TrendingUp
+    },
     {
       id: 'planner' as NavView,
       label: 'Semester Planner',
@@ -114,7 +121,7 @@ export const MobileBottomNav: React.FC = () => {
 
   const isHomeActive = activeTab === 'dashboard';
   const isCalculatorActive = activeTab === 'calculator' || activeTab === 'grades';
-  const isPlanActive = ['planner', 'simulator', 'forecast', 'goals'].includes(activeTab);
+  const isPlanActive = ['planner', 'simulator', 'forecast', 'goals', 'projection'].includes(activeTab);
   const isProgressActive = ['progress', 'analytics', 'requirements', 'specialization'].includes(activeTab);
   const isMoreActive = ['transcript', 'profiles', 'settings'].includes(activeTab);
 

@@ -18,6 +18,7 @@ const ROUTE_INFO: Record<string, { section: string; title: string }> = {
   grades: { section: 'OVERVIEW', title: 'GPA Calculator' },
   transcript: { section: 'OVERVIEW', title: 'Academic Transcript' },
   planner: { section: 'ACADEMIC', title: 'Semester Planner' },
+  projection: { section: 'ACADEMIC', title: 'Academic Projection' },
   progress: { section: 'ACADEMIC', title: 'Credit Progress' },
   requirements: { section: 'ACADEMIC', title: 'Degree Requirements' },
   specialization: { section: 'ACADEMIC', title: 'Specialization Eligibility' },

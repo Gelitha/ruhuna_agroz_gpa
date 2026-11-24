@@ -22,7 +22,8 @@ export type NavView =
   | 'analytics'
   | 'simulator'
   | 'goals'
-  | 'profiles';
+  | 'profiles'
+  | 'projection';
 
 export interface GradingScaleEntry {
   gpv: number;
@@ -260,4 +261,119 @@ export interface StudentProfile {
   orientationCourses: Course[];
   createdAt: string;
   updatedAt: string;
+  // Academic Projection State
+  academicStatusBySem?: Partial<Record<SemesterKey, AcademicSemesterStatus>>;
+  resultStatusBySem?: Partial<Record<SemesterKey, SemesterResultStatus>>;
+  courseProjections?: Record<string, CourseProjectionData>;
+  projectionQuickAssumptions?: {
+    remainingPrevAvgGpa: number;
+    currentSemAvgGpa: number;
+  };
+  projectionTargetCgpa?: number;
+}
+
+// ========================================================
+// Academic Projection Types (Smart Multi-Semester Forecasting)
+// ========================================================
+
+export type AcademicSemesterStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'exams_approaching'
+  | 'exams_in_progress'
+  | 'exams_completed';
+
+export type SemesterResultStatus =
+  | 'none'
+  | 'partial'
+  | 'all_received';
+
+export interface CourseProjectionData {
+  courseCode: string;
+  semesterKey: SemesterKey;
+  predictedGrade?: Grade;
+  targetGrade?: Grade;
+  isResultPending?: boolean;
+  examStatus?: 'upcoming' | 'in_progress' | 'completed';
+  historicalPrediction?: Grade;
+  lastUpdated?: string;
+}
+
+export interface SemesterProjectionSummary {
+  semesterKey: SemesterKey;
+  academicStatus: AcademicSemesterStatus;
+  resultStatus: SemesterResultStatus;
+  totalCourses: number;
+  actualResultsCount: number;
+  pendingResultsCount: number;
+  totalGpaCredits: number;
+  confirmedGpaCredits: number;
+  predictedGpaCredits: number;
+  actualSgpa: number;
+  projectedSgpa: number;
+  isComplete: boolean;
+}
+
+export interface CourseImpactAnalysis {
+  courseCode: string;
+  courseName: string;
+  credits: number;
+  semesterKey: SemesterKey;
+  currentGrade: Grade;
+  currentGpv: number;
+  targetGrade: Grade;
+  targetGpv: number;
+  gpvDifference: number;
+  cgpaGain: number;
+  impactScore: number; // credits * gpvDifference
+  isCompulsory: boolean;
+  advice: string;
+}
+
+export interface PredictionAccuracyEntry {
+  courseCode: string;
+  courseName: string;
+  semesterKey: SemesterKey;
+  predictedGrade: Grade;
+  predictedGpv: number;
+  actualGrade: Grade;
+  actualGpv: number;
+  deltaGpv: number;
+  isExactMatch: boolean;
+}
+
+export interface PredictionAccuracyReport {
+  entries: PredictionAccuracyEntry[];
+  totalCompared: number;
+  exactMatchesCount: number;
+  accuracyPercentage: number;
+  averageErrorGpv: number;
+  netGpvBias: number; // positive = overpredicted, negative = underpredicted
+}
+
+export interface AcademicProjectionResult {
+  actualCgpa: number;
+  actualGpaCredits: number;
+  projectedCgpaPending: number;
+  pendingResultsCount: number;
+  pendingGpaCredits: number;
+  currentSemester: SemesterKey;
+  currentSemActualSgpa: number;
+  currentSemProjectedSgpa: number;
+  currentSemTotalCredits: number;
+  currentSemGradedCredits: number;
+  combinedProjectedCgpa: number;
+  combinedTotalCredits: number;
+  deltaCombined: number;
+  projectionCoveragePercent: number;
+  isCurrentSemComplete: boolean;
+  scenarios: {
+    actualOnly: number;
+    expected: number;
+    bestCase: number;
+    worstCase: number;
+  };
+  semesterSummaries: Record<SemesterKey, SemesterProjectionSummary>;
+  courseImpacts: CourseImpactAnalysis[];
+  accuracyReport: PredictionAccuracyReport;
 }

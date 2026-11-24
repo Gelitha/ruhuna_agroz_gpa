@@ -347,6 +347,22 @@ export const GpaCalculatorView: React.FC = () => {
           </div>
         </div>
 
+        {/* Smart Projection Shortcut on Mobile */}
+        <div
+          onClick={() => setActiveTab('projection')}
+          className="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 flex items-center justify-between text-xs cursor-pointer hover:border-[#176B45] transition"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#176B45] shrink-0" />
+            <span className="font-bold text-[#103B2D]">
+              Smart Academic Projection
+            </span>
+          </div>
+          <span className="text-[11px] font-extrabold text-[#176B45] flex items-center gap-0.5">
+            Predict Grades →
+          </span>
+        </div>
+
         {/* First-Time Instruction when no grades exist */}
         {!hasAnyGrades && (
           <div className="mt-3 p-2.5 rounded-xl bg-[#EAF2ED] border border-[#176B45]/20 flex items-center gap-2 text-xs text-[#103B2D] font-semibold">
@@ -459,17 +475,24 @@ export const GpaCalculatorView: React.FC = () => {
             {/* Metric 3: Quick Tools */}
             <div className="flex flex-col gap-2 justify-end">
               <button
-                onClick={() => setActiveTab('transcript')}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-sm flex items-center justify-center gap-1.5 border border-white/25 transition shadow-sm active:scale-95"
+                onClick={() => setActiveTab('projection')}
+                className="w-full px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/40 to-teal-500/40 hover:from-emerald-500/50 hover:to-teal-500/50 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-emerald-400/50 transition shadow-sm active:scale-95"
               >
-                <Printer className="w-4 h-4" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Smart Projection</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('transcript')}
+                className="w-full px-4 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-white/25 transition shadow-sm active:scale-95"
+              >
+                <Printer className="w-3.5 h-3.5" />
                 <span>Transcript</span>
               </button>
               <button
                 onClick={() => setActiveTab('simulator')}
-                className="w-full px-4 py-2.5 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 font-bold text-sm flex items-center justify-center gap-1.5 border border-emerald-400/40 transition shadow-sm active:scale-95"
+                className="w-full px-4 py-2 rounded-xl bg-emerald-500/30 hover:bg-emerald-500/40 text-emerald-100 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-emerald-400/40 transition shadow-sm active:scale-95"
               >
-                <Sliders className="w-4 h-4" />
+                <Sliders className="w-3.5 h-3.5" />
                 <span>Forecast</span>
               </button>
             </div>

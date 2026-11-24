@@ -11,7 +11,10 @@ import {
   StudentProfile,
   OverallStats,
   SemesterStats,
-  RegulationRiskAlert
+  RegulationRiskAlert,
+  AcademicSemesterStatus,
+  SemesterResultStatus,
+  AcademicProjectionResult
 } from '../types';
 import {
   calculateOverallStats,
@@ -20,6 +23,7 @@ import {
   initDefaultCoursesForDegree,
   initOrientationCourses
 } from '../utils/calculations';
+import { calculateAcademicProjections } from '../utils/projectionCalculations';
 import {
   createCleanProfile,
   createDefaultProfile,
@@ -45,7 +49,14 @@ function loadPersistedProfiles(): { profiles: StudentProfile[]; activeId: string
       const realProfiles = parsed.filter(p => p.id !== 'prof_gjay' && p.name !== 'Gjay');
       if (Array.isArray(realProfiles) && realProfiles.length > 0) {
         const validActive = realProfiles.find(p => p.id === v3ActiveId) ? (v3ActiveId as string) : realProfiles[0].id;
-        return { profiles: realProfiles, activeId: validActive, hasOnboarded };
+        // Migration: ensure projection fields exist safely
+        const migrated = realProfiles.map(p => ({
+          ...p,
+          courseProjections: p.courseProjections || {},
+          academicStatusBySem: p.academicStatusBySem || {},
+          resultStatusBySem: p.resultStatusBySem || {}
+        }));
+        return { profiles: migrated, activeId: validActive, hasOnboarded };
       }
     }
   } catch (err) {
@@ -119,11 +130,25 @@ interface GradeStoreState {
   importProfilesJson: (jsonStr: string) => boolean;
   resetToFactoryDefaults: () => void;
 
+  // Smart Academic Projection Management
+  setCoursePredictedGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
+  setCourseTargetGrade: (semKey: SemesterKey, courseCode: string, grade: Grade) => void;
+  setCourseExamStatus: (semKey: SemesterKey, courseCode: string, status: 'upcoming' | 'in_progress' | 'completed') => void;
+  setCourseResultPending: (semKey: SemesterKey, courseCode: string, isPending: boolean) => void;
+  setAcademicSemesterStatus: (semKey: SemesterKey, status: AcademicSemesterStatus) => void;
+  setSemesterResultStatus: (semKey: SemesterKey, status: SemesterResultStatus) => void;
+  setProjectionQuickAssumptions: (assumptions: { remainingPrevAvgGpa: number; currentSemAvgGpa: number }) => void;
+  setProjectionTargetCgpa: (target: number) => void;
+  resetCourseProjection: (semKey: SemesterKey, courseCode: string) => void;
+  resetSemesterProjections: (semKey: SemesterKey) => void;
+  resetAllProjections: () => void;
+
   // Getters
   getActiveProfile: () => StudentProfile;
   getOverallStats: () => OverallStats;
   getSemesterStats: (semKey: SemesterKey) => SemesterStats;
   getRiskAlerts: () => RegulationRiskAlert[];
+  getAcademicProjections: () => AcademicProjectionResult;
 }
 
 const initialHydration = loadPersistedProfiles();
@@ -284,12 +309,47 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
           return c;
         });
 
+        // Smart Automatic Transition:
+        // When an official grade arrives, preserve any existing predicted grade into historicalPrediction
+        // and mark the course result as received without requiring manual cleanup.
+        const projKey = `${semKey}:${courseCode}`;
+        const existingProjections = { ...(profile.courseProjections || {}) };
+        const currentProj = existingProjections[projKey];
+
+        if (grade && currentProj && currentProj.predictedGrade) {
+          existingProjections[projKey] = {
+            ...currentProj,
+            historicalPrediction: currentProj.historicalPrediction || currentProj.predictedGrade,
+            isResultPending: false,
+            lastUpdated: new Date().toISOString()
+          };
+        } else if (!grade && currentProj) {
+          existingProjections[projKey] = {
+            ...currentProj,
+            isResultPending: true,
+            lastUpdated: new Date().toISOString()
+          };
+        }
+
+        // Update result status for this semester
+        const gpaCourses = nextList.filter(c => !c.isNgpa);
+        const gradedCount = gpaCourses.filter(c => !!c.grade).length;
+        const newResStatus: SemesterResultStatus =
+          gradedCount === 0 ? 'none' : gradedCount === gpaCourses.length ? 'all_received' : 'partial';
+
+        const updatedResultStatuses = {
+          ...(profile.resultStatusBySem || {}),
+          [semKey]: newResStatus
+        };
+
         return {
           ...profile,
           semesters: {
             ...profile.semesters,
             [semKey]: nextList
           },
+          courseProjections: existingProjections,
+          resultStatusBySem: updatedResultStatuses,
           updatedAt: new Date().toISOString()
         };
       });
@@ -664,6 +724,225 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
       persist(initial, def.id);
     },
 
+    // ========================================================
+    // Smart Academic Projection Actions
+    // ========================================================
+
+    setCoursePredictedGrade: (semKey, courseCode, grade) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = profile.courseProjections || {};
+        const current = existing[projKey] || { courseCode, semesterKey: semKey };
+        const updatedProjections = {
+          ...existing,
+          [projKey]: {
+            ...current,
+            predictedGrade: grade,
+            isResultPending: !profile.semesters[semKey]?.find(c => c.code === courseCode)?.grade,
+            lastUpdated: new Date().toISOString()
+          }
+        };
+        return {
+          ...profile,
+          courseProjections: updatedProjections,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setCourseTargetGrade: (semKey, courseCode, grade) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = profile.courseProjections || {};
+        const current = existing[projKey] || { courseCode, semesterKey: semKey };
+        const updatedProjections = {
+          ...existing,
+          [projKey]: {
+            ...current,
+            targetGrade: grade,
+            lastUpdated: new Date().toISOString()
+          }
+        };
+        return {
+          ...profile,
+          courseProjections: updatedProjections,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setCourseExamStatus: (semKey, courseCode, status) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = profile.courseProjections || {};
+        const current = existing[projKey] || { courseCode, semesterKey: semKey };
+        const updatedProjections = {
+          ...existing,
+          [projKey]: {
+            ...current,
+            examStatus: status,
+            lastUpdated: new Date().toISOString()
+          }
+        };
+        return {
+          ...profile,
+          courseProjections: updatedProjections,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setCourseResultPending: (semKey, courseCode, isPending) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = profile.courseProjections || {};
+        const current = existing[projKey] || { courseCode, semesterKey: semKey };
+        const updatedProjections = {
+          ...existing,
+          [projKey]: {
+            ...current,
+            isResultPending: isPending,
+            lastUpdated: new Date().toISOString()
+          }
+        };
+        return {
+          ...profile,
+          courseProjections: updatedProjections,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setAcademicSemesterStatus: (semKey, status) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          academicStatusBySem: {
+            ...(profile.academicStatusBySem || {}),
+            [semKey]: status
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setSemesterResultStatus: (semKey, status) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          resultStatusBySem: {
+            ...(profile.resultStatusBySem || {}),
+            [semKey]: status
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setProjectionQuickAssumptions: (assumptions) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          projectionQuickAssumptions: assumptions,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    setProjectionTargetCgpa: (target) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          projectionTargetCgpa: target,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    resetCourseProjection: (semKey, courseCode) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const projKey = `${semKey}:${courseCode}`;
+        const existing = { ...(profile.courseProjections || {}) };
+        delete existing[projKey];
+        return {
+          ...profile,
+          courseProjections: existing,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    resetSemesterProjections: (semKey) => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        const existing = { ...(profile.courseProjections || {}) };
+        Object.keys(existing).forEach(k => {
+          if (k.startsWith(`${semKey}:`)) {
+            delete existing[k];
+          }
+        });
+        return {
+          ...profile,
+          courseProjections: existing,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
+    resetAllProjections: () => {
+      const activeId = get().activeProfileId;
+      const updatedProfiles = get().profiles.map(profile => {
+        if (profile.id !== activeId) return profile;
+        return {
+          ...profile,
+          courseProjections: {},
+          projectionQuickAssumptions: undefined,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updatedProfiles });
+      persist(updatedProfiles, activeId);
+    },
+
     getActiveProfile: () => {
       const found = get().profiles.find(p => p.id === get().activeProfileId);
       return found || get().profiles[0] || createDefaultProfile();
@@ -680,6 +959,11 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
 
     getRiskAlerts: () => {
       return calculateAcademicRiskAlerts(get().getActiveProfile());
+    },
+
+    getAcademicProjections: () => {
+      const profile = get().getActiveProfile();
+      return calculateAcademicProjections(profile, profile.projectionQuickAssumptions);
     }
   };
 });

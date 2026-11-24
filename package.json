@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node verify_regulations.cjs"
+    "test": "node verify_regulations.cjs && node test_academic_projection.cjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
