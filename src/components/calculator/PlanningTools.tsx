@@ -22,6 +22,7 @@ import {
   calculateAcademicProjections
 } from '../../utils/projectionCalculations';
 import { GpaJourneyBar } from '../projection/GpaJourneyBar';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const PlanningTools: React.FC = () => {
   const {
@@ -238,9 +239,12 @@ export const PlanningTools: React.FC = () => {
                 <div className="p-4 rounded-xl bg-[#F8F8F4] border border-[#DCDDD7] flex flex-col justify-between space-y-3">
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#626962]">
-                        Desired CGPA
-                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#626962]">
+                          Desired CGPA
+                        </label>
+                        <HelpTooltip id="T23" size="xs" />
+                      </div>
                       <span className="font-sans font-tabular text-xl font-black text-[#176B45]">
                         {targetCgpa.toFixed(2)}
                       </span>
@@ -308,8 +312,9 @@ export const PlanningTools: React.FC = () => {
                         {targetResult.possible ? 'Target Achievable' : 'Target Mathematically Unreachable'}
                       </span>
                       {targetResult.isRepeatCapRestricted && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                          Repeat Capped
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                          <span>Repeat Capped</span>
+                          <HelpTooltip id="T29" size="xs" />
                         </span>
                       )}
                     </div>
@@ -321,9 +326,12 @@ export const PlanningTools: React.FC = () => {
 
                 {targetResult.possible && targetResult.remainingCredits > 0 && targetResult.requiredAverage > 0 && (
                   <div className="shrink-0 text-right bg-white p-2.5 rounded-xl border border-emerald-200">
-                    <span className="text-[10px] uppercase font-bold text-[#626962] block">
-                      Required Avg
-                    </span>
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-[10px] uppercase font-bold text-[#626962] block">
+                        Required Avg
+                      </span>
+                      <HelpTooltip id="T24" size="xs" />
+                    </div>
                     <span className="font-sans font-tabular text-xl font-black text-[#176B45]">
                       {targetResult.requiredAverage.toFixed(2)}
                     </span>
@@ -470,9 +478,12 @@ export const PlanningTools: React.FC = () => {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white border border-[#DCDDD7]">
-                  <span className="text-xs font-bold text-[#626962] block">
-                    Best Case
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#626962] block">
+                      Best Case
+                    </span>
+                    <HelpTooltip id="T26" size="xs" />
+                  </div>
                   <div className="font-sans font-tabular text-xl font-bold text-emerald-700 mt-1">
                     {(proj.scopeTotalGpaCredits && proj.scopeTotalGpaCredits > 0)
                       ? proj.scenarios.bestCase.toFixed(2)
@@ -484,9 +495,12 @@ export const PlanningTools: React.FC = () => {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-white border border-[#DCDDD7]">
-                  <span className="text-xs font-bold text-[#626962] block">
-                    Worst Case
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#626962] block">
+                      Worst Case
+                    </span>
+                    <HelpTooltip id="T27" size="xs" />
+                  </div>
                   <div className="font-sans font-tabular text-xl font-bold text-rose-700 mt-1">
                     {(proj.scopeTotalGpaCredits && proj.scopeTotalGpaCredits > 0)
                       ? proj.scenarios.worstCase.toFixed(2)

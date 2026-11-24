@@ -6,6 +6,7 @@ import { Compass, CheckCircle2, AlertTriangle, BookOpen, Sparkles, Award } from 
 import { useGradeStore } from '../../store/useGradeStore';
 import { DEPARTMENTS, SPECIALIZATION_STREAMS } from '../../database';
 import { SemesterKey } from '../../types';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const SpecializationEligibilityView: React.FC = () => {
   const { getActiveProfile, getOverallStats, setSpecializationDept } = useGradeStore();
@@ -37,9 +38,12 @@ export const SpecializationEligibilityView: React.FC = () => {
             Academic Regulations • Section 5.2
           </span>
         </div>
-        <h2 className="text-xl font-bold text-main">
-          Departmental Specialization Stream Eligibility (ARMT & ABM)
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-bold text-main">
+            Departmental Specialization Stream Eligibility (ARMT & ABM)
+          </h2>
+          <HelpTooltip id="T32" size="xs" />
+        </div>
         <p className="text-xs text-secondary leading-relaxed max-w-3xl">
           At the completion of Semester 3-1, undergraduate students select their Year 4 Specialization Department and 6-credit Research Project. Under Faculty of Agriculture regulations, direct preference allocation is governed by two strict conditions:
         </p>
@@ -51,7 +55,10 @@ export const SpecializationEligibilityView: React.FC = () => {
             </p>
           </div>
           <div className="p-3 rounded-xl bg-surface-subtle border border-border">
-            <span className="font-bold text-main">2. Departmental Elective 50% Rule:</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-main">2. Departmental Elective 50% Rule:</span>
+              <HelpTooltip id="T31" size="xs" />
+            </div>
             <p className="text-secondary mt-0.5">
               At least <strong className="text-primary">50% of all elective credits</strong> taken across Year 3 must belong to the intended Department of Specialization.
             </p>

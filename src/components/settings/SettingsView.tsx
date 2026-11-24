@@ -19,6 +19,7 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { GRADING_SCALE, DEPARTMENTS } from '../../database';
 import { DegreeCode, SemesterKey } from '../../types';
 import { calculateOverallStats } from '../../utils/calculations';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -237,21 +238,27 @@ export const SettingsView: React.FC = () => {
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            onClick={handleDownloadBackup}
-            className="px-4 py-2.5 rounded-2xl bg-neutral-900 text-white text-xs font-bold flex items-center gap-2 hover:bg-black transition shadow-xs"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Backup (.JSON)</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleDownloadBackup}
+              className="px-4 py-2.5 rounded-2xl bg-neutral-900 text-white text-xs font-bold flex items-center gap-2 hover:bg-black transition shadow-xs"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export Backup (.JSON)</span>
+            </button>
+            <HelpTooltip id="T35" size="xs" />
+          </div>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2.5 rounded-2xl bg-white border border-neutral-200 text-neutral-800 text-xs font-bold flex items-center gap-2 hover:bg-neutral-100 transition shadow-xs"
-          >
-            <Upload className="w-4 h-4 text-neutral-500" />
-            <span>Restore Backup</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2.5 rounded-2xl bg-white border border-neutral-200 text-neutral-800 text-xs font-bold flex items-center gap-2 hover:bg-neutral-100 transition shadow-xs"
+            >
+              <Upload className="w-4 h-4 text-neutral-500" />
+              <span>Restore Backup</span>
+            </button>
+            <HelpTooltip id="T36" size="xs" />
+          </div>
           <input
             type="file"
             ref={fileInputRef}

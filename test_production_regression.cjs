@@ -1166,3 +1166,98 @@ assert.strictEqual(updatedState.pendingResultsCount, sem12Gpa.length - 6, 'Pendi
 assert.ok(updatedState.actualCgpa > 0);
 
 console.log('\n🎉 ALL SECTION 22 ACCEPTANCE SCENARIO WORKFLOW CHECKS PASSED WITH 100% SUCCESS!\n');
+
+// =========================================================================
+// SECTION 23: SINHALA TOOLTIPS & 4-STATE VISUAL ROW HIGHLIGHTING
+// =========================================================================
+console.log('🌟 Testing Section 23 Sinhala Tooltips & 4-State Course Row Styling...\n');
+
+const { ACADEMIC_TOOLTIPS, getAcademicTooltip } = jiti('./src/constants/tooltips.ts');
+const { getCourseRowVisualState } = jiti('./src/utils/courseRowStyles.ts');
+
+runTest('Tooltip Dictionary: Exactly 36 academic tooltips defined with English and Sinhala text', () => {
+  const ids = Object.keys(ACADEMIC_TOOLTIPS);
+  assert.strictEqual(ids.length, 36, 'Must contain exactly 36 tooltips (T01 - T36)');
+
+  for (let i = 1; i <= 36; i++) {
+    const id = `T${i.toString().padStart(2, '0')}`;
+    const tooltip = getAcademicTooltip(id);
+    assert.ok(tooltip, `Tooltip ${id} must exist`);
+    assert.strictEqual(tooltip.id, id, `Tooltip ${id} id must match`);
+    assert.ok(tooltip.label && tooltip.label.length > 0, `Tooltip ${id} must have a non-empty label`);
+    assert.ok(tooltip.english && tooltip.english.length > 0, `Tooltip ${id} must have a non-empty English text`);
+    assert.ok(tooltip.sinhala && tooltip.sinhala.length > 0, `Tooltip ${id} must have a non-empty Sinhala text`);
+    assert.ok(['grade_entry', 'calculations', 'semester', 'planning', 'records'].includes(tooltip.category), `Tooltip ${id} category must be valid`);
+  }
+});
+
+runTest('Tooltip Content: T01 (Repeat) and T02 (Projected) Sinhala translations are accurate', () => {
+  const t01 = getAcademicTooltip('T01');
+  assert.strictEqual(t01.label, 'Repeat');
+  assert.ok(t01.sinhala.includes('Repeat') && t01.sinhala.includes('නැවත හදාරන්නේ'));
+
+  const t02 = getAcademicTooltip('T02');
+  assert.strictEqual(t02.label, 'Projected');
+  assert.ok(t02.sinhala.includes('අපේක්ෂිත') && t02.sinhala.includes('ශ්රේණියක්'));
+});
+
+runTest('Course Visual States: Normal course produces default background and neutral border', () => {
+  const normal = getCourseRowVisualState(false, false);
+  assert.strictEqual(normal.state, 'normal');
+  assert.strictEqual(normal.className, 'course-row-normal');
+  assert.strictEqual(normal.accentBorderColor, '#DCDDD7');
+});
+
+runTest('Course Visual States: Repeat course produces #FFF5E5 background and amber accent', () => {
+  const repeat = getCourseRowVisualState(true, false);
+  assert.strictEqual(repeat.state, 'repeat');
+  assert.strictEqual(repeat.className, 'course-row-repeat');
+  assert.strictEqual(repeat.accentBorderColor, '#D6B77B');
+  assert.ok(repeat.badgeLabel.includes('Repeat'));
+});
+
+runTest('Course Visual States: Projected course produces #EDF5FF background and blue accent', () => {
+  const projected = getCourseRowVisualState(false, true);
+  assert.strictEqual(projected.state, 'projected');
+  assert.strictEqual(projected.className, 'course-row-projected');
+  assert.strictEqual(projected.accentBorderColor, '#A5C5EC');
+  assert.ok(projected.badgeLabel.includes('Projected'));
+});
+
+runTest('Course Visual States: Repeat & Projected course produces #EDF5FF background and amber accent', () => {
+  const repProj = getCourseRowVisualState(true, true);
+  assert.strictEqual(repProj.state, 'repeat_and_projected');
+  assert.strictEqual(repProj.className, 'course-row-repeat-projected');
+  assert.strictEqual(repProj.accentBorderColor, '#D6B77B');
+  assert.strictEqual(repProj.badgeLabel, 'Repeat & Projected');
+});
+
+runTest('Academic Data Protection: Confirmed course flags isConfirmedOfficial and protects official grade', () => {
+  const confirmedCourse = {
+    code: 'CS11012',
+    name: 'Principles of Agronomy',
+    credits: 2,
+    dept: 'CS',
+    grade: 'A',
+    isCompulsory: true,
+    isNgpa: false,
+    isExpected: false,
+    isRepeat: false,
+    isExcused: false
+  };
+
+  const isConfirmed = isCourseGradeConfirmed(confirmedCourse);
+  const isConfirmedOfficial = isConfirmed && !confirmedCourse.isExpected;
+  assert.strictEqual(isConfirmed, true, 'Grade A with isExpected=false is confirmed');
+  assert.strictEqual(isConfirmedOfficial, true, 'Confirmed course must be marked as confirmed official');
+
+  // For expected course
+  const expectedCourse = { ...confirmedCourse, isExpected: true };
+  const isExpectedConfirmed = isCourseGradeConfirmed(expectedCourse);
+  const isExpectedOfficial = isExpectedConfirmed && !expectedCourse.isExpected;
+  assert.strictEqual(isExpectedConfirmed, false, 'Expected course is not confirmed');
+  assert.strictEqual(isExpectedOfficial, false, 'Expected course is NOT confirmed official');
+});
+
+console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);
+

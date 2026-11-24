@@ -5,6 +5,7 @@ import React from 'react';
 import { GraduationCap, CheckCircle2, AlertTriangle, ShieldCheck, BookOpen } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { generateDegreeAudit } from '../../utils/calculations';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const DegreeRequirementsView: React.FC = () => {
   const { getActiveProfile, getOverallStats } = useGradeStore();
@@ -55,7 +56,11 @@ export const DegreeRequirementsView: React.FC = () => {
                 {item.passed ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
               </div>
               <div>
-                <h4 className="text-xs font-bold text-main">{item.title}</h4>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-main">{item.title}</h4>
+                  {item.title.toLowerCase().includes('compulsory') && <HelpTooltip id="T30" size="xs" />}
+                  {item.title.toLowerCase().includes('elective') && <HelpTooltip id="T31" size="xs" />}
+                </div>
                 <p className="text-[11px] text-secondary mt-0.5">{item.requirement}</p>
               </div>
             </div>

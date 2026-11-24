@@ -29,6 +29,8 @@ import {
 import { isCourseGradeConfirmed, ALL_SEMESTER_KEYS } from '../../utils/projectionCalculations';
 import { AppLogo } from '../common/AppLogo';
 import { PlanningTools } from './PlanningTools';
+import { HelpTooltip } from '../common/HelpTooltip';
+import { getCourseRowVisualState } from '../../utils/courseRowStyles';
 
 const SEMESTERS: Array<{ key: SemesterKey | 'ORIENTATION'; label: string }> = [
   { key: '1-1', label: 'Sem 1-1' },
@@ -354,15 +356,19 @@ export const GpaCalculatorView: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
           {/* Metric 1: Actual CGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
-            <span className="text-xs font-medium text-[#626962]">
-              Actual CGPA
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs font-medium text-[#626962]">
+                Actual CGPA
+              </span>
+              <HelpTooltip id="T08" size="xs" />
+            </div>
             <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
               {hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'}
             </div>
-            <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
-              {proj.actualGpaCredits} Cr confirmed
-            </span>
+            <div className="flex items-center justify-center gap-1 text-[11px] text-[#626962] font-medium leading-none mt-1">
+              <span>{proj.actualGpaCredits} Cr confirmed</span>
+              <HelpTooltip id="T12" size="xs" />
+            </div>
           </div>
 
           {/* Metric 2: Projected CGPA (or Degree Credits when no projections exist) */}
@@ -372,16 +378,21 @@ export const GpaCalculatorView: React.FC = () => {
                 <span className="text-xs font-medium text-emerald-800">
                   Projected CGPA
                 </span>
+                <HelpTooltip id="T09" size="xs" />
                 {proj.isExpectedIncomplete && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Incomplete projection: some courses pending" />
+                  <span className="inline-flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <HelpTooltip id="T14" size="xs" />
+                  </span>
                 )}
               </div>
               <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5">
                 {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
               </div>
-              <span className="text-[11px] text-emerald-700 font-medium leading-none mt-1">
-                After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}
-              </span>
+              <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-700 font-medium leading-none mt-1">
+                <span>After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}</span>
+                <HelpTooltip id="T13" size="xs" />
+              </div>
             </div>
           ) : (
             <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
@@ -399,9 +410,12 @@ export const GpaCalculatorView: React.FC = () => {
 
           {/* Metric 3: Active Semester SGPA */}
           <div className="p-2.5 rounded-xl bg-[#F8F8F4] border border-[#EDF1EC] flex flex-col justify-center">
-            <span className="text-xs font-medium text-[#626962]">
-              Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected' : 'SGPA'}
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs font-medium text-[#626962]">
+                Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected' : 'SGPA'}
+              </span>
+              <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T11' : 'T10'} size="xs" />
+            </div>
             <div className="font-sans font-tabular font-black text-xl text-[#242824] leading-tight mt-0.5">
               {semProjection && semProjection.predictedGpaCredits > 0
                 ? semProjection.projectedSgpa.toFixed(2)
@@ -409,11 +423,14 @@ export const GpaCalculatorView: React.FC = () => {
                 ? semStats.realSgpa.toFixed(2)
                 : '—'}
             </div>
-            <span className="text-[11px] text-[#626962] font-medium leading-none mt-1">
-              {semProjection && semProjection.predictedGpaCredits > 0
-                ? `${semProjection.predictedGpaCredits} Cr projected`
-                : `${semStats?.realCreditsAttempted || 0} Cr finalized`}
-            </span>
+            <div className="flex items-center justify-center gap-1 text-[11px] text-[#626962] font-medium leading-none mt-1">
+              <span>
+                {semProjection && semProjection.predictedGpaCredits > 0
+                  ? `${semProjection.predictedGpaCredits} Cr projected`
+                  : `${semStats?.realCreditsAttempted || 0} Cr finalized`}
+              </span>
+              <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T13' : 'T12'} size="xs" />
+            </div>
           </div>
 
           {/* Metric 4: Current Academic Semester Switcher */}
@@ -421,9 +438,12 @@ export const GpaCalculatorView: React.FC = () => {
             onClick={() => setShowCurrentSemSelector(true)}
             className="p-2.5 rounded-xl bg-[#F8F8F4] hover:bg-neutral-100 border border-[#EDF1EC] flex flex-col justify-center cursor-pointer transition"
           >
-            <span className="text-xs font-medium text-[#626962]">
-              Current semester
-            </span>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs font-medium text-[#626962]">
+                Current semester
+              </span>
+              <HelpTooltip id="T15" size="xs" />
+            </div>
             <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5 flex items-center justify-center gap-1">
               <span>{profile.currentSemester}</span>
               <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
@@ -436,11 +456,14 @@ export const GpaCalculatorView: React.FC = () => {
 
         {/* Guidance / Status Bar */}
         <div className="p-2.5 rounded-xl text-xs font-medium flex items-center justify-between gap-2 border bg-neutral-50/80 border-[#EDF1EC]">
-          <span className="text-[#626962]">
-            {hasAnyProjectedGrades
-              ? 'Proj checked grades are included in projected GPA and excluded from official transcripts.'
-              : 'Official confirmed grades. Check Proj to test expected examination grades.'}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[#626962]">
+              {hasAnyProjectedGrades
+                ? 'Projected grades are included in projected GPA and excluded from official transcripts.'
+                : 'Official confirmed grades. Check Projected to test expected examination grades.'}
+            </span>
+            <HelpTooltip id="T21" size="xs" />
+          </div>
           {saveStatus && (
             <span className={`text-[11px] font-bold shrink-0 flex items-center gap-1 ${saveStatus === 'Saved' ? 'text-[#176B45]' : 'text-rose-600'}`}>
               <Check className="w-3 h-3" /> {saveStatus}
@@ -472,10 +495,11 @@ export const GpaCalculatorView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowCurrentSemSelector(true)}
-                  className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-emerald-200 border border-white/20 flex items-center gap-1 transition"
+                  className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-emerald-200 border border-white/20 flex items-center gap-1.5 transition"
                   title="Change your current academic semester"
                 >
                   <span>Current: Sem {profile.currentSemester}</span>
+                  <HelpTooltip id="T15" size="xs" />
                   <ChevronDown className="w-3 h-3 text-emerald-300" />
                 </button>
               </div>
@@ -483,9 +507,12 @@ export const GpaCalculatorView: React.FC = () => {
               {/* Big Metrics Display */}
               <div className="flex items-baseline gap-6">
                 <div>
-                  <span className="text-xs uppercase font-bold tracking-wider text-emerald-200/80 block">
-                    {hasAnyProjectedGrades ? 'Combined Projected CGPA' : 'Actual CGPA'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs uppercase font-bold tracking-wider text-emerald-200/80 block">
+                      {hasAnyProjectedGrades ? 'Combined Projected CGPA' : 'Actual CGPA'}
+                    </span>
+                    <HelpTooltip id={hasAnyProjectedGrades ? 'T09' : 'T08'} size="xs" />
+                  </div>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="text-4xl lg:text-5xl font-black font-sans tracking-tight text-white font-tabular">
                       {hasAnyProjectedGrades
@@ -502,10 +529,15 @@ export const GpaCalculatorView: React.FC = () => {
 
                 {/* Scope Comparison */}
                 <div className="border-l border-white/15 pl-5 space-y-0.5">
-                  <div className="text-xs text-emerald-200 font-medium">
-                    {hasAnyProjectedGrades
-                      ? `After Sem ${proj.currentSemester} (${proj.combinedTotalCredits} Cr)`
-                      : `${proj.actualGpaCredits} Credits Confirmed`}
+                  <div className="text-xs text-emerald-200 font-medium flex items-center gap-1">
+                    {hasAnyProjectedGrades ? (
+                      <span>After Sem {proj.currentSemester} ({proj.combinedTotalCredits} Cr)</span>
+                    ) : (
+                      <>
+                        <span>{proj.actualGpaCredits} Credits Confirmed</span>
+                        <HelpTooltip id="T12" size="xs" />
+                      </>
+                    )}
                   </div>
                   <div className="text-xs text-emerald-300/90 font-bold">
                     {hasAnyProjectedGrades
@@ -521,9 +553,12 @@ export const GpaCalculatorView: React.FC = () => {
           <div className="flex items-center gap-6 shrink-0 border-l border-white/15 pl-6">
             {/* Active Semester Metric */}
             <div className="text-right space-y-0.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-200/80 block">
-                Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected SGPA' : 'Actual SGPA'}
-              </span>
+              <div className="flex items-center justify-end gap-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-200/80 block">
+                  Sem {activeTabKey} {semProjection && semProjection.predictedGpaCredits > 0 ? 'Projected SGPA' : 'Actual SGPA'}
+                </span>
+                <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T11' : 'T10'} size="xs" />
+              </div>
               <div className="font-sans text-3xl font-black text-white font-tabular">
                 {semProjection && semProjection.predictedGpaCredits > 0
                   ? semProjection.projectedSgpa.toFixed(2)
@@ -531,11 +566,14 @@ export const GpaCalculatorView: React.FC = () => {
                   ? semStats.realSgpa.toFixed(2)
                   : '—'}
               </div>
-              <span className="text-xs text-emerald-200/80 font-medium block">
-                {semProjection && semProjection.predictedGpaCredits > 0
-                  ? `${semProjection.predictedGpaCredits} Credits projected`
-                  : `${semStats?.realCreditsAttempted || 0} Credits finalized`}
-              </span>
+              <div className="flex items-center justify-end gap-1 text-xs text-emerald-200/80 font-medium">
+                <span>
+                  {semProjection && semProjection.predictedGpaCredits > 0
+                    ? `${semProjection.predictedGpaCredits} Credits projected`
+                    : `${semStats?.realCreditsAttempted || 0} Credits finalized`}
+                </span>
+                <HelpTooltip id={semProjection && semProjection.predictedGpaCredits > 0 ? 'T13' : 'T12'} size="xs" />
+              </div>
             </div>
 
             {/* Quick Actions */}
@@ -547,6 +585,7 @@ export const GpaCalculatorView: React.FC = () => {
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Transcript</span>
+                <HelpTooltip id="T33" size="xs" />
               </button>
               <button
                 type="button"
@@ -555,6 +594,7 @@ export const GpaCalculatorView: React.FC = () => {
               >
                 <Sliders className="w-3.5 h-3.5" />
                 <span>Forecast</span>
+                <HelpTooltip id="T25" size="xs" />
               </button>
             </div>
           </div>
@@ -913,9 +953,12 @@ export const GpaCalculatorView: React.FC = () => {
 
       {/* Helper Guidance Banner */}
       <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between text-xs text-emerald-900 font-medium">
-        <span>
-          Tick <strong className="font-bold text-[#176B45]">Proj</strong> for expected grades that have not been officially released. Untick <strong className="font-bold text-[#176B45]">Proj</strong> when you receive and enter your official result.
-        </span>
+        <div className="flex items-center gap-2">
+          <span>
+            Tick <strong className="font-bold text-[#176B45]">Projected</strong> for expected grades that have not been officially released. Untick <strong className="font-bold text-[#176B45]">Projected</strong> when you receive and enter your official result.
+          </span>
+          <HelpTooltip id="T21" size="xs" />
+        </div>
       </div>
 
       {/* ======================================================== */}
@@ -936,17 +979,13 @@ export const GpaCalculatorView: React.FC = () => {
                 const creds = Number(course.credits) || 0;
                 const deptStyle = getDepartmentStyle(course.dept);
                 const isConfirmed = isCourseGradeConfirmed(course);
+                const isConfirmedOfficial = isConfirmed && !course.isExpected;
+                const visual = getCourseRowVisualState(course.isRepeat, course.isExpected);
 
                 return (
                   <div
                     key={course.code}
-                    className={`p-4 rounded-2xl border transition-all bg-white shadow-subtle ${
-                      course.isExpected
-                        ? 'border-emerald-300 ring-1 ring-emerald-300/40 bg-emerald-50/15'
-                        : isConfirmed
-                        ? 'border-[#176B45]/40'
-                        : 'border-[#DCDDD7]'
-                    }`}
+                    className={`p-4 rounded-2xl border transition-all shadow-subtle ${visual.className}`}
                   >
                     {/* Header: Code, Dept, Credits, Delete */}
                     <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#EDF1EC]">
@@ -962,17 +1001,20 @@ export const GpaCalculatorView: React.FC = () => {
                           </span>
                         )}
                         {course.isCompulsory ? (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Core
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span>Core</span>
+                            <HelpTooltip id="T30" size="xs" />
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                            Elective
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                            <span>Elective</span>
+                            <HelpTooltip id="T31" size="xs" />
                           </span>
                         )}
                         {course.isNgpa && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
-                            NGPA
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                            <span>NGPA</span>
+                            <HelpTooltip id="T06" size="xs" />
                           </span>
                         )}
                       </div>
@@ -1100,16 +1142,17 @@ export const GpaCalculatorView: React.FC = () => {
                           </label>
 
                           <label
-                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer border min-h-[44px] transition select-none ${
+                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold border min-h-[44px] transition select-none ${
                               course.isExpected
                                 ? 'bg-emerald-50 text-emerald-900 border-emerald-400 ring-1 ring-emerald-300 font-extrabold'
                                 : 'bg-white text-neutral-600 border-[#DCDDD7]'
-                            }`}
-                            title={isConfirmed ? "Confirmed academic grade is protected. Use Planning Tools > What-If for hypothetical scenarios." : "Projected / expected grade"}
+                            } ${isConfirmedOfficial ? 'opacity-60 cursor-not-allowed bg-neutral-100 text-neutral-400' : 'cursor-pointer'}`}
+                            title={isConfirmedOfficial ? "This grade is officially confirmed and protected. Use Planning Tools > What-If to explore hypothetical changes." : "Projected / expected grade"}
                           >
                             <input
                               type="checkbox"
                               checked={!!course.isExpected}
+                              disabled={isConfirmedOfficial}
                               onChange={(e) => {
                                 setCourseExpected(
                                   activeTabKey as SemesterKey,
@@ -1129,10 +1172,13 @@ export const GpaCalculatorView: React.FC = () => {
                       {course.isRepeat && !course.isNgpa && (
                         <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs text-amber-900 space-y-1.5 animate-in fade-in">
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-semibold">
-                              {course.isExcused
-                                ? 'Medical excused: Cap lifted up to 4.0'
-                                : 'Capped at Grade C (2.0 GPV)'}
+                            <span className="text-[11px] font-semibold flex items-center gap-1">
+                              <span>
+                                {course.isExcused
+                                  ? 'Medical excused: Cap lifted up to 4.0'
+                                  : 'Capped at Grade C (2.0 GPV)'}
+                              </span>
+                              <HelpTooltip id="T29" size="xs" />
                             </span>
                             <label className="flex items-center gap-1.5 text-[11px] font-bold cursor-pointer">
                               <input
@@ -1149,6 +1195,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
                               />
                               <span>Senate Medical?</span>
+                              <HelpTooltip id="T03" size="xs" />
                             </label>
                           </div>
                         </div>
@@ -1162,231 +1209,261 @@ export const GpaCalculatorView: React.FC = () => {
             {/* -------------------------------------------------- */}
             {/* DESKTOP COURSE ROWS (>= 1024px)                    */}
             {/* -------------------------------------------------- */}
-            <div className="hidden lg:block bg-white border border-[#DCDDD7] rounded-2xl shadow-sm divide-y divide-neutral-100 overflow-hidden">
-              {filteredCourses.map((course) => {
-                const creds = Number(course.credits) || 0;
-                const deptStyle = getDepartmentStyle(course.dept);
-                const isConfirmed = isCourseGradeConfirmed(course);
+            <div className="hidden lg:block space-y-2">
+              {/* Desktop Column Header Bar with Shared Sinhala Tooltips */}
+              <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-[#F8F8F4] border border-[#DCDDD7] rounded-2xl text-xs font-bold text-neutral-700 uppercase tracking-wider items-center shadow-2xs">
+                <div className="col-span-5 flex items-center gap-1.5">
+                  <span>Course Details &amp; Credits</span>
+                  <HelpTooltip id="T05" label="Credits" size="xs" />
+                </div>
+                <div className="col-span-4 flex items-center justify-center gap-1.5">
+                  <span>Grade Selection</span>
+                  <HelpTooltip id="T04" label="Grade" size="xs" />
+                </div>
+                <div className="col-span-3 flex items-center justify-end gap-4">
+                  <div className="flex items-center gap-1">
+                    <span>Repeat</span>
+                    <HelpTooltip id="T01" label="Repeat" size="xs" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>Projected</span>
+                    <HelpTooltip id="T02" label="Projected" size="xs" />
+                  </div>
+                </div>
+              </div>
 
-                return (
-                  <div
-                    key={course.code}
-                    className={`p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 hover:bg-neutral-50/80 transition-colors ${
-                      course.grade === 'E' && isConfirmed ? 'bg-rose-50/40' : course.isExpected ? 'bg-emerald-50/20' : ''
-                    }`}
-                  >
-                    {/* Code, Title, Department & Stepper */}
-                    <div className="min-w-0 xl:w-5/12 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono font-bold text-base text-neutral-900">
-                          {course.code}
-                        </span>
-                        {course.dept && (
-                          <span
-                            className={`text-xs font-extrabold px-2 py-0.5 rounded-md border ${deptStyle.bg} ${deptStyle.text} ${deptStyle.border}`}
-                          >
-                            {course.dept}
+              <div className="bg-white border border-[#DCDDD7] rounded-2xl shadow-sm divide-y divide-neutral-100 overflow-hidden">
+                {filteredCourses.map((course) => {
+                  const creds = Number(course.credits) || 0;
+                  const deptStyle = getDepartmentStyle(course.dept);
+                  const isConfirmed = isCourseGradeConfirmed(course);
+                  const isConfirmedOfficial = isConfirmed && !course.isExpected;
+                  const visual = getCourseRowVisualState(course.isRepeat, course.isExpected);
+
+                  return (
+                    <div
+                      key={course.code}
+                      className={`p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 transition-colors ${visual.className}`}
+                    >
+                      {/* Code, Title, Department & Stepper */}
+                      <div className="min-w-0 xl:w-5/12 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono font-bold text-base text-neutral-900">
+                            {course.code}
                           </span>
-                        )}
-
-                        {!course.isNgpa && (
-                          <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-300 rounded-lg px-2 py-1 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCourseCredits(
-                                  activeTabKey as SemesterKey,
-                                  course.code,
-                                  Math.max(1, creds - 1)
-                                );
-                                triggerSaveNotification();
-                              }}
-                              title="Decrease credit"
-                              className="text-neutral-500 hover:text-neutral-900 p-0.5 rounded hover:bg-neutral-200"
+                          {course.dept && (
+                            <span
+                              className={`text-xs font-extrabold px-2 py-0.5 rounded-md border ${deptStyle.bg} ${deptStyle.text} ${deptStyle.border}`}
                             >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-mono font-extrabold text-sm text-neutral-900 min-w-[16px] text-center">
-                              {creds}
+                              {course.dept}
                             </span>
-                            <span className="text-xs text-neutral-500 font-semibold">Cr</span>
+                          )}
+
+                          {!course.isNgpa && (
+                            <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-300 rounded-lg px-2 py-1 shadow-2xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCourseCredits(
+                                    activeTabKey as SemesterKey,
+                                    course.code,
+                                    Math.max(1, creds - 1)
+                                  );
+                                  triggerSaveNotification();
+                                }}
+                                title="Decrease credit"
+                                className="text-neutral-500 hover:text-neutral-900 p-0.5 rounded hover:bg-neutral-200"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="font-mono font-extrabold text-sm text-neutral-900 min-w-[16px] text-center">
+                                {creds}
+                              </span>
+                              <span className="text-xs text-neutral-500 font-semibold">Cr</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCourseCredits(
+                                    activeTabKey as SemesterKey,
+                                    course.code,
+                                    creds + 1
+                                  );
+                                  triggerSaveNotification();
+                                }}
+                                title="Increase credit"
+                                className="text-neutral-500 hover:text-neutral-900 p-0.5 rounded hover:bg-neutral-200"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {course.isNgpa && (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-900 border border-teal-300">
+                              <span>NGPA</span>
+                              <HelpTooltip id="T06" size="xs" />
+                            </span>
+                          )}
+
+                          {course.isCompulsory ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
+                              <span>Core</span>
+                              <HelpTooltip id="T30" size="xs" />
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                              <span>Elective</span>
+                              <HelpTooltip id="T31" size="xs" />
+                            </span>
+                          )}
+
+                          {course.isExpected && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
+                              <span>Projected</span>
+                              <HelpTooltip id="T02" size="xs" />
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-sm font-semibold text-neutral-800 break-words" title={course.name}>
+                          {course.name}
+                        </div>
+                      </div>
+
+                      {/* Grade Chips */}
+                      <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 max-w-full scrollbar-none">
+                        {GRADE_OPTIONS.map((g) => {
+                          const isBtnSelected = course.grade === g;
+                          return (
                             <button
+                              key={g}
                               type="button"
                               onClick={() => {
-                                setCourseCredits(
-                                  activeTabKey as SemesterKey,
-                                  course.code,
-                                  creds + 1
-                                );
+                                if (isOrientation) {
+                                  setOrientationGrade(course.code, isBtnSelected ? '' : g);
+                                } else {
+                                  setCourseGrade(
+                                    activeTabKey as SemesterKey,
+                                    course.code,
+                                    isBtnSelected ? '' : g
+                                  );
+                                }
                                 triggerSaveNotification();
                               }}
-                              title="Increase credit"
-                              className="text-neutral-500 hover:text-neutral-900 p-0.5 rounded hover:bg-neutral-200"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-
-                        {course.isNgpa && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-900 border border-teal-300">
-                            NGPA
-                          </span>
-                        )}
-
-                        {course.isCompulsory ? (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
-                            Core
-                          </span>
-                        ) : (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
-                            Elective
-                          </span>
-                        )}
-
-                        {course.isExpected && (
-                          <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300">
-                            Projected
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-sm font-semibold text-neutral-800 break-words" title={course.name}>
-                        {course.name}
-                      </div>
-                    </div>
-
-                    {/* Grade Chips */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 max-w-full scrollbar-none">
-                      {GRADE_OPTIONS.map((g) => {
-                        const isBtnSelected = course.grade === g;
-                        return (
-                          <button
-                            key={g}
-                            type="button"
-                            onClick={() => {
-                              if (isOrientation) {
-                                setOrientationGrade(course.code, isBtnSelected ? '' : g);
-                              } else {
-                                setCourseGrade(
-                                  activeTabKey as SemesterKey,
-                                  course.code,
-                                  isBtnSelected ? '' : g
-                                );
-                              }
-                              triggerSaveNotification();
-                            }}
-                            className={`h-9 w-9 sm:h-9.5 sm:w-9.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center shrink-0 border ${
-                              getGradeStyle(isBtnSelected ? g : undefined, isBtnSelected && course.isExpected)
-                            }`}
-                            title={`${g} (${GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)${course.isExpected ? ' • Projected' : ''}`}
-                          >
-                            {g}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Right: Rep Checkbox, Proj Checkbox & Remove */}
-                    <div className="flex items-center justify-between xl:justify-end gap-2.5 text-sm shrink-0">
-                      {!course.isNgpa && (
-                        <div className="flex items-center gap-2">
-                          {/* Rep Checkbox */}
-                          <label
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1.5 select-none ${
-                              course.isRepeat
-                                ? 'bg-amber-100 text-amber-900 border-amber-400'
-                                : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
-                            }`}
-                            title="Repeat attempt (Grade C 2.0 cap applies unless medical excused)"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!!course.isRepeat}
-                              onChange={(e) => {
-                                setCourseRepeat(
-                                  activeTabKey as SemesterKey,
-                                  course.code,
-                                  e.target.checked
-                                );
-                                triggerSaveNotification();
-                              }}
-                              className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500"
-                            />
-                            <span>Rep</span>
-                          </label>
-
-                          {course.isRepeat && (
-                            <label
-                              className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer border transition ${
-                                course.isExcused
-                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
-                                  : 'bg-white text-neutral-400 border-neutral-300'
+                              className={`h-9 w-9 sm:h-9.5 sm:w-9.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center shrink-0 border ${
+                                getGradeStyle(isBtnSelected ? g : undefined, isBtnSelected && course.isExpected)
                               }`}
-                              title="Senate medical excuse lifts repeat cap up to 4.0 GPV"
+                              title={`${g} (${GRADING_SCALE[g]?.gpv.toFixed(1)} GPV)${course.isExpected ? ' • Projected' : ''}`}
+                            >
+                              {g}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Right: Repeat Checkbox, Projected Checkbox & Remove */}
+                      <div className="flex items-center justify-between xl:justify-end gap-2.5 text-sm shrink-0">
+                        {!course.isNgpa && (
+                          <div className="flex items-center gap-2">
+                            {/* Repeat Checkbox */}
+                            <label
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1.5 select-none ${
+                                course.isRepeat
+                                  ? 'bg-amber-100 text-amber-900 border-amber-400'
+                                  : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
+                              }`}
+                              title="Repeat attempt (Grade C 2.0 cap applies unless medical excused)"
                             >
                               <input
                                 type="checkbox"
-                                checked={!!course.isExcused}
+                                checked={!!course.isRepeat}
                                 onChange={(e) => {
-                                  setCourseExcused(
+                                  setCourseRepeat(
                                     activeTabKey as SemesterKey,
                                     course.code,
                                     e.target.checked
                                   );
                                   triggerSaveNotification();
                                 }}
-                                className="hidden"
+                                className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500"
                               />
-                              <span>{course.isExcused ? 'Excused ✓' : 'Medical?'}</span>
+                              <span>Repeat</span>
                             </label>
-                          )}
 
-                          {/* Proj Checkbox */}
-                          <label
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1.5 select-none ${
-                              course.isExpected
-                                ? 'bg-emerald-100 text-emerald-900 border-emerald-400 ring-1 ring-emerald-400/40'
-                                : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
-                            }`}
-                            title={isConfirmed ? "Confirmed academic grade is protected. Use Planning Tools > What-If for hypothetical scenarios." : "Projected / expected grade (excluded from confirmed GPA and transcripts)"}
+                            {course.isRepeat && (
+                              <label
+                                className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer border transition flex items-center gap-1 ${
+                                  course.isExcused
+                                    ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                                    : 'bg-white text-neutral-400 border-neutral-300'
+                                }`}
+                                title="Senate medical excuse lifts repeat cap up to 4.0 GPV"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={!!course.isExcused}
+                                  onChange={(e) => {
+                                    setCourseExcused(
+                                      activeTabKey as SemesterKey,
+                                      course.code,
+                                      e.target.checked
+                                    );
+                                    triggerSaveNotification();
+                                  }}
+                                  className="hidden"
+                                />
+                                <span>{course.isExcused ? 'Excused ✓' : 'Medical?'}</span>
+                                <HelpTooltip id="T03" size="xs" />
+                              </label>
+                            )}
+
+                            {/* Projected Checkbox */}
+                            <label
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 select-none ${
+                                course.isExpected
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-400 ring-1 ring-emerald-400/40'
+                                  : 'bg-white hover:bg-neutral-100 text-neutral-600 border-neutral-300'
+                              } ${isConfirmedOfficial ? 'opacity-60 cursor-not-allowed bg-neutral-100 text-neutral-400' : 'cursor-pointer'}`}
+                              title={isConfirmedOfficial ? "This grade is officially confirmed and protected. Use Planning Tools > What-If for hypothetical scenarios." : "Projected / expected grade (excluded from confirmed GPA and transcripts)"}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!course.isExpected}
+                                disabled={isConfirmedOfficial}
+                                onChange={(e) => {
+                                  setCourseExpected(
+                                    activeTabKey as SemesterKey,
+                                    course.code,
+                                    e.target.checked
+                                  );
+                                  triggerSaveNotification();
+                                }}
+                                className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
+                              />
+                              <span>Projected</span>
+                            </label>
+                          </div>
+                        )}
+
+                        {!course.isCompulsory && !course.isNgpa && !isOrientation && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeCourseFromSemester(activeTabKey as SemesterKey, course.code);
+                              triggerSaveNotification();
+                            }}
+                            className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                            title="Remove course"
+                            aria-label="Remove course"
                           >
-                            <input
-                              type="checkbox"
-                              checked={!!course.isExpected}
-                              onChange={(e) => {
-                                setCourseExpected(
-                                  activeTabKey as SemesterKey,
-                                  course.code,
-                                  e.target.checked
-                                );
-                                triggerSaveNotification();
-                              }}
-                              className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
-                            />
-                            <span>Proj</span>
-                          </label>
-                        </div>
-                      )}
-
-                      {!course.isCompulsory && !course.isNgpa && !isOrientation && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            removeCourseFromSemester(activeTabKey as SemesterKey, course.code);
-                            triggerSaveNotification();
-                          }}
-                          className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                          title="Remove course"
-                          aria-label="Remove course"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </>
         )}

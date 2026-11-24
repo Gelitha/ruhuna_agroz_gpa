@@ -7,6 +7,7 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { DEGREE_INFO, DEPARTMENTS } from '../../database';
 import { calculateCourseGpv, isCourseGradeConfirmed } from '../../utils/calculations';
 import { SemesterKey } from '../../types';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const AcademicTranscriptView: React.FC = () => {
   const { getActiveProfile, getOverallStats } = useGradeStore();
@@ -25,7 +26,10 @@ export const AcademicTranscriptView: React.FC = () => {
       {/* Top Action Bar (hidden on print) */}
       <div className="flex items-center justify-between p-4 rounded-2xl bg-surface border border-border shadow-subtle no-print">
         <div>
-          <h2 className="text-sm font-bold text-main">Undergraduate Academic Performance Statement</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-main">Undergraduate Academic Performance Statement</h2>
+            <HelpTooltip id="T33" size="xs" />
+          </div>
           <p className="text-xs text-secondary">
             Formatted according to University of Ruhuna Faculty of Agriculture regulations (2023/24 Handbook)
           </p>

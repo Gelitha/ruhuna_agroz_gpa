@@ -6,6 +6,7 @@ import { Users, Plus, Copy, Trash2, CheckCircle2, UserCircle2, ArrowRight } from
 import { useGradeStore } from '../../store/useGradeStore';
 import { DegreeCode, SemesterKey } from '../../types';
 import { calculateOverallStats } from '../../utils/calculations';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const StudentProfilesView: React.FC = () => {
   const {
@@ -48,7 +49,10 @@ export const StudentProfilesView: React.FC = () => {
             <Users className="w-5 h-5 text-primary" />
             <span className="text-xs font-bold uppercase tracking-wider text-primary">Multi-Profile Hub</span>
           </div>
-          <h2 className="text-xl font-bold text-main mt-1">Student Profiles on this Device</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <h2 className="text-xl font-bold text-main">Student Profiles on this Device</h2>
+            <HelpTooltip id="T34" size="xs" />
+          </div>
           <p className="text-xs text-secondary mt-0.5">
             Create and switch between multiple student records locally without logging in.
           </p>

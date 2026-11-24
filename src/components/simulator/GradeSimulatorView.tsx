@@ -26,6 +26,7 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { calculateWhatIf, calculateTargetGpa, calculateRepeatImpact } from '../../utils/calculations';
 import { Grade, SemesterKey, ComprehensiveGradeStrategy } from '../../types';
 import { getDepartmentStyle, GRADING_SCALE } from '../../database';
+import { HelpTooltip } from '../common/HelpTooltip';
 
 export const GradeSimulatorView: React.FC = () => {
   const {
@@ -103,14 +104,20 @@ export const GradeSimulatorView: React.FC = () => {
             </span>
             <span className="text-xs text-emerald-300/70">Scenario Modelling</span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white mt-1">
-            Academic Forecast & Goals
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-black tracking-tight text-white mt-1">
+              Academic Forecast & Goals
+            </h2>
+            <HelpTooltip id="T25" size="xs" />
+          </div>
         </div>
 
         <div className="flex items-baseline gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
           <div className="text-3xl font-black font-mono text-white">{stats.cgpa.toFixed(2)}</div>
-          <span className="text-xs text-emerald-200 font-bold">{stats.classStanding}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-emerald-200 font-bold">{stats.classStanding}</span>
+            <HelpTooltip id="T28" size="xs" />
+          </div>
         </div>
       </div>
 
@@ -123,6 +130,7 @@ export const GradeSimulatorView: React.FC = () => {
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
               <Sliders className="w-5 h-5 text-emerald-800" />
               <span>What-If Semester Projection</span>
+              <HelpTooltip id="T22" size="xs" />
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
               Drag to see your final graduation standing based on remaining {whatIfResult.remainingCredits} credits:
@@ -224,7 +232,10 @@ export const GradeSimulatorView: React.FC = () => {
 
         {/* 4 Preset Goal Tiles + Custom Input */}
         <div className="space-y-2.5">
-          <label className="block text-xs font-bold text-neutral-700">Select Desired Graduation Honours Standing:</label>
+          <div className="flex items-center gap-1.5">
+            <label className="block text-xs font-bold text-neutral-700">Select Desired Graduation Honours Standing:</label>
+            <HelpTooltip id="T23" size="xs" />
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'First Class Honours', gpa: 3.70, desc: 'CGPA ≥ 3.70' },
