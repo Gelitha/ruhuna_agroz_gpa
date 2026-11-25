@@ -354,7 +354,7 @@ export const GpaCalculatorView: React.FC = () => {
   const semStats = useMemo(() => {
     if (isOrientation) return null;
     return getSemesterStats(activeTabKey as SemesterKey);
-  }, [activeTabKey, isOrientation, getSemesterStats]);
+  }, [activeTabKey, isOrientation, getSemesterStats, profile]);
 
   // Semester Projection Summary
   const semProjection = useMemo(() => {
@@ -370,6 +370,32 @@ export const GpaCalculatorView: React.FC = () => {
     const hasCustomAssumptions = !!profile.projectionQuickAssumptions;
     return hasExpectedCourse || hasCustomAssumptions;
   }, [profile]);
+
+  const hasFutureExpectedCourses = useMemo(() => {
+    const curIdx = ALL_SEMESTER_KEYS.indexOf((profile.currentSemester || '1-1') as SemesterKey);
+    return ALL_SEMESTER_KEYS.slice(curIdx + 1).some(sk =>
+      (profile.semesters[sk] || []).some(c => !c.isNgpa && c.isExpected && c.grade)
+    );
+  }, [profile]);
+
+  const displayedProjectedCgpa = useMemo(() => {
+    if (hasFutureExpectedCourses && stats.projectedCgpa !== undefined) {
+      return stats.projectedCgpa;
+    }
+    return proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? proj.actualCgpa);
+  }, [hasFutureExpectedCourses, stats.projectedCgpa, proj.combinedTotalCredits, proj.combinedProjectedCgpa, proj.actualCgpa]);
+
+  const displayedProjectedCredits = useMemo(() => {
+    if (hasFutureExpectedCourses && stats.projectedCreditsAttempted !== undefined) {
+      return stats.projectedCreditsAttempted;
+    }
+    return Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits);
+  }, [hasFutureExpectedCourses, stats.projectedCreditsAttempted, proj.combinedTotalCredits, proj.actualGpaCredits]);
+
+  const displayedDeltaCgpa = useMemo(() => {
+    const baseActual = proj.actualGpaCredits > 0 ? proj.actualCgpa : 0;
+    return Number((displayedProjectedCgpa - baseActual).toFixed(2));
+  }, [displayedProjectedCgpa, proj.actualGpaCredits, proj.actualCgpa]);
 
   // Filtered courses
   const filteredCourses = useMemo(() => {
@@ -544,7 +570,7 @@ export const GpaCalculatorView: React.FC = () => {
                 <div className="flex items-baseline gap-1 border-l border-neutral-300 pl-3">
                   <span className="text-[10px] uppercase font-bold text-blue-600">Proj:</span>
                   <span className="font-sans font-tabular font-black text-sm text-blue-700">
-                    {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                    {proj.combinedTotalCredits > 0 || displayedProjectedCredits > 0 ? displayedProjectedCgpa.toFixed(2) : '—'}
                   </span>
                 </div>
               )}
@@ -615,10 +641,10 @@ export const GpaCalculatorView: React.FC = () => {
                 )}
               </div>
               <div className="font-sans font-tabular font-black text-xl text-[#176B45] leading-tight mt-0.5">
-                {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                {proj.combinedTotalCredits > 0 || displayedProjectedCredits > 0 ? displayedProjectedCgpa.toFixed(2) : '—'}
               </div>
               <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-700 font-medium leading-none mt-1">
-                <span>After Sem {proj.currentSemester} {proj.deltaCombined !== 0 ? `(${proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})` : ''}</span>
+                <span>{hasFutureExpectedCourses ? 'Incl. future' : `After Sem ${proj.currentSemester}`} {displayedDeltaCgpa !== 0 ? `(${displayedDeltaCgpa > 0 ? `+${displayedDeltaCgpa.toFixed(2)}` : displayedDeltaCgpa.toFixed(2)})` : ''}</span>
                 <HelpTooltip id="T13" size="xs" />
               </div>
             </div>
@@ -763,16 +789,16 @@ export const GpaCalculatorView: React.FC = () => {
                     </div>
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span className="text-3xl lg:text-4xl font-black font-sans tracking-tight text-cyan-100 font-tabular">
-                        {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                        {proj.combinedTotalCredits > 0 || displayedProjectedCredits > 0 ? displayedProjectedCgpa.toFixed(2) : '—'}
                       </span>
-                      {proj.deltaCombined !== 0 && (
-                        <span className={`text-xs font-bold font-mono ${proj.deltaCombined > 0 ? 'text-emerald-300' : 'text-amber-300'}`}>
-                          ({proj.deltaCombined > 0 ? `+${proj.deltaCombined.toFixed(2)}` : proj.deltaCombined.toFixed(2)})
+                      {displayedDeltaCgpa !== 0 && (
+                        <span className={`text-xs font-bold font-mono ${displayedDeltaCgpa > 0 ? 'text-emerald-300' : 'text-amber-300'}`}>
+                          ({displayedDeltaCgpa > 0 ? `+${displayedDeltaCgpa.toFixed(2)}` : displayedDeltaCgpa.toFixed(2)})
                         </span>
                       )}
                     </div>
                     <div className="text-xs text-emerald-200/80 font-medium">
-                      After Sem {proj.currentSemester} • {Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits)} Cr projected
+                      {hasFutureExpectedCourses ? 'All semesters incl. future' : `After Sem ${proj.currentSemester}`} • {displayedProjectedCredits} Cr projected
                     </div>
                   </div>
                 )}

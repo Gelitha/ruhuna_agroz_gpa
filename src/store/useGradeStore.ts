@@ -36,6 +36,11 @@ import {
   createAbmProfile,
   createGtProfile
 } from '../utils/sampleProfiles';
+import {
+  normalizeNavView,
+  getPlanningSubTabForLegacyView,
+  PlanningToolSubTab
+} from '../config/navigation';
 
 const STORAGE_KEY_PROFILES_V3 = 'gradepath_profiles_v3';
 const STORAGE_KEY_ACTIVE_ID_V3 = 'gradepath_active_id_v3';
@@ -122,6 +127,8 @@ interface GradeStoreState {
   profiles: StudentProfile[];
   activeProfileId: string;
   activeTab: NavView;
+  planningToolSubTab: PlanningToolSubTab | null;
+  planningToolsExpanded: boolean;
   isSidebarExpanded: boolean;
   isMobileDrawerOpen: boolean;
   showOnboarding: boolean;
@@ -131,6 +138,7 @@ interface GradeStoreState {
 
   // Actions
   setActiveTab: (tab: NavView) => void;
+  setPlanningToolRequest: (tab: PlanningToolSubTab | null, expanded?: boolean) => void;
   toggleSidebar: () => void;
   setSidebarExpanded: (expanded: boolean) => void;
   setMobileDrawerOpen: (open: boolean) => void;
@@ -235,6 +243,8 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     profiles: initialHydration.profiles,
     activeProfileId: initialHydration.activeId,
     activeTab: 'dashboard',
+    planningToolSubTab: null,
+    planningToolsExpanded: false,
     isSidebarExpanded: true,
     isMobileDrawerOpen: false,
     showOnboarding: !initialHydration.hasOnboarded,
@@ -245,7 +255,17 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     selectedSemesterForCalculator: '1-1',
     searchQuery: '',
 
-    setActiveTab: (tab: NavView) => set({ activeTab: tab === 'projection' ? 'calculator' : tab, isMobileDrawerOpen: false }),
+    setActiveTab: (tab: NavView) => {
+      const normalized = normalizeNavView(tab);
+      const subTab = getPlanningSubTabForLegacyView(tab);
+      set({
+        activeTab: normalized,
+        isMobileDrawerOpen: false,
+        ...(subTab ? { planningToolSubTab: subTab, planningToolsExpanded: true } : {})
+      });
+    },
+    setPlanningToolRequest: (tab, expanded = true) =>
+      set({ planningToolSubTab: tab, planningToolsExpanded: expanded }),
     toggleSidebar: () => set(state => ({ isSidebarExpanded: !state.isSidebarExpanded })),
     setSidebarExpanded: (expanded: boolean) => set({ isSidebarExpanded: expanded }),
     setMobileDrawerOpen: (open: boolean) => set({ isMobileDrawerOpen: open }),

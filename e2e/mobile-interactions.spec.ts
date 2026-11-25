@@ -261,8 +261,8 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     }
   });
 
-  test('5. Mobile bottom navigation sub-menus (Plan and More sheets)', async ({ page }) => {
-    await page.goto('/');
+  test('5. Consolidated 4-item mobile bottom navigation and 7-destination hamburger menu', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       window.localStorage.setItem('gradepath_onboarded_v3', 'true');
       const profile = {
@@ -271,7 +271,7 @@ test.describe('Mobile Interaction & Profile Audit', () => {
         degree: 'ARMT',
         currentSemester: '1-1',
         currentAcademicYear: 1,
-        batch: 'Year 1',
+        batch: '',
         specializationDept: 'CS',
         semesters: { '1-1': [], '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': [] },
         orientationCourses: []
@@ -279,35 +279,29 @@ test.describe('Mobile Interaction & Profile Audit', () => {
       window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
       window.localStorage.setItem('gradepath_active_id_v3', 'prof_nav_test');
     });
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
+    const vw = page.viewportSize()?.width ?? 390;
     const bottomNav = page.locator('nav[aria-label="Mobile Navigation"]');
-    if (await bottomNav.isVisible()) {
-      // Tap "Plan" tab in bottom nav
-      const planTab = bottomNav.getByRole('button', { name: /^Plan$/i });
-      await planTab.click();
+    if (vw < 768) {
+      await expect(bottomNav).toBeVisible();
+      await expect(bottomNav.locator('button')).toHaveCount(4);
+      await expect(bottomNav.getByRole('button', { name: /^Home$/i })).toBeVisible();
+      await expect(bottomNav.getByRole('button', { name: /^Calculator$/i })).toBeVisible();
+      await expect(bottomNav.getByRole('button', { name: /^Analytics$/i })).toBeVisible();
+      await expect(bottomNav.getByRole('button', { name: /^Progress$/i })).toBeVisible();
 
-      // Bottom sheet should open with Academic Planning options
-      const bottomSheet = page.locator('.fixed.inset-0.z-50');
-      await expect(bottomSheet.locator('text=Academic Planning')).toBeVisible();
-      await expect(bottomSheet.locator('text=Semester Planner')).toBeVisible();
-      await expect(bottomSheet.locator('text=Grade Simulator')).toBeVisible();
+      // Verify Plan and More sheets are removed
+      await expect(bottomNav.getByRole('button', { name: /^Plan$/i })).toHaveCount(0);
+      await expect(bottomNav.getByRole('button', { name: /^More$/i })).toHaveCount(0);
 
-      // Tap Grade Simulator to navigate
-      await bottomSheet.getByRole('button', { name: /Grade Simulator/i }).click();
-      await expect(page.getByText('Academic Forecast & Goals').first()).toBeVisible();
-
-      // Tap "More" in bottom nav
-      const moreTab = bottomNav.getByRole('button', { name: /^More$/i });
-      await moreTab.click();
-
-      await expect(bottomSheet.locator('text=More Features & Tools')).toBeVisible();
-      await expect(bottomSheet.locator('text=Academic Transcript')).toBeVisible();
-
-      // Close sheet via X button
-      const closeSheetBtn = bottomSheet.getByRole('button', { name: /Close menu/i });
-      await closeSheetBtn.click();
-      await expect(bottomSheet).not.toBeVisible();
+      // Navigate via hamburger drawer to Transcript
+      await page.getByRole('button', { name: /Open navigation menu/i }).tap();
+      const drawer = page.getByRole('dialog', { name: /Mobile Navigation Menu/i });
+      await expect(drawer).toBeVisible();
+      await expect(drawer.getByRole('button', { name: /Academic Transcript/i })).toBeVisible();
+      await drawer.getByRole('button', { name: /Academic Transcript/i }).tap();
+      await expect(drawer).not.toBeVisible();
     }
   });
 
@@ -780,7 +774,10 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
 
     // Open GPA Calculator on mobile
-    const calcNavBtn = page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i });
+    const vw = page.viewportSize()?.width ?? 390;
+    const calcNavBtn = vw < 768
+      ? page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i })
+      : page.getByRole('button', { name: /GPA Calculator/i }).first();
     await expect(calcNavBtn).toBeVisible();
     await calcNavBtn.tap();
 
@@ -859,7 +856,7 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     await expect(drawer).toBeVisible();
 
     // 2. Navigate to Analytics from drawer and verify drawer closes cleanly
-    await drawer.getByRole('button', { name: /GPA Analytics/i }).tap();
+    await drawer.getByRole('button', { name: /^Analytics$/i }).tap();
     await expect(drawer).not.toBeVisible();
 
     // 3. Open profile switcher, then open hamburger -> profile switcher must close
@@ -876,6 +873,173 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     await expect(drawer).not.toBeVisible();
     await profileBtn.tap();
     await expect(page.getByText(/Switch Profile/i).filter({ visible: true }).first()).toBeVisible();
+  });
+
+  test('15. Privacy & academic disclaimers appear in onboarding, settings, and footer', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // Onboarding modal displays privacy & academic disclaimer
+    const onboardingDialog = page.locator('form').locator('..');
+    await expect(onboardingDialog.getByText('Your data stays on your device.')).toBeVisible();
+    await expect(onboardingDialog.getByText(/unofficial academic planning tool/i)).toBeVisible();
+
+    // Complete onboarding and check Footer + Settings
+    await onboardingDialog.getByPlaceholder('e.g. K.A. Janith Silva').fill('Privacy Tester');
+    await onboardingDialog.getByRole('button', { name: /BSc Hons \(GT\)/i }).tap();
+    await onboardingDialog.getByRole('button', { name: /Sem 1-1/i }).tap();
+    await onboardingDialog.getByRole('button', { name: /Complete Setup & Open Dashboard/i }).tap();
+
+    await expect(page.locator('footer').getByText(/Your data stays on your device/i)).toBeVisible();
+    await expect(page.locator('footer').getByText(/unofficial academic planning tool/i)).toBeVisible();
+  });
+
+  test('16. Consolidated navigation: 4-item mobile bottom bar, 7-item drawer, and GT hides ARMT specialization', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const gtProfile = {
+        id: 'prof_gt_nav',
+        name: 'GT Nav User',
+        degree: 'GT',
+        currentSemester: '2-1',
+        currentAcademicYear: 2,
+        batch: '',
+        specializationDept: 'EN',
+        semesters: {
+          '1-1': [{ code: 'CC11203', name: 'ICT', credits: 2, isCompulsory: true, grade: 'A', isExpected: false }],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([gtProfile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_gt_nav');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    const vw = page.viewportSize()?.width ?? 390;
+    const mobileNav = page.locator('nav[aria-label="Mobile Navigation"]');
+    if (vw < 768) {
+      await expect(mobileNav).toBeVisible();
+      const navButtons = mobileNav.locator('button');
+      await expect(navButtons).toHaveCount(4);
+      await expect(mobileNav.getByRole('button', { name: /Progress/i })).toBeVisible();
+      await mobileNav.getByRole('button', { name: /Progress/i }).tap();
+    } else {
+      const progressBtn = page.getByRole('button', { name: /Academic Progress/i }).first();
+      await expect(progressBtn).toBeVisible();
+      await progressBtn.tap();
+    }
+
+    // GT student must NOT see ARMT Specialization Stream Eligibility section
+    await expect(page.getByText(/ARMT Specialization Stream Eligibility/i)).toHaveCount(0);
+    await expect(page.getByText(/Degree Conferment Criteria/i)).toBeVisible();
+  });
+
+  test('17. Green Technology (GT) projections update immediately across Calculator and Dashboard', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const gtProfile = {
+        id: 'prof_gt_proj',
+        name: 'GT Proj Student',
+        degree: 'GT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'EN',
+        semesters: {
+          '1-1': [
+            { code: 'CC11203', name: 'ICT', credits: 3, isCompulsory: true, grade: 'A', isExpected: false },
+            { code: 'CS11201', name: 'Agronomy', credits: 3, isCompulsory: true, grade: 'B', isExpected: false },
+            { code: 'EC11203', name: 'Economic Principles', credits: 3, isCompulsory: true, grade: '', isExpected: false }
+          ],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([gtProfile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_gt_proj');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // Open Calculator
+    const vw = page.viewportSize()?.width ?? 390;
+    const calcNavBtn = vw < 768
+      ? page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i })
+      : page.getByRole('button', { name: /GPA Calculator/i }).first();
+    await expect(calcNavBtn).toBeVisible();
+    await calcNavBtn.tap();
+
+    // Actual CGPA is 3.50
+    await expect(page.locator('main :visible').filter({ hasText: '3.50' }).first()).toBeVisible();
+
+    // Mark EC11203 (3rd course) as Projected and select Grade A -> Projected CGPA becomes 3.67 while Actual remains 3.50
+    await page.locator('label:visible').filter({ hasText: /^Projected$/ }).nth(2).tap();
+    await page.getByRole('radiogroup', { name: 'Grade for EC11203' }).getByRole('radio', { name: /Grade A \(/i }).tap();
+
+    await expect(page.locator('main :visible').filter({ hasText: '3.67' }).first()).toBeVisible();
+    await expect(page.locator('main :visible').filter({ hasText: '3.50' }).first()).toBeVisible();
+  });
+
+  test('18. Interactive Suggested Grade Combination: manual lock, auto rebalance, reset, and apply as projected', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_dynamic_balance',
+        name: 'Balancer Student',
+        degree: 'GT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'EN',
+        semesters: {
+          '1-1': [
+            { code: 'CC11203', name: 'ICT', credits: 3, isCompulsory: true, grade: 'B', isExpected: false },
+            { code: 'CS11201', name: 'Agronomy', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+            { code: 'EC11203', name: 'Economic Principles', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+            { code: 'EN11201', name: 'Hydrology', credits: 3, isCompulsory: true, grade: '', isExpected: false }
+          ],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_dynamic_balance');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    const vw = page.viewportSize()?.width ?? 390;
+    const calcNavBtn = vw < 768
+      ? page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i })
+      : page.getByRole('button', { name: /GPA Calculator/i }).first();
+    await expect(calcNavBtn).toBeVisible();
+    await calcNavBtn.tap();
+
+    // Open Planning Tools
+    await page.getByRole('button', { name: /Planning Tools/i }).tap();
+    await expect(page.getByText(/Interactive Suggested Grade Combination/i)).toBeVisible();
+
+    // Select manual grade A+ for CS11201 -> verify Manual indicator and Manual / Auto credit summary (3 / 6 Cr)
+    const csSelect = page.getByLabel('Grade for CS11201 (1-1)');
+    await csSelect.selectOption('A+');
+    await expect(page.getByText('3 / 6 Cr')).toBeVisible();
+
+    // Select E for EC11203 and E for EN11201 (with Target 3.50 default) -> unreachable warning appears
+    await page.getByLabel('Grade for EC11203 (1-1)').selectOption('E');
+    await page.getByLabel('Grade for EN11201 (1-1)').selectOption('E');
+    await expect(page.getByText(/Target currently unreachable with your selected grades/i)).toBeVisible();
+
+    // Reset Allocation -> restores Auto and feasibility
+    await page.getByRole('button', { name: /Reset Allocation/i }).tap();
+    await expect(page.getByText('0 / 9 Cr')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Apply Suggested as Projected/i })).toBeVisible();
+
+    // Apply Suggested as Projected -> Actual CGPA remains 3.00, Projected CGPA appears
+    await page.getByRole('button', { name: /Apply Suggested as Projected/i }).tap();
+    await expect(page.getByText(/Applied 3 balanced grades as projected grades/i)).toBeVisible();
   });
 
 });

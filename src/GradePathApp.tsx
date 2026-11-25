@@ -3,23 +3,19 @@
 
 import React from 'react';
 import { useGradeStore } from './store/useGradeStore';
+import { normalizeNavView } from './config/navigation';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { ProfileSetupModal } from './components/profiles/ProfileSetupModal';
 
-// 11 Modular Screen Views
+// 7 Consolidated Screen Views
 import { DashboardView } from './components/dashboard/DashboardView';
 import { GpaCalculatorView } from './components/calculator/GpaCalculatorView';
 import { AcademicTranscriptView } from './components/transcript/AcademicTranscriptView';
-import { SemesterPlannerView } from './components/planner/SemesterPlannerView';
 import { CreditProgressView } from './components/progress/CreditProgressView';
-import { DegreeRequirementsView } from './components/requirements/DegreeRequirementsView';
-import { SpecializationEligibilityView } from './components/specialization/SpecializationEligibilityView';
 import { GpaAnalyticsView } from './components/analytics/GpaAnalyticsView';
-import { GradeSimulatorView } from './components/simulator/GradeSimulatorView';
-import { AcademicGoalsView } from './components/goals/AcademicGoalsView';
 import { StudentProfilesView } from './components/profiles/StudentProfilesView';
 import { SettingsView } from './components/settings/SettingsView';
 
@@ -27,43 +23,22 @@ export const GradePathApp: React.FC = () => {
   const { activeTab, activeProfileId, isSidebarExpanded } = useGradeStore();
 
   const renderCurrentView = () => {
-    switch (activeTab) {
-      // OVERVIEW
+    const view = normalizeNavView(activeTab);
+    switch (view) {
       case 'dashboard':
         return <DashboardView />;
       case 'calculator':
-      case 'grades':
         return <GpaCalculatorView />;
-      case 'transcript':
-        return <AcademicTranscriptView />;
-
-      // ACADEMIC
-      case 'projection':
-        return <GpaCalculatorView />;
-      case 'planner':
-        return <SemesterPlannerView />;
-      case 'progress':
-        return <CreditProgressView />;
-      case 'requirements':
-        return <DegreeRequirementsView />;
-      case 'specialization':
-        return <SpecializationEligibilityView />;
-
-      // INSIGHTS
       case 'analytics':
         return <GpaAnalyticsView />;
-      case 'simulator':
-      case 'forecast':
-        return <GradeSimulatorView />;
-      case 'goals':
-        return <AcademicGoalsView />;
-
-      // PERSONAL
+      case 'progress':
+        return <CreditProgressView />;
+      case 'transcript':
+        return <AcademicTranscriptView />;
       case 'profiles':
         return <StudentProfilesView />;
       case 'settings':
         return <SettingsView />;
-
       default:
         return <DashboardView />;
     }

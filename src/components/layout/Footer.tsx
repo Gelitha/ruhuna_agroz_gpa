@@ -2,9 +2,10 @@
 // Platform Footer: Curriculum Details, Attribution & Disclaimer
 
 import React from 'react';
-import { BookOpen, AlertCircle } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { AppLogo } from '../common/AppLogo';
+import { PRIVACY_HEADING, ACADEMIC_DISCLAIMER } from '../common/PrivacyDisclaimerNotice';
 
 export const Footer: React.FC = () => {
   const { setActiveTab, setShowOnboarding } = useGradeStore();
@@ -44,21 +45,27 @@ export const Footer: React.FC = () => {
             </p>
           </div>
 
-          {/* Fun Side-Project Disclaimer & Quick Actions */}
-          <div className="md:col-span-4 space-y-1 text-center md:text-right">
-            <div className="flex items-center justify-center md:justify-end gap-1.5 text-[11px] font-bold text-amber-800">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span>Not responsible for errors — just a side project for fun</span>
+          {/* Privacy, Academic Disclaimer & Quick Actions */}
+          <div className="md:col-span-4 space-y-1.5 text-center md:text-right">
+            <div className="text-[11px] font-bold text-[#103B2D]">
+              {PRIVACY_HEADING} Academic data stays in your browser.
             </div>
-            <p className="text-[11px] text-neutral-400">
-              Always verify official grades &amp; degree criteria with Faculty Dean's Office.
+            <p className="text-[11px] text-neutral-500 leading-relaxed">
+              {ACADEMIC_DISCLAIMER}
             </p>
             <div className="pt-1 flex items-center justify-center md:justify-end gap-3 text-xs">
               <button
-                onClick={() => setActiveTab('requirements')}
+                onClick={() => setActiveTab('progress')}
                 className="text-neutral-500 hover:text-emerald-700 font-semibold underline underline-offset-2 transition"
               >
-                Degree Regulations
+                Academic Progress
+              </button>
+              <span>•</span>
+              <button
+                onClick={() => setActiveTab('settings')}
+                className="text-neutral-500 hover:text-emerald-700 font-semibold underline underline-offset-2 transition"
+              >
+                Settings &amp; Backup
               </button>
               <span>•</span>
               <button

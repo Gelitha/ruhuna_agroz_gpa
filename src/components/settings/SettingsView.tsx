@@ -20,6 +20,7 @@ import { GRADING_SCALE, DEPARTMENTS } from '../../database';
 import { DegreeCode, SemesterKey } from '../../types';
 import { calculateOverallStats } from '../../utils/calculations';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { PrivacyDisclaimerNotice } from '../common/PrivacyDisclaimerNotice';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -115,6 +116,9 @@ export const SettingsView: React.FC = () => {
           <span>New Profile</span>
         </button>
       </div>
+
+      {/* Privacy & Academic Disclaimer */}
+      <PrivacyDisclaimerNotice showAcademicDisclaimer />
 
       {/* ======================================================== */}
       {/* 1. STUDENT PROFILES MANAGER */}

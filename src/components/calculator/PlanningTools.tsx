@@ -15,7 +15,9 @@ import {
   RotateCcw,
   Zap,
   Check,
-  ArrowRight
+  ArrowRight,
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { TargetScope, Grade, SemesterKey, Course, StudentProfile } from '../../types';
 import { useGradeStore } from '../../store/useGradeStore';
@@ -42,15 +44,30 @@ export const PlanningTools: React.FC = () => {
     getAcademicProjections,
     setCourseGrade,
     setCourseExpected,
-    setCourseGradeAndStatus
+    setCourseGradeAndStatus,
+    applyTargetMixPlan,
+    saveCurrentState,
+    planningToolSubTab,
+    planningToolsExpanded,
+    setPlanningToolRequest
   } = useGradeStore();
 
   const profile = getActiveProfile();
   const proj = getAcademicProjections();
 
-  // Collapsed by default
+  // Collapsed by default unless requested by a redirected navigation shortcut
   const [isOpen, setIsOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'target' | 'forecast' | 'impact'>('target');
+
+  useEffect(() => {
+    if (planningToolsExpanded) {
+      setIsOpen(true);
+      if (planningToolSubTab) {
+        setActiveSubTab(planningToolSubTab);
+      }
+      setPlanningToolRequest(null, false);
+    }
+  }, [planningToolsExpanded, planningToolSubTab, setPlanningToolRequest]);
 
   // Quick Assumptions State
   const quickAssumptions = profile.projectionQuickAssumptions;
@@ -62,6 +79,8 @@ export const PlanningTools: React.FC = () => {
   const [targetScope, setTargetScope] = useState<TargetScope>('after_current');
   const [targetCgpa, setTargetCgpa] = useState<number>(profile.projectionTargetCgpa ?? 3.50);
   const [appliedToast, setAppliedToast] = useState<string | null>(null);
+  const [manualGradeAllocations, setManualGradeAllocations] = useState<Record<string, Grade>>({});
+  const [balanceTick, setBalanceTick] = useState<number>(0);
 
   // Course Impact Simulation State (Temporary What-If)
   const [simulatedTargets, setSimulatedTargets] = useState<Record<string, Grade>>({});
@@ -89,7 +108,35 @@ export const PlanningTools: React.FC = () => {
       }
     }
     setSimulatedTargets(initialTargets);
+    setManualGradeAllocations({});
   }, [profile.id, profile.currentSemester, profile.projectionQuickAssumptions, profile.projectionTargetCgpa]);
+
+  // Prune manual selections that fall outside the newly selected target scope
+  useEffect(() => {
+    const curSem = profile.currentSemester || '1-1';
+    const curIdx = ALL_SEMESTER_KEYS.indexOf(curSem as SemesterKey);
+    const allowedSems =
+      targetScope === 'after_pending'
+        ? new Set(ALL_SEMESTER_KEYS.slice(0, Math.max(0, curIdx)))
+        : targetScope === 'after_current'
+        ? new Set(ALL_SEMESTER_KEYS.slice(0, curIdx + 1))
+        : new Set(ALL_SEMESTER_KEYS);
+
+    setManualGradeAllocations(prev => {
+      const next: Record<string, Grade> = {};
+      let changed = false;
+      for (const [k, g] of Object.entries(prev)) {
+        const [sk] = k.split(':') as [SemesterKey, string];
+        const courseExists = allowedSems.has(sk) && (profile.semesters[sk] || []).some(c => `${sk}:${c.code}` === k && !c.isNgpa && !isCourseGradeConfirmed(c));
+        if (courseExists && g) {
+          next[k] = g;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [targetScope, profile]);
 
   const targetResult = calculateTargetCgpaRequirement(profile, targetCgpa, targetScope);
 
@@ -117,21 +164,64 @@ export const PlanningTools: React.FC = () => {
   const currentTrajectoryCgpa = targetScope === 'after_pending' ? proj.projectedCgpaPending : proj.combinedProjectedCgpa;
   const targetGap = currentTrajectoryCgpa > 0 ? Number((targetCgpa - currentTrajectoryCgpa).toFixed(2)) : null;
 
-  // Suggested Grade Combination for Target CGPA
-  const suggestedCombination = useMemo(() => {
-    return generateSuggestedGradeCombination(profile, targetCgpa, targetScope);
+  // Initial auto-only baseline and live interactive combination
+  const baselineCombination = useMemo(() => {
+    return generateSuggestedGradeCombination(profile, targetCgpa, targetScope, {});
   }, [profile, targetCgpa, targetScope]);
 
-  const handleApplySuggestedGrades = () => {
-    if (!suggestedCombination.possible || suggestedCombination.courses.length === 0) return;
+  const suggestedCombination = useMemo(() => {
+    void balanceTick;
+    return generateSuggestedGradeCombination(profile, targetCgpa, targetScope, manualGradeAllocations);
+  }, [profile, targetCgpa, targetScope, manualGradeAllocations, balanceTick]);
 
-    let appliedCount = 0;
-    for (const item of suggestedCombination.courses) {
-      setCourseGradeAndStatus(item.semesterKey, item.courseCode, item.suggestedGrade, true);
-      appliedCount++;
+  const handleManualGradeChange = (courseKey: string, selected: string) => {
+    setManualGradeAllocations(prev => {
+      const next = { ...prev };
+      if (!selected) {
+        delete next[courseKey];
+      } else {
+        next[courseKey] = selected as Grade;
+      }
+      return next;
+    });
+  };
+
+  const handleAutoBalanceRemaining = () => {
+    setBalanceTick(t => t + 1);
+    setAppliedToast('Remaining automatic subjects rebalanced around your locked selections.');
+    setTimeout(() => setAppliedToast(null), 3500);
+  };
+
+  const handleResetAllocation = () => {
+    setManualGradeAllocations({});
+    setBalanceTick(t => t + 1);
+    setAppliedToast('Temporary manual selections cleared. All eligible subjects returned to Auto.');
+    setTimeout(() => setAppliedToast(null), 3500);
+  };
+
+  const handleApplySuggestedGrades = (allowBelowTarget = false) => {
+    if (suggestedCombination.courses.length === 0) return;
+    if (!allowBelowTarget && !suggestedCombination.possible) return;
+
+    const allocations = suggestedCombination.courses.map(item => ({
+      semKey: item.semesterKey,
+      courseCode: item.courseCode,
+      grade: item.suggestedGrade
+    }));
+
+    applyTargetMixPlan(allocations);
+    const saved = saveCurrentState ? saveCurrentState() : true;
+    if (!saved) {
+      setAppliedToast('Save failed: Local browser storage unavailable.');
+      setTimeout(() => setAppliedToast(null), 4500);
+      return;
     }
 
-    setAppliedToast(`Applied ${appliedCount} suggested grades as projected grades!`);
+    setAppliedToast(
+      allowBelowTarget && !suggestedCombination.possible
+        ? `Applied ${allocations.length} scenario grades as projected (shortfall: ${suggestedCombination.shortfall.toFixed(2)} CGPA).`
+        : `Applied ${allocations.length} balanced grades as projected grades!`
+    );
     setTimeout(() => setAppliedToast(null), 5000);
   };
 
@@ -336,28 +426,30 @@ export const PlanningTools: React.FC = () => {
   return (
     <div className="bg-white border border-[#DCDDD7] rounded-2xl shadow-subtle overflow-hidden transition-all">
       {/* Simple Header with Expand / Collapse Arrow */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-[#F8F8F4] transition-colors text-left"
-        aria-expanded={isOpen}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#EAF2ED] text-[#176B45] flex items-center justify-center shrink-0">
-            <Sliders className="w-5 h-5" />
-          </div>
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pr-4 sm:pr-5 hover:bg-[#F8F8F4] transition-colors">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex-1 flex items-center justify-between p-4 sm:p-5 text-left cursor-pointer touch-manipulation"
+          aria-expanded={isOpen}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#EAF2ED] text-[#176B45] flex items-center justify-center shrink-0">
+              <Sliders className="w-5 h-5" />
+            </div>
             <h3 className="text-base font-extrabold text-[#242824]">
               Planning tools
             </h3>
-            <HelpTooltip id="T22" size="xs" />
           </div>
-        </div>
 
-        <div className="text-[#626962] hover:text-[#242824] transition">
-          {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          <div className="text-[#626962] hover:text-[#242824] transition">
+            {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </button>
+        <div className="shrink-0 ml-1">
+          <HelpTooltip id="T22" size="xs" />
         </div>
-      </button>
+      </div>
 
       {/* Expanded Tools Body */}
       {isOpen && (
@@ -621,51 +713,247 @@ export const PlanningTools: React.FC = () => {
                 )}
               </div>
 
-              {/* Suggested Grade Combination for Target CGPA */}
-              {targetResult.possible && suggestedCombination.courses.length > 0 && (
-                <div className="p-4 rounded-xl bg-white border border-emerald-300 shadow-2xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Interactive Suggested Grade Combination for Target CGPA */}
+              {suggestedCombination.courses.length > 0 && (
+                <div className={`p-4 rounded-xl bg-white border shadow-2xs space-y-3.5 ${
+                  suggestedCombination.possible ? 'border-emerald-300' : 'border-amber-300'
+                }`}>
+                  {/* Header + Action Buttons */}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-[#176B45]" />
                         <span className="text-xs font-extrabold text-[#242824]">
-                          Suggested Grade Combination ({suggestedCombination.courses.length} courses)
+                          Interactive Suggested Grade Combination ({suggestedCombination.courses.length} courses)
                         </span>
+                        {suggestedCombination.isIncompleteEstimate && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            Estimate ({suggestedCombination.unenrolledCredits} future Cr unenrolled)
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-[#626962] mt-0.5">
-                        Balanced grades to hit your {targetCgpa.toFixed(2)} target with an average GPA of {suggestedCombination.achievedGpa.toFixed(2)}. Confirmed official grades are strictly protected.
+                        Select any grade beside a subject to lock it; remaining Auto subjects rebalance automatically. Temporary until applied as projected.
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleApplySuggestedGrades}
-                      className="px-3.5 py-2 rounded-xl bg-[#176B45] hover:bg-[#103B2D] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition shrink-0"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Apply Suggested as Projected</span>
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleAutoBalanceRemaining}
+                        className="px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-[#242824] font-bold text-xs flex items-center justify-center gap-1.5 transition min-h-[40px] touch-manipulation cursor-pointer"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-[#176B45]" />
+                        <span>Auto Balance</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleResetAllocation}
+                        className="px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs flex items-center justify-center gap-1.5 transition min-h-[40px] touch-manipulation cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Reset Allocation</span>
+                      </button>
+
+                      {suggestedCombination.possible ? (
+                        <button
+                          type="button"
+                          onClick={() => handleApplySuggestedGrades(false)}
+                          className="px-3.5 py-2 rounded-xl bg-[#176B45] hover:bg-[#103B2D] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition min-h-[40px] touch-manipulation cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Apply Suggested as Projected</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleApplySuggestedGrades(true)}
+                          className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition min-h-[40px] touch-manipulation cursor-pointer"
+                        >
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Apply Below-Target Scenario (−{suggestedCombination.shortfall.toFixed(2)})</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pt-1 max-h-48 overflow-y-auto pr-1">
-                    {suggestedCombination.courses.map(sc => (
-                      <div
-                        key={`${sc.semesterKey}:${sc.courseCode}`}
-                        className="p-2 rounded-lg bg-[#F8F8F4] border border-[#DCDDD7] flex items-center justify-between gap-1 text-xs"
-                      >
-                        <div className="min-w-0">
-                          <span className="font-mono font-bold text-[#242824] block truncate">
-                            {sc.courseCode}
-                          </span>
-                          <span className="text-[10px] text-[#626962]">
-                            Sem {sc.semesterKey} • {sc.credits} Cr
-                          </span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded font-black text-xs bg-emerald-100 text-[#103B2D] border border-emerald-300 shrink-0">
-                          {sc.suggestedGrade}
+                  {/* Unreachable Target Warning */}
+                  {!suggestedCombination.possible && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950 space-y-1">
+                      <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                        <span>Target currently unreachable with your selected grades.</span>
+                      </div>
+                      <p className="text-[11px] text-amber-900 leading-relaxed">
+                        Max achievable CGPA: <strong>{suggestedCombination.maxAchievableCgpa.toFixed(2)}</strong> • Shortfall: <strong>{suggestedCombination.shortfall.toFixed(2)}</strong> • Required remaining avg: <strong>{suggestedCombination.autoCredits + suggestedCombination.unenrolledCredits > 0 ? suggestedCombination.requiredRemainingAverage.toFixed(2) : 'N/A'}</strong> across {suggestedCombination.autoCredits + suggestedCombination.unenrolledCredits} remaining Cr. Change manual grades, return subjects to Auto, or adjust your target.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Live Grade Quota Summary */}
+                  <div className="p-3 rounded-xl bg-[#F8F8F4] border border-[#DCDDD7] space-y-2.5 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                      <div className="p-2 rounded-lg bg-white border border-neutral-200">
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Actual CGPA</span>
+                        <span className="font-mono font-black text-sm text-[#242824]">
+                          {proj.actualGpaCredits > 0 ? suggestedCombination.actualCgpa.toFixed(2) : '—'}
                         </span>
                       </div>
-                    ))}
+                      <div className="p-2 rounded-lg bg-white border border-neutral-200">
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Target CGPA</span>
+                        <span className="font-mono font-black text-sm text-[#176B45]">
+                          {targetCgpa.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-neutral-200">
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Eligible Credits</span>
+                        <span className="font-mono font-black text-sm text-[#242824]">
+                          {suggestedCombination.totalEligibleCredits} Cr
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-neutral-200">
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Manual / Auto</span>
+                        <span className="font-mono font-black text-sm text-[#242824]">
+                          {suggestedCombination.manualCredits} / {suggestedCombination.autoCredits} Cr
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white border border-neutral-200">
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Req. Remaining Avg</span>
+                        <span className="font-mono font-black text-sm text-[#242824]">
+                          {suggestedCombination.autoCredits + suggestedCombination.unenrolledCredits > 0
+                            ? suggestedCombination.requiredRemainingAverage.toFixed(2)
+                            : '0.00'}
+                        </span>
+                      </div>
+                      <div className={`p-2 rounded-lg border ${
+                        suggestedCombination.possible
+                          ? 'bg-emerald-50 border-emerald-200'
+                          : 'bg-amber-50 border-amber-200'
+                      }`}>
+                        <span className="text-[10px] font-bold uppercase text-[#626962] block">Est. Achieved CGPA</span>
+                        <span className={`font-mono font-black text-sm ${
+                          suggestedCombination.possible ? 'text-[#176B45]' : 'text-amber-800'
+                        }`}>
+                          {suggestedCombination.estimatedAchievedCgpa.toFixed(2)}
+                          <span className="text-[10px] font-semibold ml-1">
+                            ({suggestedCombination.estimatedAchievedCgpa >= targetCgpa ? '+' : ''}
+                            {(suggestedCombination.estimatedAchievedCgpa - targetCgpa).toFixed(2)})
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Credit Quota Badges: Manual vs Remaining Auto */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-neutral-200/70">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-[#626962]">Remaining Auto Quota:</span>
+                        {suggestedCombination.autoQuotas.length === 0 ? (
+                          <span className="text-[11px] text-neutral-500">All subjects manually assigned</span>
+                        ) : (
+                          suggestedCombination.autoQuotas.map(q => (
+                            <span
+                              key={`auto-${q.grade}`}
+                              className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#103B2D] border border-emerald-300 font-bold text-[11px]"
+                            >
+                              {q.grade}: {q.credits} Cr
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {suggestedCombination.manualQuotas.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-blue-700">Manual Locked:</span>
+                          {suggestedCombination.manualQuotas.map(q => (
+                            <span
+                              key={`man-${q.grade}`}
+                              className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 font-bold text-[11px]"
+                            >
+                              {q.grade}: {q.credits} Cr
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {suggestedCombination.manualCredits > 0 && baselineCombination.autoQuotas.length > 0 && (
+                      <div className="text-[10px] text-neutral-500 flex flex-wrap items-center gap-1">
+                        <span>Initial Auto Baseline:</span>
+                        {baselineCombination.autoQuotas.map(q => (
+                          <span key={`base-${q.grade}`} className="font-mono">
+                            {q.grade} ({q.credits} Cr)
+                          </span>
+                        ))}
+                        <span>• Combination Avg: {suggestedCombination.achievedGpa.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Interactive Subject Card Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pt-1 max-h-80 overflow-y-auto pr-1">
+                    {suggestedCombination.courses.map(sc => {
+                      const courseKey = `${sc.semesterKey}:${sc.courseCode}`;
+                      const isCappedSelection =
+                        sc.isRepeat && !sc.isExcused && sc.suggestedGpv > 2.0;
+
+                      return (
+                        <div
+                          key={courseKey}
+                          className={`p-2.5 rounded-xl border flex flex-col justify-between gap-2 text-xs transition ${
+                            sc.isManual
+                              ? 'bg-blue-50/60 border-blue-300'
+                              : 'bg-[#F8F8F4] border-[#DCDDD7]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-[#242824] truncate">
+                                  {sc.courseCode}
+                                </span>
+                                {sc.isManual && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                                    <Lock className="w-2.5 h-2.5" />
+                                    Manual
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-[#626962] block">
+                                Sem {sc.semesterKey} · {sc.credits} Cr
+                                {sc.existingProjectedGrade ? ` · Saved Proj: ${sc.existingProjectedGrade}` : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <select
+                              aria-label={`Grade for ${sc.courseCode} (${sc.semesterKey})`}
+                              value={sc.isManual ? sc.suggestedGrade : ''}
+                              onChange={(e) => handleManualGradeChange(courseKey, e.target.value)}
+                              className={`w-full rounded-lg px-2.5 py-2 text-xs font-bold border min-h-[44px] touch-manipulation cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#176B45]/30 ${
+                                sc.isManual
+                                  ? 'bg-white border-blue-400 text-blue-900'
+                                  : 'bg-white border-emerald-300 text-[#103B2D]'
+                              }`}
+                            >
+                              <option value="">Auto ({sc.suggestedGrade})</option>
+                              {GRADE_OPTIONS.map(g => (
+                                <option key={g} value={g}>
+                                  {g} ({GRADING_SCALE[g].gpv.toFixed(1)})
+                                </option>
+                              ))}
+                            </select>
+
+                            {isCappedSelection && (
+                              <p className="text-[10px] text-amber-800 font-semibold leading-tight">
+                                Repeat cap: {sc.suggestedGrade} counts as {sc.effectiveGpv.toFixed(2)} (C)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

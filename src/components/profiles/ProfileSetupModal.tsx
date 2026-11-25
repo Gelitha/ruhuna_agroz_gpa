@@ -20,6 +20,7 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { DegreeCode, SemesterKey } from '../../types';
 import { initDefaultCoursesForDegree, getOrdinalYear } from '../../utils/calculations';
 import { AppLogo } from '../common/AppLogo';
+import { PrivacyDisclaimerNotice } from '../common/PrivacyDisclaimerNotice';
 
 const SEMESTERS_LIST: Array<{ key: SemesterKey; label: string; year: number; yearText: string }> = [
   { key: '1-1', label: 'Sem 1-1', year: 1, yearText: '1st Yr' },
@@ -440,6 +441,11 @@ export const ProfileSetupModal: React.FC = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Compact Privacy & Academic Disclaimer (Onboarding & New Profile) */}
+          {!isEdit && (
+            <PrivacyDisclaimerNotice compact showAcademicDisclaimer />
           )}
 
           {/* Action Buttons */}

@@ -2,71 +2,11 @@
 // GradePath Persistent Navigation Sidebar (Enlarged, Tactile & Vivid)
 
 import React from 'react';
-import {
-  LayoutDashboard,
-  Calculator,
-  FileText,
-  CalendarDays,
-  Award,
-  BookCheck,
-  Compass,
-  LineChart,
-  TrendingUp,
-  Sliders,
-  Target,
-  Users,
-  Settings,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { NavView } from '../../types';
+import { NAV_SECTIONS, normalizeNavView } from '../../config/navigation';
 import { AppLogo } from '../common/AppLogo';
-
-interface NavSection {
-  title: string;
-  items: Array<{
-    id: NavView;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string;
-  }>;
-}
-
-const NAV_SECTIONS: NavSection[] = [
-  {
-    title: 'OVERVIEW',
-    items: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'calculator', label: 'GPA Calculator', icon: Calculator },
-      { id: 'transcript', label: 'Academic Transcript', icon: FileText }
-    ]
-  },
-  {
-    title: 'ACADEMIC',
-    items: [
-      { id: 'planner', label: 'Semester Planner', icon: CalendarDays },
-      { id: 'progress', label: 'Credit Progress', icon: Award },
-      { id: 'requirements', label: 'Degree Requirements', icon: BookCheck },
-      { id: 'specialization', label: 'Specialization Eligibility', icon: Compass }
-    ]
-  },
-  {
-    title: 'INSIGHTS',
-    items: [
-      { id: 'analytics', label: 'GPA Analytics', icon: LineChart },
-      { id: 'simulator', label: 'Grade Simulator', icon: Sliders },
-      { id: 'goals', label: 'Academic Goals', icon: Target }
-    ]
-  },
-  {
-    title: 'PERSONAL',
-    items: [
-      { id: 'profiles', label: 'Student Profiles', icon: Users },
-      { id: 'settings', label: 'Settings', icon: Settings }
-    ]
-  }
-];
 
 export const Sidebar: React.FC = () => {
   const {
@@ -85,9 +25,7 @@ export const Sidebar: React.FC = () => {
   const stats = getOverallStats();
 
   const getIsActive = (id: NavView) => {
-    if (activeTab === id) return true;
-    if (id === 'calculator' && activeTab === 'grades') return true;
-    return false;
+    return normalizeNavView(activeTab) === id;
   };
 
   return (

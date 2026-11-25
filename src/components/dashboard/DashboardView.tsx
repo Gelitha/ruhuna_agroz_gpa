@@ -64,18 +64,28 @@ export const DashboardView: React.FC = () => {
   const currentYear = profile.currentAcademicYear || 1;
   const currentDeansHonor = stats.deansHonors[currentYear];
 
+  const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const currentSemIdx = semKeys.indexOf((profile.currentSemester || '1-1') as SemesterKey);
+  const hasFutureExpected = semKeys.slice(currentSemIdx + 1).some(sk =>
+    (profile.semesters[sk] || []).some(c => !c.isNgpa && c.isExpected && c.grade)
+  );
+
   // Check whether any projected grades exist
   const hasProjections = stats.hasExpectedCourses || (proj && proj.combinedTotalCredits > proj.actualGpaCredits) || (stats.projectedCreditsAttempted ?? 0) > 0;
-  const projectedCgpa = proj && proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? stats.cgpa);
-  const projectedCredits = stats.projectedCreditsAttempted ?? (proj ? Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits) : 0);
-  const deltaCgpa = proj ? proj.deltaCombined : (stats.deltaCgpa ?? 0);
+  const projectedCgpa = hasFutureExpected && stats.projectedCgpa !== undefined
+    ? stats.projectedCgpa
+    : (proj && proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? stats.cgpa));
+  const projectedCredits = hasFutureExpected && stats.projectedCreditsAttempted !== undefined
+    ? stats.projectedCreditsAttempted
+    : (stats.projectedCreditsAttempted ?? (proj ? Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits) : 0));
+  const deltaCgpa = hasFutureExpected && stats.projectedCgpa !== undefined
+    ? Number((projectedCgpa - stats.cgpa).toFixed(2))
+    : (proj ? proj.deltaCombined : (stats.deltaCgpa ?? 0));
 
   const handleOpenSemester = (semKey: SemesterKey) => {
     setSelectedSemesterForCalculator(semKey);
     setActiveTab('calculator');
   };
-
-  const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
   const currentIdx = semKeys.indexOf(profile.currentSemester);
   const previousSemesters = semKeys.slice(0, currentIdx);
   const missingPrevious = previousSemesters.filter(k => stats.semStats[k].gpaCreditsAttempted === 0);

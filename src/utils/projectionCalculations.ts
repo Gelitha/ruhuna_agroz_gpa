@@ -806,6 +806,13 @@ export function calculateRequiredGpaForTarget(
   };
 }
 
+export interface GradeCreditQuota {
+  grade: Grade;
+  gpv: number;
+  credits: number;
+  courseCount: number;
+}
+
 export interface SuggestedCourseGrade {
   semesterKey: SemesterKey;
   courseCode: string;
@@ -813,6 +820,9 @@ export interface SuggestedCourseGrade {
   credits: number;
   suggestedGrade: Grade;
   suggestedGpv: number;
+  effectiveGpv: number;
+  isManual: boolean;
+  existingProjectedGrade?: Grade;
   isRepeat: boolean;
   isExcused: boolean;
 }
@@ -821,74 +831,240 @@ export interface SuggestedCombinationResult {
   possible: boolean;
   courses: SuggestedCourseGrade[];
   achievedGpa: number;
+  estimatedAchievedCgpa: number;
   targetCgpa: number;
+  actualCgpa: number;
+  totalScopeCredits: number;
+  totalEligibleCredits: number;
+  manualCredits: number;
+  autoCredits: number;
+  unenrolledCredits: number;
+  requiredRemainingAverage: number;
+  maxAchievableCgpa: number;
+  shortfall: number;
+  isIncompleteEstimate: boolean;
+  manualQuotas: GradeCreditQuota[];
+  autoQuotas: GradeCreditQuota[];
+  combinedQuotas: GradeCreditQuota[];
   explanation: string;
 }
 
+const FULL_GRADE_ORDER: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
+
+function buildGradeQuotas(items: Array<{ grade: Grade; gpv: number; credits: number }>): GradeCreditQuota[] {
+  const map = new Map<Grade, GradeCreditQuota>();
+  for (const item of items) {
+    if (!item.grade || item.credits <= 0) continue;
+    const existing = map.get(item.grade);
+    if (existing) {
+      existing.credits += item.credits;
+      existing.courseCount += 1;
+    } else {
+      map.set(item.grade, {
+        grade: item.grade,
+        gpv: item.gpv,
+        credits: item.credits,
+        courseCount: 1
+      });
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => FULL_GRADE_ORDER.indexOf(a.grade) - FULL_GRADE_ORDER.indexOf(b.grade)
+  );
+}
+
 /**
- * Generates realistic grade combinations for unresolved courses within a target scope
- * respecting course credits, grading scales, and repeat grade caps (max 2.0 / Grade C).
+ * Generates realistic, credit-weighted grade combinations for unresolved courses within a target scope.
+ * Supports fixed manual grade preferences alongside automatically balanced remaining subjects,
+ * respecting course credits, grading scales, non-GPA exclusions, and repeat grade caps (max 2.0 / Grade C).
  */
 export function generateSuggestedGradeCombination(
   profile: StudentProfile,
   targetCgpa: number,
-  scope: TargetScope
+  scope: TargetScope,
+  manualAllocations: Record<string, Grade> = {}
 ): SuggestedCombinationResult {
-  const targetResult = calculateTargetCgpaRequirement(profile, targetCgpa, scope);
-
-  if (!targetResult.possible) {
-    return {
-      possible: false,
-      courses: [],
-      achievedGpa: 0,
-      targetCgpa,
-      explanation: targetResult.explanation
-    };
-  }
-
   const currentSem = profile.currentSemester || '1-1';
   const currentIndex = ALL_SEMESTER_KEYS.indexOf(currentSem as SemesterKey);
-
-  const unresolvedCourses: Array<{
-    semKey: SemesterKey;
-    course: Course;
-    maxGpv: number;
-  }> = [];
+  const degInfo = DEGREE_INFO[profile.degree] || DEGREE_INFO.ARMT;
+  const degreeTotalMinGpaCredits = degInfo.totalMinGpaCredits || 126;
 
   let semKeysToInclude: SemesterKey[] = [];
   if (scope === 'after_pending') {
-    semKeysToInclude = ALL_SEMESTER_KEYS.slice(0, Math.max(0, currentIndex));
+    semKeysToInclude = currentIndex > 0 ? ALL_SEMESTER_KEYS.slice(0, currentIndex) : [];
   } else if (scope === 'after_current') {
     semKeysToInclude = ALL_SEMESTER_KEYS.slice(0, currentIndex + 1);
   } else {
     semKeysToInclude = [...ALL_SEMESTER_KEYS];
   }
 
+  let confirmedPointsInScope = 0;
+  let confirmedCreditsInScope = 0;
+  let totalEnrolledCreditsInScope = 0;
+
+  let globalActualPoints = 0;
+  let globalActualCredits = 0;
+  for (const sk of ALL_SEMESTER_KEYS) {
+    for (const c of profile.semesters[sk] || []) {
+      if (!c.isNgpa && isCourseGradeConfirmed(c)) {
+        const gpv = calculateEffectiveGpvForGrade(c.grade, c.isRepeat, c.isExcused) ?? 0;
+        globalActualPoints += gpv * (c.credits || 0);
+        globalActualCredits += c.credits || 0;
+      }
+    }
+  }
+  const actualCgpa = globalActualCredits > 0 ? Number((globalActualPoints / globalActualCredits).toFixed(2)) : 0;
+
+  const eligibleCourses: Array<{
+    key: string;
+    semKey: SemesterKey;
+    course: Course;
+    maxGpv: number;
+    manualGrade?: Grade;
+  }> = [];
+
   for (const semKey of semKeysToInclude) {
     const semCourses = profile.semesters[semKey] || [];
     for (const c of semCourses) {
-      if (!c.isNgpa && !isCourseGradeConfirmed(c)) {
+      if (c.isNgpa) continue;
+      const cr = c.credits || 0;
+      totalEnrolledCreditsInScope += cr;
+
+      if (isCourseGradeConfirmed(c)) {
+        const gpv = calculateEffectiveGpvForGrade(c.grade, c.isRepeat, c.isExcused) ?? 0;
+        confirmedPointsInScope += gpv * cr;
+        confirmedCreditsInScope += cr;
+      } else {
+        const key = `${semKey}:${c.code}`;
+        const rawManual = manualAllocations[key];
+        const manualGrade = rawManual && GRADING_SCALE[rawManual] ? rawManual : undefined;
         const maxGpv = c.isRepeat && !c.isExcused ? 2.0 : 4.0;
-        unresolvedCourses.push({
-          semKey,
-          course: c,
-          maxGpv
-        });
+        eligibleCourses.push({ key, semKey, course: c, maxGpv, manualGrade });
       }
     }
   }
 
-  if (unresolvedCourses.length === 0) {
+  const unenrolledCredits =
+    scope === 'at_graduation' ? Math.max(0, degreeTotalMinGpaCredits - totalEnrolledCreditsInScope) : 0;
+  const totalScopeCredits =
+    scope === 'at_graduation'
+      ? Math.max(degreeTotalMinGpaCredits, totalEnrolledCreditsInScope)
+      : totalEnrolledCreditsInScope;
+  const isIncompleteEstimate = scope === 'at_graduation' && unenrolledCredits > 0;
+
+  if (scope === 'after_pending' && currentIndex === 0) {
     return {
-      possible: true,
+      possible: false,
       courses: [],
-      achievedGpa: targetResult.maxAchievableCgpa,
+      achievedGpa: 0,
+      estimatedAchievedCgpa: actualCgpa,
       targetCgpa,
-      explanation: 'No unresolved courses in the selected target scope.'
+      actualCgpa,
+      totalScopeCredits: 0,
+      totalEligibleCredits: 0,
+      manualCredits: 0,
+      autoCredits: 0,
+      unenrolledCredits: 0,
+      requiredRemainingAverage: 0,
+      maxAchievableCgpa: 0,
+      shortfall: targetCgpa,
+      isIncompleteEstimate: false,
+      manualQuotas: [],
+      autoQuotas: [],
+      combinedQuotas: [],
+      explanation:
+        'Semester 1-1 has no preceding semesters. Select "After the current semester" to calculate targets for your current examinations.'
     };
   }
 
-  // Supported grades ordered by descending GPV
+  let manualPoints = 0;
+  let manualCredits = 0;
+  const manualItems: typeof eligibleCourses = [];
+  const autoItems: typeof eligibleCourses = [];
+
+  for (const item of eligibleCourses) {
+    if (item.manualGrade) {
+      const effGpv =
+        calculateEffectiveGpvForGrade(item.manualGrade, item.course.isRepeat, item.course.isExcused) ?? 0;
+      manualPoints += effGpv * (item.course.credits || 0);
+      manualCredits += item.course.credits || 0;
+      manualItems.push(item);
+    } else {
+      autoItems.push(item);
+    }
+  }
+
+  const autoCredits = autoItems.reduce((sum, item) => sum + (item.course.credits || 0), 0);
+  const totalEligibleCredits = manualCredits + autoCredits;
+  const remainingAutoPoolCredits = autoCredits + unenrolledCredits;
+
+  const maxAutoPoints =
+    autoItems.reduce((sum, item) => sum + item.maxGpv * (item.course.credits || 0), 0) +
+    4.0 * unenrolledCredits;
+  const maxAchievablePoints = confirmedPointsInScope + manualPoints + maxAutoPoints;
+  const maxAchievableCgpa =
+    totalScopeCredits > 0 ? Number((maxAchievablePoints / totalScopeCredits).toFixed(2)) : 0;
+
+  const targetTotalPoints = targetCgpa * totalScopeCredits;
+  const remainingNeededPoints = Math.max(0, targetTotalPoints - confirmedPointsInScope - manualPoints);
+  const requiredRemainingAverage =
+    remainingAutoPoolCredits > 0 ? remainingNeededPoints / remainingAutoPoolCredits : 0;
+
+  // Handle zero remaining automatic credits
+  if (remainingAutoPoolCredits === 0) {
+    const finalTotalPoints = confirmedPointsInScope + manualPoints;
+    const finalCgpa = totalScopeCredits > 0 ? finalTotalPoints / totalScopeCredits : 0;
+    const possible = finalTotalPoints + 1e-9 >= targetTotalPoints;
+
+    const resultCourses: SuggestedCourseGrade[] = eligibleCourses.map(item => {
+      const grade = item.manualGrade || 'C';
+      const rawGpv = GRADING_SCALE[grade]?.gpv ?? 2.0;
+      const effGpv = calculateEffectiveGpvForGrade(grade, item.course.isRepeat, item.course.isExcused) ?? 0;
+      return {
+        semesterKey: item.semKey,
+        courseCode: item.course.code,
+        courseName: item.course.name,
+        credits: item.course.credits || 0,
+        suggestedGrade: grade,
+        suggestedGpv: rawGpv,
+        effectiveGpv: effGpv,
+        isManual: !!item.manualGrade,
+        existingProjectedGrade: item.course.isExpected ? item.course.grade : undefined,
+        isRepeat: !!item.course.isRepeat,
+        isExcused: !!item.course.isExcused
+      };
+    });
+
+    const manualQuotas = buildGradeQuotas(
+      resultCourses.filter(c => c.isManual).map(c => ({ grade: c.suggestedGrade, gpv: c.effectiveGpv, credits: c.credits }))
+    );
+
+    return {
+      possible,
+      courses: resultCourses,
+      achievedGpa: totalEligibleCredits > 0 ? Number((manualPoints / totalEligibleCredits).toFixed(2)) : 0,
+      estimatedAchievedCgpa: Number(finalCgpa.toFixed(2)),
+      targetCgpa,
+      actualCgpa,
+      totalScopeCredits,
+      totalEligibleCredits,
+      manualCredits,
+      autoCredits: 0,
+      unenrolledCredits: 0,
+      requiredRemainingAverage: 0,
+      maxAchievableCgpa: Number(finalCgpa.toFixed(2)),
+      shortfall: possible ? 0 : Number(Math.max(0, targetCgpa - finalCgpa).toFixed(2)),
+      isIncompleteEstimate: false,
+      manualQuotas,
+      autoQuotas: [],
+      combinedQuotas: manualQuotas,
+      explanation: possible
+        ? `Target of ${targetCgpa.toFixed(2)} CGPA is achieved (${finalCgpa.toFixed(2)} CGPA).`
+        : 'Target currently unreachable with your selected grades.'
+    };
+  }
+
+  // Automatic balancing grade steps (A down to E)
   const GRADE_SCALE_STEPS: Array<{ grade: Grade; gpv: number }> = [
     { grade: 'A', gpv: 4.0 },
     { grade: 'A-', gpv: 3.7 },
@@ -903,95 +1079,216 @@ export function generateSuggestedGradeCombination(
     { grade: 'E', gpv: 0.0 }
   ];
 
-  const reqAvg = targetResult.requiredAverage <= 0 ? 2.0 : targetResult.requiredAverage;
+  const isTargetReachable =
+    targetTotalPoints <= maxAchievablePoints + 1e-9 && requiredRemainingAverage <= 4.0 + 1e-9;
 
-  // Initial assignment: step matching reqAvg without exceeding maxGpv
-  let baseStepIdx = GRADE_SCALE_STEPS.findIndex(s => s.gpv <= reqAvg);
+  // Portion of remaining points expected from enrolled auto courses
+  const enrolledTargetAutoPoints =
+    autoCredits > 0
+      ? isTargetReachable
+        ? Math.max(0, remainingNeededPoints - Math.min(4.0, Math.max(2.0, requiredRemainingAverage)) * unenrolledCredits)
+        : maxAutoPoints - 4.0 * unenrolledCredits
+      : 0;
+
+  const enrolledReqAvg =
+    autoCredits > 0
+      ? remainingNeededPoints <= 0
+        ? 2.0
+        : Math.min(4.0, enrolledTargetAutoPoints / autoCredits)
+      : 0;
+
+  // Initialize automatic courses
+  let baseStepIdx = GRADE_SCALE_STEPS.findIndex(s => s.gpv <= enrolledReqAvg + 1e-9);
   if (baseStepIdx === -1) baseStepIdx = GRADE_SCALE_STEPS.length - 1;
 
-  const courseStepIndices = unresolvedCourses.map(({ maxGpv }) => {
+  const autoStepIndices = autoItems.map(({ maxGpv }) => {
+    if (!isTargetReachable) {
+      const bestIdx = GRADE_SCALE_STEPS.findIndex(s => s.gpv <= maxGpv + 1e-9);
+      return bestIdx === -1 ? GRADE_SCALE_STEPS.length - 1 : bestIdx;
+    }
     let idx = baseStepIdx;
-    while (idx < GRADE_SCALE_STEPS.length && GRADE_SCALE_STEPS[idx].gpv > maxGpv) {
+    while (idx < GRADE_SCALE_STEPS.length - 1 && GRADE_SCALE_STEPS[idx].gpv > maxGpv + 1e-9) {
       idx++;
     }
     return idx;
   });
 
-  const calcTotalPoints = () => {
-    return unresolvedCourses.reduce((sum, item, i) => {
-      const gpv = GRADE_SCALE_STEPS[courseStepIndices[i]].gpv;
-      return sum + (item.course.credits || 0) * gpv;
-    }, 0);
-  };
+  const calcAutoPoints = () =>
+    autoItems.reduce(
+      (sum, item, i) => sum + (item.course.credits || 0) * GRADE_SCALE_STEPS[autoStepIndices[i]].gpv,
+      0
+    );
 
-  const totalUnresolvedCredits = unresolvedCourses.reduce(
-    (sum, item) => sum + (item.course.credits || 0),
-    0
-  );
+  let currentAutoPoints = calcAutoPoints();
 
-  const targetUnresolvedPoints =
-    targetResult.requiredAverage <= 0
-      ? totalUnresolvedCredits * 2.0
-      : targetResult.neededGradePoints > 0
-      ? Math.min(
-          targetResult.neededGradePoints,
-          targetResult.maxAchievableCgpa * targetResult.totalScopeCredits -
-            targetResult.confirmedPointsInScope
-        )
-      : totalUnresolvedCredits * reqAvg;
+  if (isTargetReachable && autoItems.length > 0 && remainingNeededPoints > 0) {
+    // Phase 1: Step up lowest-GPV automatic courses until enrolledTargetAutoPoints is met
+    let guard = 0;
+    while (currentAutoPoints + 1e-9 < enrolledTargetAutoPoints && guard < 200) {
+      guard++;
+      let bestIdx = -1;
+      let bestScore = Infinity;
 
-  let currentPoints = calcTotalPoints();
+      for (let i = 0; i < autoItems.length; i++) {
+        const curStep = autoStepIndices[i];
+        if (curStep <= 0) continue;
+        const nextStep = curStep - 1;
+        if (GRADE_SCALE_STEPS[nextStep].gpv > autoItems[i].maxGpv + 1e-9) continue;
 
-  // If points are below target, greedily step up courses (higher credits first)
-  if (currentPoints < targetUnresolvedPoints) {
-    const sortedOrder = unresolvedCourses
-      .map((item, idx) => ({ idx, credits: item.course.credits || 0 }))
-      .sort((a, b) => b.credits - a.credits)
-      .map(o => o.idx);
+        const cr = autoItems[i].course.credits || 0;
+        const deltaPts = (GRADE_SCALE_STEPS[nextStep].gpv - GRADE_SCALE_STEPS[curStep].gpv) * cr;
+        const newTotal = currentAutoPoints + deltaPts;
+        const overshoot = Math.max(0, newTotal - enrolledTargetAutoPoints);
+        // Prefer balanced distribution (raising lower grades first) and minimal overshoot
+        const score = GRADE_SCALE_STEPS[curStep].gpv * 100 + overshoot * 10 - deltaPts;
+        if (score < bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      }
 
-    let progress = true;
-    while (currentPoints < targetUnresolvedPoints && progress) {
-      progress = false;
-      for (const courseIdx of sortedOrder) {
-        const item = unresolvedCourses[courseIdx];
-        const currentStep = courseStepIndices[courseIdx];
-        if (currentStep > 0) {
-          const nextStep = currentStep - 1;
-          if (GRADE_SCALE_STEPS[nextStep].gpv <= item.maxGpv) {
-            courseStepIndices[courseIdx] = nextStep;
-            currentPoints = calcTotalPoints();
-            progress = true;
-            if (currentPoints >= targetUnresolvedPoints) break;
+      if (bestIdx === -1) break;
+      autoStepIndices[bestIdx]--;
+      currentAutoPoints = calcAutoPoints();
+    }
+
+    // Phase 2: Downward-trim to eliminate unnecessary overshooting
+    let trimmed = true;
+    while (trimmed) {
+      trimmed = false;
+      let bestTrimIdx = -1;
+      let smallestSurplus = currentAutoPoints - enrolledTargetAutoPoints;
+
+      for (let i = 0; i < autoItems.length; i++) {
+        const curStep = autoStepIndices[i];
+        if (curStep >= GRADE_SCALE_STEPS.length - 1) continue;
+        const downStep = curStep + 1;
+        const cr = autoItems[i].course.credits || 0;
+        const deltaPts = (GRADE_SCALE_STEPS[curStep].gpv - GRADE_SCALE_STEPS[downStep].gpv) * cr;
+        const nextTotal = currentAutoPoints - deltaPts;
+        if (nextTotal + 1e-9 >= enrolledTargetAutoPoints) {
+          const surplus = nextTotal - enrolledTargetAutoPoints;
+          if (surplus <= smallestSurplus) {
+            smallestSurplus = surplus;
+            bestTrimIdx = i;
           }
         }
+      }
+
+      if (bestTrimIdx !== -1) {
+        autoStepIndices[bestTrimIdx]++;
+        currentAutoPoints = calcAutoPoints();
+        trimmed = true;
+      }
+    }
+
+    // Phase 3: Smooth variance between high & low auto courses without dropping below target
+    let smoothed = true;
+    let smoothGuard = 0;
+    while (smoothed && smoothGuard < 50) {
+      smoothed = false;
+      smoothGuard++;
+      for (let i = 0; i < autoItems.length; i++) {
+        for (let j = 0; j < autoItems.length; j++) {
+          if (i === j) continue;
+          const stepHigh = autoStepIndices[i];
+          const stepLow = autoStepIndices[j];
+          if (GRADE_SCALE_STEPS[stepHigh].gpv - GRADE_SCALE_STEPS[stepLow].gpv <= 0.41) continue;
+          if (stepHigh >= GRADE_SCALE_STEPS.length - 1 || stepLow <= 0) continue;
+          if (GRADE_SCALE_STEPS[stepLow - 1].gpv > autoItems[j].maxGpv + 1e-9) continue;
+
+          const crHigh = autoItems[i].course.credits || 0;
+          const crLow = autoItems[j].course.credits || 0;
+          const deltaHigh = (GRADE_SCALE_STEPS[stepHigh + 1].gpv - GRADE_SCALE_STEPS[stepHigh].gpv) * crHigh;
+          const deltaLow = (GRADE_SCALE_STEPS[stepLow - 1].gpv - GRADE_SCALE_STEPS[stepLow].gpv) * crLow;
+          const nextPts = currentAutoPoints + deltaHigh + deltaLow;
+          if (nextPts + 1e-9 >= enrolledTargetAutoPoints && nextPts <= currentAutoPoints + 1e-9) {
+            autoStepIndices[i]++;
+            autoStepIndices[j]--;
+            currentAutoPoints = nextPts;
+            smoothed = true;
+            break;
+          }
+        }
+        if (smoothed) break;
       }
     }
   }
 
-  const resultCourses: SuggestedCourseGrade[] = unresolvedCourses.map((item, i) => {
-    const step = GRADE_SCALE_STEPS[courseStepIndices[i]];
+  const autoMap = new Map<string, { grade: Grade; gpv: number }>();
+  autoItems.forEach((item, idx) => {
+    const st = GRADE_SCALE_STEPS[autoStepIndices[idx]];
+    autoMap.set(item.key, { grade: st.grade, gpv: st.gpv });
+  });
+
+  const resultCourses: SuggestedCourseGrade[] = eligibleCourses.map(item => {
+    const isManual = !!item.manualGrade;
+    const assignedGrade = isManual ? (item.manualGrade as Grade) : (autoMap.get(item.key)?.grade || 'C');
+    const rawGpv = GRADING_SCALE[assignedGrade]?.gpv ?? 0;
+    const effGpv = calculateEffectiveGpvForGrade(assignedGrade, item.course.isRepeat, item.course.isExcused) ?? 0;
     return {
       semesterKey: item.semKey,
       courseCode: item.course.code,
       courseName: item.course.name,
       credits: item.course.credits || 0,
-      suggestedGrade: step.grade,
-      suggestedGpv: step.gpv,
+      suggestedGrade: assignedGrade,
+      suggestedGpv: rawGpv,
+      effectiveGpv: effGpv,
+      isManual,
+      existingProjectedGrade: item.course.isExpected ? item.course.grade : undefined,
       isRepeat: !!item.course.isRepeat,
       isExcused: !!item.course.isExcused
     };
   });
 
-  const finalAvg =
-    totalUnresolvedCredits > 0
-      ? Number((calcTotalPoints() / totalUnresolvedCredits).toFixed(2))
+  const unenrolledAssumedPoints =
+    unenrolledCredits > 0
+      ? (isTargetReachable ? Math.min(4.0, Math.max(2.0, requiredRemainingAverage)) : 4.0) * unenrolledCredits
       : 0;
 
+  const totalCombinedPoints = confirmedPointsInScope + manualPoints + currentAutoPoints + unenrolledAssumedPoints;
+  const estimatedAchievedCgpa =
+    totalScopeCredits > 0 ? Number((totalCombinedPoints / totalScopeCredits).toFixed(2)) : 0;
+  const achievedGpa =
+    totalEligibleCredits > 0
+      ? Number(((manualPoints + currentAutoPoints) / totalEligibleCredits).toFixed(2))
+      : 0;
+
+  const manualQuotas = buildGradeQuotas(
+    resultCourses.filter(c => c.isManual).map(c => ({ grade: c.suggestedGrade, gpv: c.effectiveGpv, credits: c.credits }))
+  );
+  const autoQuotas = buildGradeQuotas(
+    resultCourses.filter(c => !c.isManual).map(c => ({ grade: c.suggestedGrade, gpv: c.effectiveGpv, credits: c.credits }))
+  );
+  const combinedQuotas = buildGradeQuotas(
+    resultCourses.map(c => ({ grade: c.suggestedGrade, gpv: c.effectiveGpv, credits: c.credits }))
+  );
+
+  const shortfall = isTargetReachable
+    ? 0
+    : Number(Math.max(0, targetCgpa - maxAchievableCgpa).toFixed(2));
+
   return {
-    possible: true,
+    possible: isTargetReachable,
     courses: resultCourses,
-    achievedGpa: finalAvg,
+    achievedGpa,
+    estimatedAchievedCgpa,
     targetCgpa,
-    explanation: `Realistic grade combination achieving an average GPA of ${finalAvg.toFixed(2)} across ${totalUnresolvedCredits} unresolved credits.`
+    actualCgpa,
+    totalScopeCredits,
+    totalEligibleCredits,
+    manualCredits,
+    autoCredits,
+    unenrolledCredits,
+    requiredRemainingAverage: Number(requiredRemainingAverage.toFixed(2)),
+    maxAchievableCgpa,
+    shortfall,
+    isIncompleteEstimate,
+    manualQuotas,
+    autoQuotas,
+    combinedQuotas,
+    explanation: isTargetReachable
+      ? `Balanced combination achieving ${achievedGpa.toFixed(2)} average across ${totalEligibleCredits} eligible credits (Estimated CGPA: ${estimatedAchievedCgpa.toFixed(2)}).`
+      : 'Target currently unreachable with your selected grades.'
   };
 }

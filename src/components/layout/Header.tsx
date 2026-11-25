@@ -9,82 +9,11 @@ import {
   Users,
   Check,
   Menu,
-  X,
-  LayoutDashboard,
-  Calculator,
-  FileText,
-  CalendarDays,
-  Award,
-  BookCheck,
-  Compass,
-  LineChart,
-  Sliders,
-  Target,
-  Settings
+  X
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
-import { NavView } from '../../types';
+import { NAV_SECTIONS, getRouteInfo, normalizeNavView } from '../../config/navigation';
 import { AppLogo } from '../common/AppLogo';
-
-const ROUTE_INFO: Record<string, { section: string; title: string }> = {
-  dashboard: { section: 'OVERVIEW', title: 'Dashboard' },
-  calculator: { section: 'OVERVIEW', title: 'GPA Calculator' },
-  grades: { section: 'OVERVIEW', title: 'GPA Calculator' },
-  transcript: { section: 'OVERVIEW', title: 'Academic Transcript' },
-  planner: { section: 'ACADEMIC', title: 'Semester Planner' },
-  projection: { section: 'OVERVIEW', title: 'GPA Calculator' },
-  progress: { section: 'ACADEMIC', title: 'Credit Progress' },
-  requirements: { section: 'ACADEMIC', title: 'Degree Requirements' },
-  specialization: { section: 'ACADEMIC', title: 'Specialization Eligibility' },
-  analytics: { section: 'INSIGHTS', title: 'GPA Analytics' },
-  simulator: { section: 'INSIGHTS', title: 'Grade Simulator' },
-  forecast: { section: 'INSIGHTS', title: 'Grade Simulator' },
-  goals: { section: 'INSIGHTS', title: 'Academic Goals' },
-  profiles: { section: 'PERSONAL', title: 'Student Profiles' },
-  settings: { section: 'PERSONAL', title: 'Settings' }
-};
-
-const MOBILE_NAV_SECTIONS: Array<{
-  title: string;
-  items: Array<{
-    id: NavView;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-  }>;
-}> = [
-  {
-    title: 'OVERVIEW',
-    items: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { id: 'calculator', label: 'GPA Calculator', icon: Calculator },
-      { id: 'transcript', label: 'Academic Transcript', icon: FileText }
-    ]
-  },
-  {
-    title: 'ACADEMIC',
-    items: [
-      { id: 'planner', label: 'Semester Planner', icon: CalendarDays },
-      { id: 'progress', label: 'Credit Progress', icon: Award },
-      { id: 'requirements', label: 'Degree Requirements', icon: BookCheck },
-      { id: 'specialization', label: 'Specialization Eligibility', icon: Compass }
-    ]
-  },
-  {
-    title: 'INSIGHTS',
-    items: [
-      { id: 'analytics', label: 'GPA Analytics', icon: LineChart },
-      { id: 'simulator', label: 'Grade Simulator', icon: Sliders },
-      { id: 'goals', label: 'Academic Goals', icon: Target }
-    ]
-  },
-  {
-    title: 'PERSONAL',
-    items: [
-      { id: 'profiles', label: 'Student Profiles', icon: Users },
-      { id: 'settings', label: 'Settings', icon: Settings }
-    ]
-  }
-];
 
 export const Header: React.FC = () => {
   const {
@@ -108,7 +37,7 @@ export const Header: React.FC = () => {
   const profile = getActiveProfile();
   const stats = getOverallStats();
 
-  const currentInfo = ROUTE_INFO[activeTab] || { section: 'ACADEMIC', title: 'GPA Calculator' };
+  const currentInfo = getRouteInfo(activeTab);
 
   const handleSelectProfile = (profileId: string) => {
     switchProfile(profileId);
@@ -556,16 +485,14 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-            {MOBILE_NAV_SECTIONS.map((section) => (
+            {NAV_SECTIONS.map((section) => (
               <div key={section.title} className="space-y-1">
                 <div className="px-3 py-1 text-[11px] font-black text-neutral-400 uppercase tracking-wider">
                   {section.title}
                 </div>
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive =
-                    activeTab === item.id ||
-                    (item.id === 'calculator' && activeTab === 'grades');
+                  const isActive = normalizeNavView(activeTab) === item.id;
                   return (
                     <button
                       type="button"

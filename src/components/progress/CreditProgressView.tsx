@@ -1,20 +1,17 @@
 // University of Ruhuna - Faculty of Agriculture
 // GradePath — Completely Redesigned Degree Progress & Compliance Hub
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Award,
   CheckCircle2,
   AlertTriangle,
   Compass,
   GraduationCap,
-  ShieldCheck,
-  ChevronRight,
-  BookOpen,
-  Sparkles
+  ChevronDown
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
-import { DEGREE_INFO, DEPARTMENTS, SPECIALIZATION_STREAMS } from '../../database';
+import { DEGREE_INFO, DEPARTMENTS } from '../../database';
 import { generateDegreeAudit } from '../../utils/calculations';
 
 export const CreditProgressView: React.FC = () => {
@@ -25,11 +22,15 @@ export const CreditProgressView: React.FC = () => {
   const audit = generateDegreeAudit(profile);
   const spec = stats.specEligibility;
 
+  const [showRequirements, setShowRequirements] = useState(true);
+  const [showSpecialization, setShowSpecialization] = useState((profile.currentAcademicYear || 1) >= 2);
+  const [showDeansHonor, setShowDeansHonor] = useState(true);
+
   const totalPercent = Math.min(100, Math.round((stats.totalGpaCreditsEarned / stats.totalRequiredCredits) * 100));
   const compPercent = Math.min(100, Math.round((stats.totalCompulsoryEarned / stats.minCompulsoryCredits) * 100));
   const electPercent = Math.min(100, Math.round((stats.totalElectiveEarned / stats.minElectiveCredits) * 100));
 
-  const isEligibleForSpecialization = profile.degree === 'ARMT' || profile.degree === 'ABM';
+  const isEligibleForSpecialization = Boolean(degInfo.hasSpecializationChoice);
 
   const departmentsList = [
     { code: 'AS', name: DEPARTMENTS.AS, icon: '🐄' },
@@ -117,71 +118,92 @@ export const CreditProgressView: React.FC = () => {
       {/* ======================================================== */}
       {/* 3. INSTITUTIONAL GRADUATION COMPLIANCE CHECKLIST */}
       {/* ======================================================== */}
-      <div className="p-7 rounded-3xl bg-white border border-neutral-200/80 shadow-xs space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
-          <div>
+      <div className="rounded-3xl bg-white border border-neutral-200/80 shadow-xs overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowRequirements(!showRequirements)}
+          aria-expanded={showRequirements}
+          className="w-full p-5 sm:p-6 flex items-center justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+        >
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-emerald-800" />
+              <GraduationCap className="w-5 h-5 text-emerald-800 shrink-0" />
               <span>Degree Conferment Criteria (Section 5.1)</span>
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">Faculty of Agriculture official award regulations</p>
           </div>
-          <span className={`text-xs font-bold px-3.5 py-1 rounded-full border ${
-            audit.allPassed ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
-          }`}>
-            {audit.allPassed ? '✓ All Criteria Satisfied' : 'In Progress'}
-          </span>
-        </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+              audit.allPassed ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+            }`}>
+              {audit.allPassed ? '✓ All Criteria Satisfied' : 'In Progress'}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showRequirements ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
 
-        <div className="space-y-2.5">
-          {audit.items.map((item, idx) => (
-            <div
-              key={idx}
-              className="p-4 rounded-2xl border border-neutral-200/70 bg-neutral-50/60 hover:bg-neutral-50 flex items-center justify-between gap-4 transition"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  item.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {item.passed ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+        {showRequirements && (
+          <div className="px-5 sm:px-6 pb-6 pt-2 border-t border-neutral-100 space-y-2.5">
+            {audit.items.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-2xl border border-neutral-200/70 bg-neutral-50/60 hover:bg-neutral-50 flex items-center justify-between gap-4 transition"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    item.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {item.passed ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-neutral-900">{item.title}</h4>
+                    <p className="text-[11px] text-neutral-500">{item.requirement}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-neutral-900">{item.title}</h4>
-                  <p className="text-[11px] text-neutral-500">{item.requirement}</p>
+
+                <div className="text-right shrink-0">
+                  <span className={`text-xs font-bold ${item.passed ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {item.current}
+                  </span>
                 </div>
               </div>
-
-              <div className="text-right shrink-0">
-                <span className={`text-xs font-bold ${item.passed ? 'text-emerald-800' : 'text-amber-800'}`}>
-                  {item.current}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ======================================================== */}
-      {/* 4. FINAL-YEAR SPECIALIZATION ELIGIBILITY (ARMT & ABM) */}
+      {/* 4. FINAL-YEAR SPECIALIZATION ELIGIBILITY (ARMT ONLY) */}
       {/* ======================================================== */}
       {isEligibleForSpecialization && (
-        <div className="p-7 rounded-3xl bg-white border border-neutral-200/80 shadow-xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-neutral-200">
-            <div>
+        <div className="rounded-3xl bg-white border border-neutral-200/80 shadow-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowSpecialization(!showSpecialization)}
+            aria-expanded={showSpecialization}
+            className="w-full p-5 sm:p-6 flex items-center justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+          >
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-                <Compass className="w-5 h-5 text-emerald-800" />
-                <span>Specialization Stream Eligibility (Year 3 Semester 1)</span>
+                <Compass className="w-5 h-5 text-emerald-800 shrink-0" />
+                <span>ARMT Specialization Stream Eligibility (Year 3 Sem 1)</span>
               </h3>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Guaranteed preference requirements: GPA ≥ 2.70 at end of 3-1 & ≥ 50% Year 3 electives from target department
+                Guaranteed preference requirements: GPA ≥ 2.70 at end of 3-1 &amp; ≥ 50% Year 3 electives from target department
               </p>
             </div>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-              spec.gpaMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
-            }`}>
-              {spec.gpaMet ? '✓ GPA Qualified (≥ 2.70)' : 'GPA Below 2.70'}
-            </span>
-          </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                spec.gpaMet ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}>
+                {spec.gpaMet ? '✓ GPA Qualified (≥ 2.70)' : 'GPA Below 2.70'}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showSpecialization ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+
+          {showSpecialization && (
+            <div className="px-5 sm:px-6 pb-6 pt-3 border-t border-neutral-100 space-y-5">
 
           {/* Department Selection Pills */}
           <div className="space-y-2">
@@ -233,44 +255,56 @@ export const CreditProgressView: React.FC = () => {
           <div className="p-4 rounded-2xl bg-neutral-100/70 border border-neutral-200/80 text-xs text-neutral-800 leading-relaxed">
             <span className="font-bold">Evaluation Summary:</span> {spec.statusText}
           </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ======================================================== */}
       {/* 5. DEAN'S HONOR LIST AUDIT PER YEAR */}
       {/* ======================================================== */}
-      <div className="p-7 rounded-3xl bg-white border border-neutral-200/80 shadow-xs space-y-4">
-        <div>
-          <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-            <Award className="w-5 h-5 text-emerald-800" />
-            <span>Dean's Honor List Standing (Section 5.3)</span>
-          </h3>
-          <p className="text-xs text-neutral-500 mt-0.5">Assessed per academic year (Annual GPA ≥ 3.70 for Y1/Y2; ≥ 3.80 for Y3/Y4 with all grades ≥ B)</p>
-        </div>
+      <div className="rounded-3xl bg-white border border-neutral-200/80 shadow-xs overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowDeansHonor(!showDeansHonor)}
+          aria-expanded={showDeansHonor}
+          className="w-full p-5 sm:p-6 flex items-center justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+        >
+          <div>
+            <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
+              <Award className="w-5 h-5 text-emerald-800 shrink-0" />
+              <span>Dean's Honor List Standing (Section 5.3)</span>
+            </h3>
+            <p className="text-xs text-neutral-500 mt-0.5">Assessed per academic year (Annual GPA ≥ 3.70 for Y1/Y2; ≥ 3.80 for Y3/Y4 with all grades ≥ B)</p>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${showDeansHonor ? 'rotate-180' : ''}`} />
+        </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(yr => {
-            const dh = stats.deansHonors[yr];
-            return (
-              <div key={yr} className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-neutral-900">
-                  <span>Year {yr}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    dh?.eligible ? 'bg-emerald-100 text-emerald-900' : 'bg-white border border-neutral-200 text-neutral-500'
-                  }`}>
-                    {dh?.eligible ? 'Awarded ★' : 'In Progress'}
-                  </span>
+        {showDeansHonor && (
+          <div className="px-5 sm:px-6 pb-6 pt-2 border-t border-neutral-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map(yr => {
+              const dh = stats.deansHonors[yr];
+              return (
+                <div key={yr} className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold text-neutral-900">
+                    <span>Year {yr}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      dh?.eligible ? 'bg-emerald-100 text-emerald-900' : 'bg-white border border-neutral-200 text-neutral-500'
+                    }`}>
+                      {dh?.eligible ? 'Awarded ★' : 'In Progress'}
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-neutral-900 font-mono">
+                    {dh?.annualGpa ? dh.annualGpa.toFixed(2) : '—'}
+                  </div>
+                  <p className="text-[10px] text-neutral-500 line-clamp-2">
+                    {dh?.reason || 'Evaluation requires completing all courses with grade ≥ B.'}
+                  </p>
                 </div>
-                <div className="text-2xl font-black text-neutral-900 font-mono">
-                  {dh?.annualGpa ? dh.annualGpa.toFixed(2) : '—'}
-                </div>
-                <p className="text-[10px] text-neutral-500 line-clamp-2">
-                  {dh?.reason || 'Evaluation requires completing all courses with grade ≥ B.'}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

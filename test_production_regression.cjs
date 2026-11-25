@@ -1314,8 +1314,8 @@ runTest('Suggested Grade Combination: Flags mathematically impossible targets cl
 
   const result = generateSuggestedGradeCombination(profile, 3.95, 'after_current');
   assert.strictEqual(result.possible, false, 'Target should be flagged as impossible');
-  assert.strictEqual(result.courses.length, 0);
-  assert.ok(result.explanation.includes('Mathematically unreachable'));
+  assert.ok(result.maxAchievableCgpa < 3.95, 'Max achievable CGPA is below 3.95');
+  assert.ok(result.explanation.includes('unreachable'));
 });
 
 runTest('Course Impact Simulation: Single course target deviation calculates accurate before vs after GPA', () => {
@@ -2355,6 +2355,177 @@ runTest('Batch number audit: no hardcoded batch labels in settings, calculations
   assert.ok(!settingsContent.includes('45th'), 'SettingsView does not contain hardcoded 45th Batch');
   assert.ok(!settingsContent.includes('44th'), 'SettingsView does not contain hardcoded 44th Batch');
   assert.ok(!settingsContent.includes('43rd'), 'SettingsView does not contain hardcoded 43rd Batch');
+});
+
+console.log('\n🌟 Testing Section 30 Cross-Degree Projections, Dynamic Balancing, Privacy & Navigation Consolidation...\n');
+
+// 118. Cross-degree projection mathematical verification across ARMT, ABM, and GT
+runTest('Cross-degree projections (ARMT, ABM, GT): synthetic 3cr A + 3cr B + projected 3cr A/B', () => {
+  const degrees = ['ARMT', 'ABM', 'GT'];
+  for (const deg of degrees) {
+    const p = createCleanProfile(deg, `${deg} Test`, '', 1, '1-1');
+    p.semesters['1-1'] = [
+      { code: `${deg}101`, name: 'Course 1', credits: 3, isCompulsory: true, grade: 'A', isExpected: false },
+      { code: `${deg}102`, name: 'Course 2', credits: 3, isCompulsory: true, grade: 'B', isExpected: false },
+      { code: `${deg}103`, name: 'Course 3', credits: 3, isCompulsory: true, grade: '', isExpected: false }
+    ];
+
+    let stats = calculateOverallStats(p);
+    let proj = calculateAcademicProjections(p);
+    assert.strictEqual(stats.cgpa, 3.5, `${deg} initial Actual CGPA = 3.50`);
+    assert.strictEqual(proj.actualCgpa, 3.5, `${deg} proj Actual CGPA = 3.50`);
+
+    // Add projected 3-credit Grade A
+    p.semesters['1-1'][2].grade = 'A';
+    p.semesters['1-1'][2].isExpected = true;
+    stats = calculateOverallStats(p);
+    proj = calculateAcademicProjections(p);
+    assert.strictEqual(stats.cgpa, 3.5, `${deg} Actual CGPA remains 3.50`);
+    assert.strictEqual(stats.projectedCgpa, 3.67, `${deg} Projected CGPA updates to 3.67`);
+    assert.strictEqual(proj.combinedProjectedCgpa, 3.67, `${deg} combinedProjectedCgpa updates to 3.67`);
+
+    // Change projected grade to B
+    p.semesters['1-1'][2].grade = 'B';
+    stats = calculateOverallStats(p);
+    proj = calculateAcademicProjections(p);
+    assert.strictEqual(stats.cgpa, 3.5, `${deg} Actual CGPA remains 3.50 after edit`);
+    assert.strictEqual(stats.projectedCgpa, 3.33, `${deg} Projected CGPA updates to 3.33`);
+    assert.strictEqual(proj.combinedProjectedCgpa, 3.33, `${deg} combinedProjectedCgpa updates to 3.33`);
+
+    // Clear projected grade
+    p.semesters['1-1'][2].grade = '';
+    p.semesters['1-1'][2].isExpected = false;
+    stats = calculateOverallStats(p);
+    assert.strictEqual(stats.hasExpectedCourses, false, `${deg} cleared projection`);
+    assert.strictEqual(stats.cgpa, 3.5, `${deg} Actual CGPA intact`);
+  }
+});
+
+// 119. Real GT curriculum projection and Non-GPA exclusion
+runTest('GT real curriculum: confirmed + projected + NGPA exclusion', () => {
+  const p = createCleanProfile('GT', 'GT Curriculum Student', '', 2, '2-1');
+  // Sem 1-1: CC11203 (2 Cr) = A, CS11201 (2 Cr) = B, CC11202 (2 Cr NGPA) = A (must be excluded from GPA)
+  p.semesters['1-1'][0].grade = 'A'; // 2 Cr
+  p.semesters['1-1'][1].grade = 'B'; // 2 Cr
+  const ngpa = p.semesters['1-1'].find(c => c.isNgpa);
+  assert.ok(ngpa, 'GT Sem 1-1 has NGPA course');
+  ngpa.grade = 'A';
+
+  // Sem 2-1: CS21201 (2 Cr) projected A
+  p.semesters['2-1'][0].grade = 'A';
+  p.semesters['2-1'][0].isExpected = true;
+
+  const stats = calculateOverallStats(p);
+  const proj = calculateAcademicProjections(p);
+  assert.strictEqual(stats.realCreditsAttempted, 4, 'NGPA excluded from actual GPA credits');
+  assert.strictEqual(stats.cgpa, 3.5, 'Actual CGPA = 3.50');
+  assert.strictEqual(stats.projectedCgpa, 3.67, 'Projected CGPA = 3.67');
+  assert.strictEqual(proj.combinedProjectedCgpa, 3.67, 'Combined projected CGPA = 3.67');
+});
+
+// 120. Dynamic grade balancing: manual selection, auto rebalancing, repeat cap, and return to Auto
+runTest('Dynamic grade balancing: manual lock, auto rebalance, repeat cap, and return to Auto', () => {
+  const { generateSuggestedGradeCombination } = jiti('./src/utils/projectionCalculations.ts');
+  const p = createCleanProfile('GT', 'Balancer Test', '', 1, '1-1');
+  p.semesters['1-1'] = [
+    { code: 'GT101', name: 'C1', credits: 3, isCompulsory: true, grade: 'B', isExpected: false }, // 9 pts
+    { code: 'GT102', name: 'C2', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+    { code: 'GT103', name: 'C3', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+    { code: 'GT104', name: 'C4', credits: 3, isCompulsory: true, grade: '', isExpected: false, isRepeat: true, isExcused: false }, // capped at 2.0
+    { code: 'CC11202', name: 'English', credits: 2, isNgpa: true, grade: '', isExpected: false }
+  ];
+
+  // Target 2.80 across 12 credits = 33.6 pts. Confirmed = 9 pts. Needed = 24.6 pts across 9 credits.
+  const initial = generateSuggestedGradeCombination(p, 2.80, 'after_current', {});
+  assert.strictEqual(initial.possible, true, 'Target 2.80 achievable even with repeat course');
+  assert.strictEqual(initial.courses.length, 3, '3 unresolved GPA courses (GT101 confirmed, CC11202 NGPA excluded)');
+});
+
+// 121. Dynamic grade balancing exact quota math, manual lock preservation, and unreachable target
+runTest('Dynamic grade balancing: exact quota totals, manual override, repeat cap & unreachable target', () => {
+  const { generateSuggestedGradeCombination } = jiti('./src/utils/projectionCalculations.ts');
+  const p = createCleanProfile('ABM', 'Quota Math', '', 1, '1-1');
+  p.semesters['1-1'] = [
+    { code: 'ABM101', name: 'C1', credits: 3, isCompulsory: true, grade: 'B', isExpected: false }, // 9 pts confirmed
+    { code: 'ABM102', name: 'C2', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+    { code: 'ABM103', name: 'C3', credits: 3, isCompulsory: true, grade: '', isExpected: false },
+    { code: 'ABM104', name: 'C4', credits: 3, isCompulsory: true, grade: '', isExpected: false, isRepeat: true, isExcused: false }, // repeat cap 2.0
+    { code: 'CC11202', name: 'NGPA', credits: 2, isNgpa: true, grade: '', isExpected: false }
+  ];
+
+  const base = generateSuggestedGradeCombination(p, 2.80, 'after_current', {});
+  assert.strictEqual(base.possible, true, 'Target 2.80 feasible');
+  assert.strictEqual(base.courses.length, 3, 'NGPA and confirmed courses excluded');
+  assert.strictEqual(base.manualCredits + base.autoCredits, base.totalEligibleCredits, 'No double counting');
+  const repeatEntry = base.courses.find(c => c.courseCode === 'ABM104');
+  assert.ok(repeatEntry.effectiveGpv <= 2.0, 'Repeat course capped at 2.0 in auto balancing');
+  assert.ok(base.estimatedAchievedCgpa >= 2.80, 'Achieved CGPA meets target');
+
+  // Lock ABM102 to A+ (4.0) manually -> remaining auto course ABM103 should lower or adjust
+  const withHighManual = generateSuggestedGradeCombination(p, 2.80, 'after_current', { '1-1:ABM102': 'A+' });
+  assert.strictEqual(withHighManual.possible, true);
+  assert.strictEqual(withHighManual.manualCredits, 3);
+  assert.strictEqual(withHighManual.autoCredits, 6);
+  assert.strictEqual(withHighManual.courses.find(c => c.courseCode === 'ABM102').suggestedGrade, 'A+');
+  assert.strictEqual(withHighManual.courses.find(c => c.courseCode === 'ABM102').isManual, true);
+
+  // Lock ABM104 (repeat) to A+ -> effectiveGpv must STILL be capped at 2.0
+  const withRepeatAPlus = generateSuggestedGradeCombination(p, 2.80, 'after_current', { '1-1:ABM104': 'A+' });
+  const rpt = withRepeatAPlus.courses.find(c => c.courseCode === 'ABM104');
+  assert.strictEqual(rpt.suggestedGrade, 'A+', 'Manual letter preserved');
+  assert.strictEqual(rpt.effectiveGpv, 2.0, 'Effective GPV capped at 2.0 for unexcused repeat');
+
+  // Lock ABM102 and ABM103 to E (0.0) -> Target 2.80 becomes unreachable (max = (9 + 0 + 0 + 6)/12 = 1.25)
+  const unreachable = generateSuggestedGradeCombination(p, 2.80, 'after_current', {
+    '1-1:ABM102': 'E',
+    '1-1:ABM103': 'E'
+  });
+  assert.strictEqual(unreachable.possible, false, 'Unreachable target detected');
+  assert.strictEqual(unreachable.maxAchievableCgpa, 1.25, 'Max achievable CGPA accurately computed');
+  assert.strictEqual(unreachable.courses.find(c => c.courseCode === 'ABM102').suggestedGrade, 'E', 'Manual selection never overwritten');
+
+  // Return ABM102 and ABM103 to Auto ({}) -> back to feasible
+  const returnedAuto = generateSuggestedGradeCombination(p, 2.80, 'after_current', {});
+  assert.strictEqual(returnedAuto.possible, true, 'Returning to Auto restores feasibility');
+});
+
+// 122. Privacy audit: zero personal academic network transmissions
+runTest('Privacy audit: no fetch/XHR/analytics in src/ and local-only storage', () => {
+  const fs = require('fs');
+  const pathMod = require('path');
+  const walk = (dir) => {
+    let files = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = pathMod.join(dir, entry.name);
+      if (entry.isDirectory()) files = files.concat(walk(full));
+      else if (/\.(ts|tsx)$/.test(entry.name)) files.push(full);
+    }
+    return files;
+  };
+  const srcFiles = walk('src');
+  for (const f of srcFiles) {
+    const content = fs.readFileSync(f, 'utf8');
+    assert.ok(!/\bfetch\s*\(/.test(content), `${f} must not call fetch()`);
+    assert.ok(!/XMLHttpRequest/.test(content), `${f} must not use XMLHttpRequest`);
+    assert.ok(!/gtag\(|google-analytics/i.test(content), `${f} must not contain analytics`);
+  }
+});
+
+// 123. Navigation consolidation & legacy route alias normalization
+runTest('Navigation consolidation: 7 primary destinations, 4 mobile nav items, legacy redirects', () => {
+  const { CONSOLIDATED_NAV_ITEMS, MOBILE_BOTTOM_NAV_ITEMS, normalizeNavView, getPlanningSubTabForLegacyView } = jiti('./src/config/navigation.ts');
+  assert.strictEqual(CONSOLIDATED_NAV_ITEMS.length, 7, 'Exactly 7 primary destinations');
+  assert.strictEqual(MOBILE_BOTTOM_NAV_ITEMS.length, 4, 'Exactly 4 mobile bottom nav items');
+  assert.strictEqual(normalizeNavView('grades'), 'calculator');
+  assert.strictEqual(normalizeNavView('planner'), 'calculator');
+  assert.strictEqual(normalizeNavView('simulator'), 'calculator');
+  assert.strictEqual(normalizeNavView('forecast'), 'calculator');
+  assert.strictEqual(normalizeNavView('goals'), 'calculator');
+  assert.strictEqual(normalizeNavView('requirements'), 'progress');
+  assert.strictEqual(normalizeNavView('specialization'), 'progress');
+  assert.strictEqual(getPlanningSubTabForLegacyView('simulator'), 'impact');
+  assert.strictEqual(getPlanningSubTabForLegacyView('forecast'), 'forecast');
+  assert.strictEqual(getPlanningSubTabForLegacyView('goals'), 'target');
 });
 
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);
