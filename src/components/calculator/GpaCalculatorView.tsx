@@ -43,6 +43,8 @@ import { PlanningTools } from './PlanningTools';
 import { HelpTooltip } from '../common/HelpTooltip';
 import { HorizontalGradeSelector } from '../common/HorizontalGradeSelector';
 import { getCourseRowVisualState } from '../../utils/courseRowStyles';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 const SEMESTERS: Array<{ key: SemesterKey | 'ORIENTATION'; label: string }> = [
   { key: '1-1', label: 'Sem 1-1' },
@@ -105,6 +107,7 @@ export const GpaCalculatorView: React.FC = () => {
     dismissCalculatorTips,
     markSemesterReviewed
   } = useGradeStore();
+  const showSinhalaSubtext = useGradeStore(s => s.showSinhalaSubtext);
 
   const profile = getActiveProfile();
   const stats = getOverallStats();
@@ -761,6 +764,7 @@ export const GpaCalculatorView: React.FC = () => {
                     </span>
                     <HelpTooltip id="T08" size="xs" />
                   </div>
+                  <SiSubtext text={SI.calculator.actualCgpa} className="text-[10px] text-emerald-200/80" />
                   <div className="flex items-baseline gap-2 mt-0.5">
                     <span className="text-4xl lg:text-5xl font-black font-sans tracking-tight text-white font-tabular">
                       {hasAnyConfirmedGrades ? proj.actualCgpa.toFixed(2) : '—'}
@@ -784,6 +788,7 @@ export const GpaCalculatorView: React.FC = () => {
                         Estimate
                       </span>
                     </div>
+                    <SiSubtext text={SI.calculator.projectedCgpa} className="text-[10px] text-cyan-200/80" />
                     <div className="flex items-baseline gap-2 mt-0.5">
                       <span className="text-3xl lg:text-4xl font-black font-sans tracking-tight text-cyan-100 font-tabular">
                         {proj.combinedTotalCredits > 0 || displayedProjectedCredits > 0 ? displayedProjectedCgpa.toFixed(2) : '—'}
@@ -813,6 +818,7 @@ export const GpaCalculatorView: React.FC = () => {
                 </span>
                 <HelpTooltip id="T10" size="xs" />
               </div>
+              <SiSubtext text={SI.calculator.actualSgpa} className="text-[10px] text-emerald-200/80 text-right" />
               <div className="font-sans text-3xl font-black text-white font-tabular">
                 {semStats && semStats.realCreditsAttempted > 0 ? semStats.realSgpa.toFixed(2) : '—'}
               </div>
@@ -1658,7 +1664,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 }}
                                 className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500"
                               />
-                              <span>Repeat</span>
+                              <span>Repeat{showSinhalaSubtext && <span className="font-sinhala font-normal text-[10px] opacity-80"> ({SI.calculator.repeat})</span>}</span>
                             </label>
 
                             {course.isRepeat && (
@@ -1713,7 +1719,7 @@ export const GpaCalculatorView: React.FC = () => {
                                 }}
                                 className="w-3.5 h-3.5 rounded text-[#176B45] focus:ring-[#176B45]"
                               />
-                              <span>Projected</span>
+                              <span>Projected{showSinhalaSubtext && <span className="font-sinhala font-normal text-[10px] opacity-80"> ({SI.calculator.projected})</span>}</span>
                             </label>
                           </div>
                         )}
@@ -1756,7 +1762,10 @@ export const GpaCalculatorView: React.FC = () => {
               aria-label={`Previous Semester ${prevSemester} (← ${prevSemester})`}
             >
               <ArrowLeft className="w-4 h-4 shrink-0 text-neutral-600" />
-              <span>← {prevSemester}</span>
+              <span className="text-left leading-tight">
+                <span className="block">← {prevSemester}</span>
+                <SiSubtext text={SI.calculator.previousSemester} className="text-[9.5px] text-[#626962]" />
+              </span>
             </button>
           ) : (
             <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
@@ -1776,7 +1785,10 @@ export const GpaCalculatorView: React.FC = () => {
               className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition shadow-sm hover:scale-[1.01] min-h-[44px] touch-manipulation active:scale-95"
               aria-label={`Next Semester ${nextSemester} (${nextSemester} →)`}
             >
-              <span>{nextSemester} →</span>
+              <span className="text-right leading-tight">
+                <span className="block">{nextSemester} →</span>
+                <SiSubtext text={SI.calculator.nextSemester} className="text-[9.5px] text-emerald-100" />
+              </span>
               <ArrowRight className="w-4 h-4 shrink-0 text-white" />
             </button>
           ) : (

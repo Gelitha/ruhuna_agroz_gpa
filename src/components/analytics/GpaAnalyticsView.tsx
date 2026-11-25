@@ -22,6 +22,8 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { SemesterKey } from '../../types';
 import { DEPARTMENTS } from '../../database';
 import { GpaJourneyBar } from '../projection/GpaJourneyBar';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const GpaAnalyticsView: React.FC = () => {
   const { getActiveProfile, getOverallStats, getAcademicProjections } = useGradeStore();
@@ -112,9 +114,11 @@ export const GpaAnalyticsView: React.FC = () => {
       <div className="p-6 rounded-2xl bg-surface border border-border shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-main">Academic Progression & GPA Analytics</h2>
+          <SiSubtext text={SI.analytics.title} className="text-[#176B45] font-semibold" />
           <p className="text-xs text-secondary mt-0.5">
             Visual analysis of your GPA velocity, credit accumulation, and grade distribution across all semesters
           </p>
+          <SiSubtext text={SI.analytics.subtitle} className="text-[#626962]" />
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">

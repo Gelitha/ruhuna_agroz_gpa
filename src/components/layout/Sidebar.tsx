@@ -7,6 +7,8 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { NavView } from '../../types';
 import { NAV_SECTIONS, normalizeNavView } from '../../config/navigation';
 import { AppLogo } from '../common/AppLogo';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -88,7 +90,7 @@ export const Sidebar: React.FC = () => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    title={!isSidebarExpanded ? item.label : undefined}
+                    title={!isSidebarExpanded ? `${item.label} — ${item.siLabel}` : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-emerald-800 to-green-800 text-white shadow-md shadow-emerald-800/20'
@@ -97,7 +99,13 @@ export const Sidebar: React.FC = () => {
                   >
                     <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? 'text-white' : 'text-neutral-500'}`} />
                     {isSidebarExpanded && (
-                      <span className="truncate flex-1 text-left">{item.label}</span>
+                      <span className="truncate flex-1 text-left leading-tight">
+                        <span className="block truncate">{item.label}</span>
+                        <SiSubtext
+                          text={item.siLabel}
+                          className={`text-[10px] leading-tight mt-0.5 truncate ${isActive ? 'text-emerald-100/90' : 'text-neutral-500'}`}
+                        />
+                      </span>
                     )}
                     {isSidebarExpanded && item.badge && (
                       <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
@@ -148,9 +156,12 @@ export const Sidebar: React.FC = () => {
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-[#626962] text-center font-medium px-1">
-              Your academic data stays on your device.
-            </p>
+            <div className="text-center px-1 space-y-0.5">
+              <p className="text-[11px] text-[#626962] font-medium">
+                Your academic data stays on your device.
+              </p>
+              <SiSubtext text={SI.privacy.heading} className="text-[10px] text-[#626962]" />
+            </div>
           </>
         ) : (
           <button

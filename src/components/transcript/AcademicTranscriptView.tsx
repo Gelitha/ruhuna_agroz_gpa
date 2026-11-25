@@ -8,6 +8,8 @@ import { DEGREE_INFO, DEPARTMENTS } from '../../database';
 import { calculateCourseGpv, isCourseGradeConfirmed } from '../../utils/calculations';
 import { SemesterKey } from '../../types';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const AcademicTranscriptView: React.FC = () => {
   const { getActiveProfile, getOverallStats } = useGradeStore();
@@ -30,9 +32,11 @@ export const AcademicTranscriptView: React.FC = () => {
             <h2 className="text-sm font-bold text-main">Undergraduate Academic Performance Statement</h2>
             <HelpTooltip id="T33" size="xs" />
           </div>
+          <SiSubtext text={SI.transcript.title} className="text-[#176B45] font-semibold" />
           <p className="text-xs text-secondary">
             Formatted according to University of Ruhuna Faculty of Agriculture regulations (2023/24 Handbook)
           </p>
+          <SiSubtext text={SI.transcript.subtitle} className="text-[#626962]" />
         </div>
 
         <div className="flex items-center gap-2">
@@ -41,7 +45,10 @@ export const AcademicTranscriptView: React.FC = () => {
             className="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition"
           >
             <Printer className="w-4 h-4" />
-            <span>Print / Save as PDF</span>
+            <span className="text-left leading-tight">
+              <span className="block">Print / Save as PDF</span>
+              <SiSubtext text={SI.transcript.print} className="text-[9.5px] text-emerald-100" />
+            </span>
           </button>
         </div>
       </div>

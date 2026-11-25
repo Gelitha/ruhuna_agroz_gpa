@@ -37,6 +37,9 @@ import { useGradeStore } from '../../store/useGradeStore';
 import { DEGREE_INFO, DEPARTMENTS } from '../../database';
 import { SemesterKey } from '../../types';
 import { getOrdinalYear, generateDegreeAudit } from '../../utils/calculations';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
+import { HowToUseGuide } from './HowToUseGuide';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -188,7 +191,10 @@ export const DashboardView: React.FC = () => {
             onClick={() => handleOpenSemester(profile.currentSemester)}
             className="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition hover:scale-[1.01]"
           >
-            <span>Enter Sem {profile.currentSemester} Grades</span>
+            <span className="text-left">
+              <span className="block">Enter Sem {profile.currentSemester} Grades</span>
+              <SiSubtext text={SI.dashboard.enterGradesBtn} className="text-[10px] text-emerald-100" />
+            </span>
             <ArrowRight className="w-4 h-4 shrink-0" />
           </button>
           <button
@@ -197,7 +203,10 @@ export const DashboardView: React.FC = () => {
             title="View printable transcript"
           >
             <FileText className="w-4 h-4 text-neutral-600 shrink-0" />
-            <span>Transcript</span>
+            <span className="text-left">
+              <span className="block">Transcript</span>
+              <SiSubtext text={SI.nav.transcriptMobile} className="text-[10px] text-[#626962]" />
+            </span>
           </button>
         </div>
       </div>
@@ -221,11 +230,13 @@ export const DashboardView: React.FC = () => {
               <h3 className="text-lg sm:text-xl font-black text-neutral-900 tracking-tight">
                 Let's set up your academic results
               </h3>
+              <SiSubtext text={SI.dashboard.gettingStarted} className="text-emerald-800 font-semibold" />
               <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
                 {profile.currentSemester === '1-1'
                   ? 'Welcome! Add your academic results to calculate your actual CGPA.'
                   : 'Welcome! Add your previous semester results to calculate your actual CGPA.'}
               </p>
+              <SiSubtext text={SI.dashboard.gettingStartedSub} className="text-neutral-600" />
             </div>
             <button
               onClick={dismissGuidedSetup}
@@ -353,6 +364,7 @@ export const DashboardView: React.FC = () => {
               <p className="text-[11px] sm:text-xs text-amber-800 mt-0.5 leading-relaxed">
                 You are currently in Semester {profile.currentSemester}. Enter your official previous semester grades to compute your true Cumulative CGPA.
               </p>
+              <SiSubtext text={SI.dashboard.missingPrevious} className="text-amber-900 mt-0.5" />
             </div>
           </div>
           <button
@@ -372,7 +384,10 @@ export const DashboardView: React.FC = () => {
         <div className="px-4 py-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between flex-wrap gap-2 shadow-2xs">
           <div className="flex items-center gap-2 text-xs font-bold">
             <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>Your academic profile is ready. Official results are used for all GPA calculations.</span>
+            <div>
+              <span>Your academic profile is ready. Official results are used for all GPA calculations.</span>
+              <SiSubtext text={SI.dashboard.setupCompleted} className="text-emerald-800" />
+            </div>
           </div>
           <button
             onClick={() => handleOpenSemester(profile.currentSemester)}
@@ -393,9 +408,12 @@ export const DashboardView: React.FC = () => {
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              Cumulative GPA
-            </span>
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                Cumulative GPA
+              </span>
+              <SiSubtext text={SI.dashboard.actualCgpa} className="text-[10px] text-[#626962]" />
+            </div>
             <span
               className="w-3.5 h-3.5 rounded-full ring-2 ring-white shadow-xs"
               style={{ backgroundColor: stats.classBadgeColor }}
@@ -455,9 +473,12 @@ export const DashboardView: React.FC = () => {
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              Degree Credits
-            </span>
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                Degree Credits
+              </span>
+              <SiSubtext text={SI.dashboard.degreeCredits} className="text-[10px] text-[#626962]" />
+            </div>
             <span className="text-xs sm:text-sm font-black text-emerald-700 font-mono bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
               {totalCreditsPercent}%
             </span>
@@ -486,9 +507,12 @@ export const DashboardView: React.FC = () => {
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              Dean's Honor (Yr {currentYear})
-            </span>
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                Dean's Honor (Yr {currentYear})
+              </span>
+              <SiSubtext text={SI.dashboard.deansHonor} className="text-[10px] text-[#626962]" />
+            </div>
             <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
               <Award className="w-4 h-4" />
             </div>
@@ -516,9 +540,12 @@ export const DashboardView: React.FC = () => {
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
-              Compulsory Non-GPA
-            </span>
+            <div>
+              <span className="text-[11px] sm:text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                Compulsory Non-GPA
+              </span>
+              <SiSubtext text={SI.dashboard.nonGpa} className="text-[10px] text-[#626962]" />
+            </div>
             <div className="w-7 h-7 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -541,6 +568,11 @@ export const DashboardView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
+      {/* 2B. PERMANENT BILINGUAL HOW TO USE GUIDE                 */}
+      {/* ======================================================== */}
+      <HowToUseGuide />
+
+      {/* ======================================================== */}
       {/* 3. DEDICATED ACADEMIC JOURNEY: PREVIOUS SEMESTERS & SGPA  */}
       {/* ======================================================== */}
       <div className="bg-white border border-neutral-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-xs space-y-4">
@@ -553,6 +585,7 @@ export const DashboardView: React.FC = () => {
               <h3 className="text-sm sm:text-base font-bold text-neutral-900">
                 Academic Journey: Previous Semesters SGPA & Status
               </h3>
+              <SiSubtext text={SI.dashboard.academicJourney} className="text-[#626962]" />
               <p className="text-xs text-neutral-500">
                 Track how past semester GPVs contribute to your graduation standing:
               </p>
@@ -725,6 +758,7 @@ export const DashboardView: React.FC = () => {
               <p className="text-xs text-neutral-600 font-medium">
                 No past semester grades entered yet.
               </p>
+              <SiSubtext text={SI.dashboard.noGradesYet} className="text-[#626962]" />
               <button
                 onClick={() => handleOpenSemester(previousSemesters[0] || '1-1')}
                 className="px-3.5 py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition"
@@ -836,6 +870,7 @@ export const DashboardView: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold text-neutral-900">Credit Progress</div>
+                <SiSubtext text={SI.dashboard.creditProgress} className="text-[#626962]" />
                 <div className="text-xs text-neutral-500">
                   {stats.totalGpaCreditsEarned} / {stats.totalRequiredCredits} GPA Credits ({totalCreditsPercent}%)
                 </div>
@@ -896,6 +931,7 @@ export const DashboardView: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold text-neutral-900">Academic Requirements</div>
+                <SiSubtext text={SI.dashboard.academicRequirements} className="text-[#626962]" />
                 <div className="text-xs text-neutral-500">
                   {audit.allPassed ? 'All graduation criteria satisfied' : 'Degree conferment checklist'}
                 </div>

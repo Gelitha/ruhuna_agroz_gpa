@@ -32,6 +32,8 @@ import {
 import { GRADING_SCALE } from '../../database';
 import { HorizontalGradeSelector } from '../common/HorizontalGradeSelector';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
 
@@ -464,9 +466,12 @@ export const PlanningTools: React.FC = () => {
             <div className="w-9 h-9 rounded-xl bg-[#EAF2ED] text-[#176B45] flex items-center justify-center shrink-0">
               <Sliders className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-extrabold text-[#242824]">
-              Planning tools
-            </h3>
+            <div>
+              <h3 className="text-base font-extrabold text-[#242824]">
+                Planning tools
+              </h3>
+              <SiSubtext text={SI.planning.title} className="text-[#626962]" />
+            </div>
           </div>
 
           <div className="text-[#626962] hover:text-[#242824] transition">
@@ -510,7 +515,10 @@ export const PlanningTools: React.FC = () => {
               }`}
             >
               <Target className="w-3.5 h-3.5 shrink-0" />
-              <span>Target</span>
+              <span className="leading-tight">
+                <span className="block">Target</span>
+                <SiSubtext text={SI.planning.targetCgpa} className={`text-[9.5px] ${activeSubTab === 'target' ? 'text-emerald-100' : 'text-[#626962]'}`} />
+              </span>
               <HelpTooltip id="T23" size="xs" />
             </button>
 
@@ -524,7 +532,10 @@ export const PlanningTools: React.FC = () => {
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-              <span>Forecast</span>
+              <span className="leading-tight">
+                <span className="block">Forecast</span>
+                <SiSubtext text={SI.planning.forecast} className={`text-[9.5px] ${activeSubTab === 'forecast' ? 'text-emerald-100' : 'text-[#626962]'}`} />
+              </span>
               <HelpTooltip id="T25" size="xs" />
               {isAssumptionsActive && (
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
@@ -541,7 +552,10 @@ export const PlanningTools: React.FC = () => {
               }`}
             >
               <Zap className="w-3.5 h-3.5 shrink-0" />
-              <span>Impact</span>
+              <span className="leading-tight">
+                <span className="block">Impact</span>
+                <SiSubtext text={SI.planning.courseImpact} className={`text-[9.5px] ${activeSubTab === 'impact' ? 'text-emerald-100' : 'text-[#626962]'}`} />
+              </span>
               {modifiedCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black">
                   {modifiedCount}
@@ -614,9 +628,12 @@ export const PlanningTools: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <label className="text-xs font-bold uppercase tracking-wider text-[#626962]">
-                          Desired CGPA
-                        </label>
+                        <div>
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#626962]">
+                            Desired CGPA
+                          </label>
+                          <SiSubtext text={SI.planning.desiredCgpa} className="text-[10px] text-[#626962]" />
+                        </div>
                         <HelpTooltip id="T23" size="xs" />
                       </div>
                       <span className="font-sans font-tabular text-xl font-black text-[#176B45]">
@@ -634,27 +651,39 @@ export const PlanningTools: React.FC = () => {
                       className="w-full h-2 bg-[#DCDDD7] rounded-lg appearance-none cursor-pointer accent-[#176B45] mt-3"
                     />
 
-                    {/* Quick Preset Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5 mt-3">
+                    {/* Quick Preset Buttons (4 cols desktop, 2x2 mobile) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
                       {[
-                        { label: 'First (3.70)', val: 3.70 },
-                        { label: '2:1 (3.30)', val: 3.30 },
-                        { label: '2:2 (3.00)', val: 3.00 },
-                        { label: 'Pass (2.00)', val: 2.00 }
-                      ].map(preset => (
-                        <button
-                          key={preset.val}
-                          type="button"
-                          onClick={() => handleTargetChange(preset.val)}
-                          className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                            Math.abs(targetCgpa - preset.val) < 0.01
-                              ? 'bg-[#176B45] text-white border-[#176B45]'
-                              : 'bg-white text-[#242824] border-[#DCDDD7] hover:bg-neutral-100'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                        { label: 'First Class', si: SI.planning.classPresets.first, val: 3.70 },
+                        { label: '2nd Upper Class', si: SI.planning.classPresets.upperSecond, val: 3.30 },
+                        { label: '2nd Lower Class', si: SI.planning.classPresets.lowerSecond, val: 3.00 },
+                        { label: 'General Class', si: SI.planning.classPresets.general, val: 2.00 }
+                      ].map(preset => {
+                        const isSelected = Math.abs(targetCgpa - preset.val) < 0.01;
+                        return (
+                          <button
+                            key={preset.val}
+                            type="button"
+                            onClick={() => handleTargetChange(preset.val)}
+                            className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between min-h-[52px] touch-manipulation cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#176B45] text-white border-[#176B45] shadow-xs'
+                                : 'bg-white text-[#242824] border-[#DCDDD7] hover:bg-neutral-100'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 w-full">
+                              <span className="text-[11px] font-extrabold leading-tight">{preset.label}</span>
+                              <span className={`font-mono text-[11px] font-black shrink-0 ${isSelected ? 'text-emerald-100' : 'text-[#176B45]'}`}>
+                                {preset.val.toFixed(2)}
+                              </span>
+                            </div>
+                            <SiSubtext
+                              text={preset.si}
+                              className={`text-[9.5px] mt-0.5 leading-tight ${isSelected ? 'text-emerald-100' : 'text-[#626962]'}`}
+                            />
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -662,18 +691,21 @@ export const PlanningTools: React.FC = () => {
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#EDF1EC] text-center text-xs">
                     <div className="p-1.5 rounded-lg bg-white border border-[#EDF1EC]">
                       <span className="text-[10px] text-[#626962] block">Max Achievable</span>
+                      <SiSubtext text={SI.planning.maxAchievableCgpa} className="text-[9.5px] text-[#626962]" />
                       <span className="font-sans font-tabular font-bold text-neutral-900">
                         {targetResult.maxAchievableCgpa.toFixed(2)}
                       </span>
                     </div>
                     <div className="p-1.5 rounded-lg bg-white border border-[#EDF1EC]">
                       <span className="text-[10px] text-[#626962] block">Remaining</span>
+                      <SiSubtext text={SI.planning.remainingCredits} className="text-[9.5px] text-[#626962]" />
                       <span className="font-sans font-tabular font-bold text-neutral-900">
                         {targetResult.remainingCredits} Cr
                       </span>
                     </div>
                     <div className="p-1.5 rounded-lg bg-white border border-[#EDF1EC]">
                       <span className="text-[10px] text-[#626962] block">Trajectory Gap</span>
+                      <SiSubtext text={SI.planning.trajectoryGap} className="text-[9.5px] text-[#626962]" />
                       <span className={`font-sans font-tabular font-bold ${
                         targetGap === null
                           ? 'text-neutral-500'
@@ -709,6 +741,10 @@ export const PlanningTools: React.FC = () => {
                       <span className="text-xs font-black uppercase tracking-wider">
                         {targetResult.possible ? 'Target Achievable' : 'Target Mathematically Unreachable'}
                       </span>
+                      <SiSubtext
+                        text={targetResult.possible ? SI.planning.targetAchievable : SI.planning.targetUnreachable}
+                        className="text-[10px] font-semibold"
+                      />
                       {targetResult.isRepeatCapRestricted && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                           <span>Repeat Capped</span>
@@ -759,9 +795,11 @@ export const PlanningTools: React.FC = () => {
                           </span>
                         )}
                       </div>
+                      <SiSubtext text={SI.planning.suggestedCombination} className="text-[#176B45] font-semibold mt-0.5" />
                       <p className="text-[11px] text-[#626962] mt-0.5">
                         Select any grade beside a subject to lock it; remaining Auto subjects rebalance automatically. Temporary until applied as projected.
                       </p>
+                      <SiSubtext text={SI.planning.suggestedHelp} className="text-[10px] text-[#626962]" />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -771,7 +809,10 @@ export const PlanningTools: React.FC = () => {
                         className="px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-[#242824] font-bold text-xs flex items-center justify-center gap-1.5 transition min-h-[40px] touch-manipulation cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-[#176B45]" />
-                        <span>Auto Balance</span>
+                        <span className="text-left leading-tight">
+                          <span className="block">Auto Balance</span>
+                          <SiSubtext text={SI.planning.autoBalance} className="text-[9.5px] text-[#626962]" />
+                        </span>
                       </button>
 
                       <button
@@ -780,7 +821,10 @@ export const PlanningTools: React.FC = () => {
                         className="px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs flex items-center justify-center gap-1.5 transition min-h-[40px] touch-manipulation cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Reset Allocation</span>
+                        <span className="text-left leading-tight">
+                          <span className="block">Reset Allocation</span>
+                          <SiSubtext text={SI.planning.resetAllocation} className="text-[9.5px] text-[#626962]" />
+                        </span>
                       </button>
 
                       {suggestedCombination.possible ? (
@@ -790,7 +834,10 @@ export const PlanningTools: React.FC = () => {
                           className="px-3.5 py-2 rounded-xl bg-[#176B45] hover:bg-[#103B2D] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition min-h-[40px] touch-manipulation cursor-pointer"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>Apply Suggested as Projected</span>
+                          <span className="text-left leading-tight">
+                            <span className="block">Apply Suggested as Projected</span>
+                            <SiSubtext text={SI.planning.applySuggested} className="text-[9.5px] text-emerald-100" />
+                          </span>
                         </button>
                       ) : (
                         <button
@@ -799,7 +846,10 @@ export const PlanningTools: React.FC = () => {
                           className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition min-h-[40px] touch-manipulation cursor-pointer"
                         >
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Apply Below-Target Scenario (−{suggestedCombination.shortfall.toFixed(2)})</span>
+                          <span className="text-left leading-tight">
+                            <span className="block">Apply Below-Target Scenario (−{suggestedCombination.shortfall.toFixed(2)})</span>
+                            <SiSubtext text={SI.planning.applyBelowTarget} className="text-[9.5px] text-amber-100" />
+                          </span>
                         </button>
                       )}
                     </div>
@@ -878,7 +928,7 @@ export const PlanningTools: React.FC = () => {
                     {/* Credit Quota Badges: Manual vs Remaining Auto */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-neutral-200/70">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] font-bold text-[#626962]">Remaining Auto Quota:</span>
+                        <span className="text-[11px] font-bold text-[#626962]">Remaining Auto Quota ({SI.planning.autoQuota}):</span>
                         {suggestedCombination.autoQuotas.length === 0 ? (
                           <span className="text-[11px] text-neutral-500">All subjects manually assigned</span>
                         ) : (
@@ -978,7 +1028,7 @@ export const PlanningTools: React.FC = () => {
                                   : 'bg-white border-emerald-300 text-[#103B2D]'
                               }`}
                             >
-                              <option value="">Auto ({sc.suggestedGrade})</option>
+                              <option value="">Auto ({sc.suggestedGrade}) · {SI.planning.auto}</option>
                               {GRADE_OPTIONS.map(g => (
                                 <option key={g} value={g}>
                                   {g} ({GRADING_SCALE[g].gpv.toFixed(1)})

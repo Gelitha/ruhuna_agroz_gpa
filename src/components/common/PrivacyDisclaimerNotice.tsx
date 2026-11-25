@@ -3,13 +3,15 @@
 
 import React from 'react';
 import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { SiSubtext } from './BilingualText';
+import { SI } from '../../constants/translations';
 
 interface PrivacyDisclaimerNoticeProps {
   compact?: boolean;
   showAcademicDisclaimer?: boolean;
 }
 
-export const PRIVACY_HEADING = 'Your data stays on your device.';
+export const PRIVACY_HEADING = 'Your academic data stays on your device.';
 export const PRIVACY_BODY =
   'Your academic profile, grades and GPA records are stored locally in your browser. No account or login is required. Your academic records are not uploaded to a central database.';
 export const PRIVACY_BACKUP_NOTE =
@@ -27,13 +29,17 @@ export const PrivacyDisclaimerNotice: React.FC<PrivacyDisclaimerNoticeProps> = (
       <div
         className={`rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-950 ${
           compact ? 'p-3 text-[11px]' : 'p-4 text-xs'
-        } space-y-1`}
+        } space-y-1.5`}
       >
-        <div className="flex items-center gap-1.5 font-extrabold text-[#103B2D]">
-          <ShieldCheck className="w-4 h-4 text-[#176B45] shrink-0" />
-          <span>{PRIVACY_HEADING}</span>
+        <div className="flex items-start gap-1.5 font-extrabold text-[#103B2D]">
+          <ShieldCheck className="w-4 h-4 text-[#176B45] shrink-0 mt-0.5" />
+          <div>
+            <span>{PRIVACY_HEADING}</span>
+            <SiSubtext text={SI.privacy.heading} className="text-[#176B45] mt-0.5" />
+          </div>
         </div>
         <p className="text-emerald-900/90 leading-relaxed">{PRIVACY_BODY}</p>
+        <SiSubtext text={SI.privacy.body} className="text-emerald-900/85" />
         <p className="text-emerald-800/80 leading-relaxed">
           {PRIVACY_BACKUP_NOTE}{' '}
           {!compact && (
@@ -42,6 +48,7 @@ export const PrivacyDisclaimerNotice: React.FC<PrivacyDisclaimerNoticeProps> = (
             </span>
           )}
         </p>
+        <SiSubtext text={SI.privacy.backupNote} className="text-emerald-800/80" />
       </div>
 
       {/* Academic Disclaimer */}
@@ -52,7 +59,10 @@ export const PrivacyDisclaimerNotice: React.FC<PrivacyDisclaimerNoticeProps> = (
           }`}
         >
           <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">{ACADEMIC_DISCLAIMER}</p>
+          <div className="space-y-1">
+            <p className="leading-relaxed">{ACADEMIC_DISCLAIMER}</p>
+            <SiSubtext text={SI.privacy.academicDisclaimer} className="text-amber-900/90" />
+          </div>
         </div>
       )}
     </div>

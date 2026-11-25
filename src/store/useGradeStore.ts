@@ -45,6 +45,18 @@ import {
 const STORAGE_KEY_PROFILES_V3 = 'gradepath_profiles_v3';
 const STORAGE_KEY_ACTIVE_ID_V3 = 'gradepath_active_id_v3';
 const STORAGE_KEY_ONBOARDING_DONE = 'gradepath_onboarded_v3';
+const STORAGE_KEY_SHOW_SINHALA = 'gradepath_show_sinhala_v1';
+
+function loadShowSinhalaPreference(): boolean {
+  try {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') return true;
+    const saved = localStorage.getItem(STORAGE_KEY_SHOW_SINHALA);
+    if (saved === null) return true;
+    return saved === 'true';
+  } catch {
+    return true;
+  }
+}
 
 // Safe Migration Helper — Clean, Authentic State Without Mock Data
 function loadPersistedProfiles(): { profiles: StudentProfile[]; activeId: string; hasOnboarded: boolean } {
@@ -135,8 +147,10 @@ interface GradeStoreState {
   profileModalState: ProfileModalState;
   selectedSemesterForCalculator: SemesterKey | 'ALL';
   searchQuery: string;
+  showSinhalaSubtext: boolean;
 
   // Actions
+  setShowSinhalaSubtext: (show: boolean) => void;
   setActiveTab: (tab: NavView) => void;
   setPlanningToolRequest: (tab: PlanningToolSubTab | null, expanded?: boolean) => void;
   toggleSidebar: () => void;
@@ -254,6 +268,18 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     },
     selectedSemesterForCalculator: '1-1',
     searchQuery: '',
+    showSinhalaSubtext: loadShowSinhalaPreference(),
+
+    setShowSinhalaSubtext: (show: boolean) => {
+      try {
+        if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_SHOW_SINHALA, String(show));
+        }
+      } catch {
+        // ignore storage errors
+      }
+      set({ showSinhalaSubtext: show });
+    },
 
     setActiveTab: (tab: NavView) => {
       const normalized = normalizeNavView(tab);

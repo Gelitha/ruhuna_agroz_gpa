@@ -21,11 +21,15 @@ import { DegreeCode, SemesterKey } from '../../types';
 import { calculateOverallStats } from '../../utils/calculations';
 import { HelpTooltip } from '../common/HelpTooltip';
 import { PrivacyDisclaimerNotice } from '../common/PrivacyDisclaimerNotice';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const SettingsView: React.FC = () => {
   const {
     profiles,
     activeProfileId,
+    showSinhalaSubtext,
+    setShowSinhalaSubtext,
     switchProfile,
     createProfile,
     duplicateProfile,
@@ -83,9 +87,9 @@ export const SettingsView: React.FC = () => {
       if (content) {
         const success = importProfilesJson(content);
         if (success) {
-          setImportStatus('✓ Data successfully restored!');
+          setImportStatus(`✓ Data successfully restored! (${SI.settings.restoreSuccess})`);
         } else {
-          setImportStatus('✕ Invalid backup file format.');
+          setImportStatus(`✕ Invalid backup file format. (${SI.settings.restoreError})`);
         }
       }
     };
@@ -106,6 +110,7 @@ export const SettingsView: React.FC = () => {
           <h2 className="text-2xl font-black tracking-tight text-white mt-1">
             Student Profiles & Settings
           </h2>
+          <SiSubtext text={SI.settings.title} className="text-emerald-200 mt-0.5" />
         </div>
 
         <button
@@ -113,7 +118,38 @@ export const SettingsView: React.FC = () => {
           className="px-4 py-2 rounded-xl bg-white text-emerald-950 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm hover:bg-emerald-50 transition shrink-0"
         >
           <Plus className="w-4 h-4 text-emerald-900" />
-          <span>New Profile</span>
+          <span className="text-left leading-tight">
+            <span className="block">New Profile</span>
+            <SiSubtext text={SI.nav.newProfile} className="text-[9.5px] text-emerald-800" />
+          </span>
+        </button>
+      </div>
+
+      {/* Language / Sinhala Subtext Preference */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-neutral-200/90 shadow-xs flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-sm font-bold text-neutral-900">Show Sinhala subtext</div>
+          <span className="font-sinhala block text-xs text-[#176B45] font-semibold mt-0.5">
+            සිංහල උපපෙළ පෙන්වන්න
+          </span>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Display simple Sinhala explanations underneath English labels throughout the app.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showSinhalaSubtext}
+          onClick={() => setShowSinhalaSubtext(!showSinhalaSubtext)}
+          className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#176B45]/40 ${
+            showSinhalaSubtext ? 'bg-[#176B45]' : 'bg-neutral-300'
+          }`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+              showSinhalaSubtext ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
         </button>
       </div>
 
@@ -235,11 +271,15 @@ export const SettingsView: React.FC = () => {
       <div className="p-7 rounded-3xl bg-white border border-neutral-200/80 shadow-xs space-y-4">
         <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-800" />
-          <span>Local Storage & JSON Backups</span>
+          <div>
+            <span>Local Storage & JSON Backups</span>
+            <SiSubtext text={SI.settings.backupTitle} className="text-[#626962]" />
+          </div>
         </h3>
         <p className="text-xs text-neutral-500 leading-relaxed max-w-2xl">
           GradePath saves all profiles locally on your device without transmitting data over the network. Export a periodic backup to safeguard your grades.
         </p>
+        <SiSubtext text={SI.settings.backupDesc} className="text-neutral-600 max-w-2xl" />
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <div className="flex items-center gap-1.5">
@@ -248,7 +288,10 @@ export const SettingsView: React.FC = () => {
               className="px-4 py-2.5 rounded-2xl bg-neutral-900 text-white text-xs font-bold flex items-center gap-2 hover:bg-black transition shadow-xs"
             >
               <Download className="w-4 h-4" />
-              <span>Export Backup (.JSON)</span>
+              <span className="text-left leading-tight">
+                <span className="block">Export Backup (.JSON)</span>
+                <SiSubtext text={SI.settings.exportBackup} className="text-[9.5px] text-neutral-300" />
+              </span>
             </button>
             <HelpTooltip id="T35" size="xs" />
           </div>
@@ -259,7 +302,10 @@ export const SettingsView: React.FC = () => {
               className="px-4 py-2.5 rounded-2xl bg-white border border-neutral-200 text-neutral-800 text-xs font-bold flex items-center gap-2 hover:bg-neutral-100 transition shadow-xs"
             >
               <Upload className="w-4 h-4 text-neutral-500" />
-              <span>Restore Backup</span>
+              <span className="text-left leading-tight">
+                <span className="block">Restore Backup</span>
+                <SiSubtext text={SI.settings.restoreBackup} className="text-[9.5px] text-[#626962]" />
+              </span>
             </button>
             <HelpTooltip id="T36" size="xs" />
           </div>

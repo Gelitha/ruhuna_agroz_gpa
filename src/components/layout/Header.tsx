@@ -14,6 +14,8 @@ import {
 import { useGradeStore } from '../../store/useGradeStore';
 import { NAV_SECTIONS, getRouteInfo, normalizeNavView } from '../../config/navigation';
 import { AppLogo } from '../common/AppLogo';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const Header: React.FC = () => {
   const {
@@ -286,6 +288,7 @@ export const Header: React.FC = () => {
           <h1 className="text-lg font-black text-[#242824] tracking-tight leading-tight truncate">
             {currentInfo.title}
           </h1>
+          <SiSubtext text={currentInfo.siTitle} className="text-[11px] text-[#626962] truncate" />
         </div>
 
         {/* Right: Cumulative Status Pills, Profile & Guide */}
@@ -508,7 +511,10 @@ export const Header: React.FC = () => {
                       }`}
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#176B45]' : 'text-neutral-500'}`} />
-                      <span className="truncate">{item.label}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{item.label}</span>
+                        <SiSubtext text={item.siLabel} className="text-[10px] text-[#626962] truncate" />
+                      </span>
                     </button>
                   );
                 })}
@@ -528,9 +534,12 @@ export const Header: React.FC = () => {
               <Sparkles className="w-4 h-4 text-[#176B45]" />
               <span>Welcome Guide</span>
             </button>
-            <p className="text-[11px] text-[#626962] text-center font-medium px-1">
-              Your academic data stays on your device.
-            </p>
+            <div className="text-center px-1 space-y-0.5">
+              <p className="text-[11px] text-[#626962] font-medium">
+                Your academic data stays on your device.
+              </p>
+              <SiSubtext text={SI.privacy.heading} className="text-[10px] text-[#626962]" />
+            </div>
           </div>
         </nav>
       </div>

@@ -6,6 +6,8 @@ import { Users, Plus, Copy, Trash2, CheckCircle2, UserCircle2, ArrowRight, Edit3
 import { useGradeStore } from '../../store/useGradeStore';
 import { calculateOverallStats } from '../../utils/calculations';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 export const StudentProfilesView: React.FC = () => {
   const {
@@ -30,6 +32,7 @@ export const StudentProfilesView: React.FC = () => {
             <h2 className="text-xl font-bold text-main">Student Profiles on this Device</h2>
             <HelpTooltip id="T34" size="xs" />
           </div>
+          <SiSubtext text={SI.profiles.title} className="text-[#176B45] font-semibold" />
           <p className="text-xs text-secondary mt-0.5">
             Create and switch between multiple student records locally without logging in.
           </p>
@@ -40,7 +43,10 @@ export const StudentProfilesView: React.FC = () => {
           className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition"
         >
           <Plus className="w-4 h-4" />
-          <span>New Profile</span>
+          <span className="text-left leading-tight">
+            <span className="block">New Profile</span>
+            <SiSubtext text={SI.nav.newProfile} className="text-[9.5px] text-emerald-100" />
+          </span>
         </button>
       </div>
 
