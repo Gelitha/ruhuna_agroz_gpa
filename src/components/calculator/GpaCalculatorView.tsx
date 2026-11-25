@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   X,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { Grade, SemesterKey, Course } from '../../types';
@@ -101,7 +102,8 @@ export const GpaCalculatorView: React.FC = () => {
     clearSemesterProjections,
     setCourseGradeAndStatus,
     setActiveTab,
-    dismissCalculatorTips
+    dismissCalculatorTips,
+    markSemesterReviewed
   } = useGradeStore();
 
   const profile = getActiveProfile();
@@ -121,8 +123,11 @@ export const GpaCalculatorView: React.FC = () => {
   useEffect(() => {
     if (selectedSemesterForCalculator && selectedSemesterForCalculator !== 'ALL') {
       setActiveTabKey(selectedSemesterForCalculator);
+      if (markSemesterReviewed) {
+        markSemesterReviewed(selectedSemesterForCalculator);
+      }
     }
-  }, [selectedSemesterForCalculator]);
+  }, [selectedSemesterForCalculator, markSemesterReviewed]);
 
   // Permanent Chronological Semester Sequence
   const CHRONOLOGICAL_SEMESTERS: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
@@ -136,13 +141,27 @@ export const GpaCalculatorView: React.FC = () => {
     // Ensure entered grades are saved before presenting successful navigation
     const saveSuccess = saveCurrentState ? saveCurrentState() : true;
     if (!saveSuccess) {
-      setSaveStatus('Save failed');
+      setSaveStatus('Save failed: Storage unavailable');
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setSaveStatus(null);
+      }, 4000);
+      return;
     }
+
+    setSaveStatus('Saved');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSaveStatus(null);
+    }, 2000);
 
     // Update only the currently viewed calculator semester (preserves profile.currentSemester)
     setActiveTabKey(destSem);
     if (destSem !== 'ORIENTATION') {
       setSelectedSemesterForCalculator(destSem);
+      if (markSemesterReviewed) {
+        markSemesterReviewed(destSem);
+      }
     }
 
     // Scroll smoothly to the beginning of the new semester's course list
@@ -273,9 +292,13 @@ export const GpaCalculatorView: React.FC = () => {
   };
 
   // Synchronize viewed semester when switching student profiles
+  const prevProfileIdRef = useRef<string>(profile.id);
   useEffect(() => {
-    if (profile.currentSemester) {
-      setActiveTabKey(profile.currentSemester);
+    if (prevProfileIdRef.current !== profile.id) {
+      prevProfileIdRef.current = profile.id;
+      if (profile.currentSemester) {
+        setActiveTabKey(profile.currentSemester);
+      }
     }
   }, [profile.id, profile.currentSemester]);
 
@@ -667,7 +690,7 @@ export const GpaCalculatorView: React.FC = () => {
           </div>
           {saveStatus && (
             <span className={`text-[11px] font-bold shrink-0 flex items-center gap-1 ${saveStatus === 'Saved' ? 'text-[#176B45]' : 'text-rose-600'}`}>
-              <Check className="w-3 h-3" /> {saveStatus}
+              {saveStatus === 'Saved' ? <Check className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />} {saveStatus}
             </span>
           )}
         </div>
@@ -1700,40 +1723,49 @@ export const GpaCalculatorView: React.FC = () => {
       {/* 4.5 PERMANENT PREVIOUS & NEXT SEMESTER NAVIGATION ROW     */}
       {/* Immediately after final course, immediately before Plan   */}
       {/* ======================================================== */}
-      <div className="flex items-center justify-between gap-3 pt-2 pb-1">
-        {prevSemester ? (
-          <button
-            type="button"
-            onClick={() => handleNavigateSemester(prevSemester)}
-            className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-white hover:bg-neutral-100 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition shadow-2xs min-h-[44px] touch-manipulation active:scale-95"
-            aria-label={`Previous Semester ${prevSemester}`}
-          >
-            <ArrowLeft className="w-4 h-4 shrink-0 text-neutral-600" />
-            <span>← {prevSemester}</span>
-          </button>
-        ) : (
-          <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
-        )}
+      <div className="flex flex-col gap-2 pt-2 pb-1">
+        <div className="flex items-center justify-between gap-3">
+          {prevSemester ? (
+            <button
+              type="button"
+              onClick={() => handleNavigateSemester(prevSemester)}
+              className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-white hover:bg-neutral-100 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition shadow-2xs min-h-[44px] touch-manipulation active:scale-95"
+              aria-label={`Previous Semester ${prevSemester} (← ${prevSemester})`}
+            >
+              <ArrowLeft className="w-4 h-4 shrink-0 text-neutral-600" />
+              <span>← {prevSemester}</span>
+            </button>
+          ) : (
+            <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
+          )}
 
-        <div className="hidden xs:flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
-          <span>Viewing:</span>
-          <span className="font-extrabold text-[#176B45]">
-            {activeTabKey === 'ORIENTATION' ? 'Non-GPA' : `Sem ${activeTabKey}`}
-          </span>
+          <div className="hidden xs:flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
+            <span>Viewing:</span>
+            <span className="font-extrabold text-[#176B45]">
+              {activeTabKey === 'ORIENTATION' ? 'Non-GPA' : `Sem ${activeTabKey}`}
+            </span>
+          </div>
+
+          {nextSemester ? (
+            <button
+              type="button"
+              onClick={() => handleNavigateSemester(nextSemester)}
+              className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition shadow-sm hover:scale-[1.01] min-h-[44px] touch-manipulation active:scale-95"
+              aria-label={`Next Semester ${nextSemester} (${nextSemester} →)`}
+            >
+              <span>{nextSemester} →</span>
+              <ArrowRight className="w-4 h-4 shrink-0 text-white" />
+            </button>
+          ) : (
+            <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
+          )}
         </div>
 
-        {nextSemester ? (
-          <button
-            type="button"
-            onClick={() => handleNavigateSemester(nextSemester)}
-            className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition shadow-sm hover:scale-[1.01] min-h-[44px] touch-manipulation active:scale-95"
-            aria-label={`Next Semester ${nextSemester}`}
-          >
-            <span>{nextSemester} →</span>
-            <ArrowRight className="w-4 h-4 shrink-0 text-white" />
-          </button>
-        ) : (
-          <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
+        {saveStatus && saveStatus !== 'Saved' && (
+          <div className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold animate-in fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{saveStatus}</span>
+          </div>
         )}
       </div>
 
@@ -1807,15 +1839,15 @@ export const GpaCalculatorView: React.FC = () => {
           <button
             type="button"
             onClick={handleUndo}
-            className="ml-1 px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shadow-xs shrink-0 cursor-pointer"
+            className="ml-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition active:scale-95 flex items-center gap-1 shadow-xs shrink-0 cursor-pointer pointer-events-auto touch-manipulation min-h-[36px]"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>Undo</span>
           </button>
           <button
             type="button"
             onClick={() => setUndoRecord(null)}
-            className="text-emerald-300 hover:text-white p-1 -mr-1 shrink-0"
+            className="text-emerald-300 hover:text-white p-1.5 -mr-1 shrink-0 pointer-events-auto touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer"
             aria-label="Dismiss"
           >
             <X className="w-3.5 h-3.5" />

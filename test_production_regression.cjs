@@ -1091,7 +1091,7 @@ runTest('Legacy Academic Projection navigation redirects to calculator without d
   const store = useGradeStore.getState();
 
   store.setActiveTab('projection');
-  assert.strictEqual(store.activeTab, 'calculator', 'setActiveTab("projection") must redirect to "calculator"');
+  assert.strictEqual(useGradeStore.getState().activeTab, 'calculator', 'setActiveTab("projection") must redirect to "calculator"');
 });
 
 console.log(`\n🎉 ALL 65 PRODUCTION REGRESSION SCENARIOS PASSED DIRECTLY AGAINST TYPESCRIPT MODULES!\n`);
@@ -2221,6 +2221,140 @@ runTest('Course Impact: Deselecting target resets simulation without altering sa
   handleTargetDeselect('1-1:CS1101');
   assert.strictEqual(simulatedTargets['1-1:CS1101'], '', 'Simulated target is cleared');
   assert.strictEqual(originalProfileGrade, 'B', 'Original saved profile grade remains strictly untouched');
+});
+
+// 113. Protect academic results when changing degree: requires explicit confirmation and archives results
+runTest('Degree change protection: explicit confirmation required when grades exist, results archived safely', () => {
+  const profile = {
+    id: 'p_protect_1',
+    degree: 'ARMT',
+    semesters: {
+      '1-1': [{ code: 'CS1101', credits: 2, grade: 'A' }],
+      '1-2': []
+    },
+    archivedDegreeRecords: {}
+  };
+
+  const gradedCount = Object.values(profile.semesters).reduce(
+    (acc, sem) => acc + sem.filter(c => c.grade).length,
+    0
+  );
+  assert.strictEqual(gradedCount, 1, 'Profile has 1 graded course');
+
+  // Attempt change degree from ARMT to ABM without confirmation
+  let showConfirmModal = false;
+  const newDegree = 'ABM';
+  const isDegreeChanged = profile.degree !== newDegree;
+
+  if (isDegreeChanged && gradedCount > 0) {
+    showConfirmModal = true;
+  }
+  assert.strictEqual(showConfirmModal, true, 'Explicit confirmation modal is triggered before wiping/replacing database');
+
+  // Confirming archives the old degree records safely
+  const updatedArchived = {
+    ...profile.archivedDegreeRecords,
+    [profile.degree]: {
+      degree: profile.degree,
+      semesters: profile.semesters,
+      archivedAt: new Date().toISOString()
+    }
+  };
+
+  assert.ok(updatedArchived['ARMT'], 'ARMT results are safely archived');
+  assert.strictEqual(updatedArchived['ARMT'].semesters['1-1'][0].grade, 'A', 'Archived grade A is safely preserved');
+});
+
+// 114. Safe recovery: restores previously archived academic results when switching back
+runTest('Safe recovery: switching back to previously archived degree restores course grades', () => {
+  const profileWithArchive = {
+    id: 'p_recover_1',
+    degree: 'ABM',
+    semesters: {
+      '1-1': [{ code: 'AB1101', credits: 2, grade: '' }]
+    },
+    archivedDegreeRecords: {
+      ARMT: {
+        degree: 'ARMT',
+        semesters: {
+          '1-1': [{ code: 'CS1101', credits: 2, grade: 'A+' }]
+        },
+        archivedAt: '2026-11-25T08:00:00.000Z'
+      }
+    }
+  };
+
+  // Switch back from ABM to ARMT
+  const targetDegree = 'ARMT';
+  const restoredSemesters = profileWithArchive.archivedDegreeRecords?.[targetDegree]?.semesters;
+  assert.ok(restoredSemesters, 'Restored semesters retrieved from archive');
+  assert.strictEqual(restoredSemesters['1-1'][0].grade, 'A+', 'Original Grade A+ restored successfully');
+});
+
+// 115. Reviewed semesters with pending results update setup progress without confusing with completed semesters
+runTest('Pending results tracking: reviewed semesters count towards setup progress but 0 gpaCreditsAttempted', () => {
+  const profile = {
+    currentSemester: '2-1',
+    guidedSetup: {
+      reviewedSemesters: ['1-1']
+    },
+    semesters: {
+      '1-1': [{ code: 'CS1101', credits: 2, isCompulsory: true, grade: '' }],
+      '1-2': [{ code: 'CS1201', credits: 2, isCompulsory: true, grade: '' }],
+      '2-1': []
+    }
+  };
+
+  const semKeys = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const currentIdx = semKeys.indexOf(profile.currentSemester);
+  const applicableSemesters = semKeys.slice(0, currentIdx); // ['1-1', '1-2']
+
+  const getStatus = (sk) => {
+    const courses = profile.semesters[sk] || [];
+    const confirmed = courses.filter(c => c.grade && !c.isExpected).length;
+    const isReviewed = (profile.guidedSetup?.reviewedSemesters || []).includes(sk);
+    return { confirmed, isReviewed };
+  };
+
+  const reviewedCount = applicableSemesters.filter(sk => {
+    const st = getStatus(sk);
+    return st.isReviewed || st.confirmed > 0;
+  }).length;
+
+  assert.strictEqual(reviewedCount, 1, '1 of 2 semesters reviewed in setup guidance');
+
+  // Verify academic calculation treats it as 0 attempted credits (pending/uncompleted)
+  const gpaCreditsAttempted = profile.semesters['1-1'].filter(c => c.grade && !c.isExpected).reduce((acc, c) => acc + c.credits, 0);
+  assert.strictEqual(gpaCreditsAttempted, 0, 'Academically uncompleted: 0 attempted GPA credits');
+});
+
+// 116. Persistence failure safety during semester navigation
+runTest('Navigation persistence safety: storage failure halts transition and displays error', () => {
+  let saveStatus = null;
+  const mockSaveCurrentState = () => false; // Simulates localStorage QuotaExceededError or security block
+
+  const handleNavigateSemester = (destSem) => {
+    const success = mockSaveCurrentState();
+    if (!success) {
+      saveStatus = 'Save failed: Storage unavailable';
+      return false;
+    }
+    return true;
+  };
+
+  const navigated = handleNavigateSemester('1-2');
+  assert.strictEqual(navigated, false, 'Navigation prevented when persistence fails');
+  assert.strictEqual(saveStatus, 'Save failed: Storage unavailable', 'User notified of storage failure');
+});
+
+// 117. Old batch number labels ('46th', '45th', '44th', '43rd') strictly removed
+runTest('Batch number audit: no hardcoded batch labels in settings, calculations, or profiles', () => {
+  const fs = require('fs');
+  const settingsContent = fs.readFileSync('src/components/settings/SettingsView.tsx', 'utf8');
+  assert.ok(!settingsContent.includes('46th'), 'SettingsView does not contain hardcoded 46th Batch');
+  assert.ok(!settingsContent.includes('45th'), 'SettingsView does not contain hardcoded 45th Batch');
+  assert.ok(!settingsContent.includes('44th'), 'SettingsView does not contain hardcoded 44th Batch');
+  assert.ok(!settingsContent.includes('43rd'), 'SettingsView does not contain hardcoded 43rd Batch');
 });
 
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);

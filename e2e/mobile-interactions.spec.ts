@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Mobile Interaction & Profile Audit', () => {
 
   test('1. First-time onboarding requires explicit fields and derives academic year', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       window.localStorage.clear();
     });
@@ -91,9 +91,9 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     await profileBtn.click();
 
     // Dropdown menu should open with profile options
-    const dropdownMenu = page.locator('text=Switch Profile').filter({ visible: true });
+    const dropdownMenu = page.getByText(/Switch Profile/i).filter({ visible: true });
     await expect(dropdownMenu).toBeVisible();
-    await expect(page.locator('text=Active').filter({ visible: true })).toBeVisible();
+    await expect(page.locator('button:visible span:has-text("Active")').first()).toBeVisible();
 
     // 2. Click "New Profile" to trigger setup modal in creation mode
     const newProfileBtn = page.getByRole('button', { name: /New Profile/i }).filter({ visible: true }).first();
@@ -168,38 +168,38 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     // Navigate to Calculator via visible bottom nav or top pill
     const calcNavBtn = page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i });
     if (await calcNavBtn.isVisible()) {
-      await calcNavBtn.click();
+      await calcNavBtn.tap();
     } else {
-      await page.getByRole('button', { name: /Calculator/i }).first().click();
+      await page.getByRole('button', { name: /Calculator/i }).first().tap();
     }
 
     // Verify course CS1101 is visible
     await expect(page.getByText('CS1101').first()).toBeVisible();
 
-    // Select Grade A on visible course card
+    // Select Grade A on visible course card using actual touchscreen tap
     const gradeABtn = page.locator('button[aria-label*="Grade A "]').filter({ visible: true }).first();
-    await gradeABtn.click();
+    await gradeABtn.tap();
     await expect(gradeABtn).toHaveAttribute('aria-checked', 'true');
 
-    // Tap-to-deselect: tapping Grade A again should clear it
-    await gradeABtn.click();
+    // Tap-to-deselect: tapping Grade A again should clear it using actual touchscreen tap
+    await gradeABtn.tap();
     await expect(gradeABtn).toHaveAttribute('aria-checked', 'false');
 
     // Undo toast should appear for cleared grade
     const undoToast = page.locator('text=Grade cleared for').filter({ visible: true });
     await expect(undoToast).toBeVisible();
 
-    // Tap Undo button on toast
+    // Tap Undo button on toast (genuine tap without forced clicks)
     const undoBtn = page.getByRole('button', { name: /Undo/i }).filter({ visible: true });
     await expect(undoBtn).toBeVisible();
-    await undoBtn.click({ force: true });
+    await undoBtn.tap();
 
     // Grade should revert to A
     await expect(gradeABtn).toHaveAttribute('aria-checked', 'true');
 
     // Tap Grade B to change grade
     const gradeBBtn = page.locator('button[aria-label*="Grade B "]').filter({ visible: true }).first();
-    await gradeBBtn.click();
+    await gradeBBtn.tap();
     await expect(gradeBBtn).toHaveAttribute('aria-checked', 'true');
   });
 
@@ -338,7 +338,7 @@ test.describe('Mobile Interaction & Profile Audit', () => {
 
     // Getting Started card should be visible on Dashboard
     await expect(page.getByText("Let's set up your academic results")).toBeVisible();
-    await expect(page.getByText('Start by entering your previous semester results to calculate your actual CGPA.')).toBeVisible();
+    await expect(page.getByText(/Add your previous semester results to calculate your actual CGPA/i)).toBeVisible();
 
     // Must show Semester 1-1 and Semester 1-2
     await expect(page.locator('text=Semester 1-1').first()).toBeVisible();
@@ -426,7 +426,7 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     }
 
     // 10. Dashboard Cumulative GPA correctly displays 4.00 from confirmed Grade A on CS1101
-    await expect(page.getByText('4.00').first()).toBeVisible();
+    await expect(page.locator('main :visible').filter({ hasText: '4.00' }).first()).toBeVisible();
     // Student's actual current semester remains strictly 2-1 (2nd Year)
     await expect(page.getByText('2nd Year • Sem 2-1').first()).toBeVisible();
   });
@@ -472,6 +472,270 @@ test.describe('Mobile Interaction & Profile Audit', () => {
     // Click Continue Setup opens calculator directly at Semester 1-1
     await resumeBtn.click();
     await expect(page.getByText('CS1101').first()).toBeVisible();
+  });
+
+  test('9. Touch gesture safety: swipe/scroll (> 5px) prevents accidental grade deselection or change', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_touch_gesture',
+        name: 'Gesture User',
+        degree: 'ARMT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'CS',
+        semesters: {
+          '1-1': [
+            { code: 'CS1101', name: 'Principles of Crop Production', credits: 2, isCompulsory: true, grade: 'B' }
+          ],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_touch_gesture');
+    });
+    await page.reload();
+
+    const calcNavBtn = page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i });
+    if (await calcNavBtn.isVisible()) {
+      await calcNavBtn.tap();
+    } else {
+      await page.getByRole('button', { name: /Calculator/i }).first().click();
+    }
+
+    // Verify course CS1101 is visible with Grade B initially selected
+    const gradeBBtn = page.locator('button[aria-label*="Grade B "]').filter({ visible: true }).first();
+    await expect(gradeBBtn).toBeVisible();
+    await expect(gradeBBtn).toHaveAttribute('aria-checked', 'true');
+
+    // 1. Simulate a touch drag / swipe gesture across Grade B button (> 5px movement)
+    const box = await gradeBBtn.boundingBox();
+    if (box) {
+      const startX = box.x + box.width / 2;
+      const startY = box.y + box.height / 2;
+
+      // Dispatch swipe gesture using touch events
+      await page.evaluate(({ x, y }) => {
+        const target = document.elementFromPoint(x, y);
+        if (target) {
+          const touchObj1 = new Touch({ identifier: 1, target, clientX: x, clientY: y });
+          target.dispatchEvent(new TouchEvent('touchstart', { touches: [touchObj1], bubbles: true }));
+
+          // Move 30px horizontally (swiping across grade selector)
+          const touchObj2 = new Touch({ identifier: 1, target, clientX: x + 30, clientY: y });
+          target.dispatchEvent(new TouchEvent('touchmove', { touches: [touchObj2], bubbles: true }));
+
+          target.dispatchEvent(new TouchEvent('touchend', { touches: [], bubbles: true }));
+          // Synthesize click that browsers dispatch after touch
+          target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        }
+      }, { x: startX, y: startY });
+
+      // Grade B should still remain selected (swiping prevented accidental deselection!)
+      await expect(gradeBBtn).toHaveAttribute('aria-checked', 'true');
+    }
+
+    // 2. Perform a stationary tap on Grade B to clear it (tap-to-deselect)
+    await gradeBBtn.tap();
+    await expect(gradeBBtn).toHaveAttribute('aria-checked', 'false');
+
+    // 3. Perform stationary tap on Grade A to select it
+    const gradeABtn = page.locator('button[aria-label*="Grade A "]').filter({ visible: true }).first();
+    await gradeABtn.tap();
+    await expect(gradeABtn).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('10. Degree programme change requires explicit confirmation and provides safe recovery', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_degree_protect',
+        name: 'Protection User',
+        degree: 'ARMT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'CS',
+        semesters: {
+          '1-1': [
+            { code: 'CS1101', name: 'Principles of Crop Production', credits: 2, isCompulsory: true, grade: 'A' },
+            { code: 'AS1101', name: 'Introduction to Livestock', credits: 2, isCompulsory: true, grade: 'B' }
+          ],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_degree_protect');
+    });
+    await page.reload();
+
+    // Open Edit Profile modal
+    const editBtn = page.getByRole('button', { name: /Change/i }).first();
+    await editBtn.click();
+
+    // Change degree from ARMT to ABM
+    const abmBtn = page.getByRole('button', { name: /BSc Hons \(ABM\)/i });
+    await abmBtn.click();
+
+    // Click Save Changes
+    const saveBtn = page.getByRole('button', { name: /Save Changes/i });
+    await saveBtn.click();
+
+    // Confirmation dialog must appear
+    const confirmTitle = page.locator('text=Confirm Degree Programme Change');
+    await expect(confirmTitle).toBeVisible();
+    await expect(page.locator('text=Change Curriculum from ARMT to ABM')).toBeVisible();
+
+    // 1. Test Cancel: clicking Cancel keeps ARMT and dismisses confirmation
+    const cancelConfirmBtn = page.getByRole('button', { name: /Cancel \(Keep ARMT\)/i });
+    await cancelConfirmBtn.click();
+    await expect(confirmTitle).not.toBeVisible();
+
+    // 2. Select ABM again and confirm
+    await abmBtn.click();
+    await saveBtn.click();
+    await expect(confirmTitle).toBeVisible();
+
+    const confirmReplaceBtn = page.getByRole('button', { name: /Confirm & Replace/i });
+    await confirmReplaceBtn.click();
+
+    // Active degree should now be ABM
+    await expect(page.locator('text=ABM (Hons) Undergraduate').first()).toBeVisible();
+
+    // Check localStorage: previous ARMT results should be preserved in archivedDegreeRecords
+    const isArchived = await page.evaluate(() => {
+      const stored = JSON.parse(window.localStorage.getItem('gradepath_profiles_v3') || '[]');
+      const active = stored.find((p: any) => p.id === 'prof_degree_protect');
+      return active?.archivedDegreeRecords?.['ARMT']?.semesters?.['1-1']?.[0]?.grade === 'A';
+    });
+    expect(isArchived).toBe(true);
+
+    // 3. Test safe recovery: switch back to ARMT and verify archived grades are restored
+    await editBtn.click();
+    const armtBtn = page.getByRole('button', { name: /BSc Hons \(ARMT\)/i });
+    await armtBtn.click();
+    await saveBtn.click();
+
+    // Should ask for confirmation to change back to ARMT
+    await expect(confirmTitle).toBeVisible();
+    await confirmReplaceBtn.click();
+
+    // Verify ARMT grades are restored!
+    await expect(page.locator('text=ARMT (Hons) Undergraduate').first()).toBeVisible();
+    const restoredGrade = await page.evaluate(() => {
+      const stored = JSON.parse(window.localStorage.getItem('gradepath_profiles_v3') || '[]');
+      const active = stored.find((p: any) => p.id === 'prof_degree_protect');
+      return active?.semesters?.['1-1']?.[0]?.grade === 'A';
+    });
+    expect(restoredGrade).toBe(true);
+  });
+
+  test('11. Reviewed semesters with pending results update Getting Started progress without modifying confirmed GPA', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_pending_test',
+        name: 'Pending User',
+        degree: 'ARMT',
+        currentSemester: '2-1',
+        currentAcademicYear: 2,
+        batch: '',
+        specializationDept: 'CS',
+        semesters: {
+          '1-1': [{ code: 'CS1101', name: 'Principles of Crop Production', credits: 2, isCompulsory: true, grade: '' }],
+          '1-2': [{ code: 'CS1201', name: 'Field Crop Production', credits: 2, isCompulsory: true, grade: '' }],
+          '2-1': [{ code: 'CS2101', name: 'Plantation Crops', credits: 2, isCompulsory: true, grade: '' }],
+          '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_pending_test');
+    });
+    await page.reload();
+
+    // Initial state: 0 of 2 semesters reviewed
+    await expect(page.getByText('0 of 2 semesters reviewed')).toBeVisible();
+
+    // Click "Add Grades" for Semester 1-1 to view it
+    const add11Btn = page.getByRole('button', { name: /Semester 1-1 Add Grades/i });
+    await add11Btn.click();
+
+    // Semester 1-1 opened; no grades entered (pending results)
+    await expect(page.getByText('CS1101').first()).toBeVisible();
+
+    // Return to Dashboard
+    const bottomNav = page.locator('nav[aria-label="Mobile Navigation"]');
+    if (await bottomNav.isVisible()) {
+      await bottomNav.getByRole('button', { name: /Home/i }).click();
+    } else {
+      await page.getByRole('button', { name: /Dashboard/i }).first().click();
+    }
+
+    // Getting Started progress must update to 1 of 2 semesters reviewed (50%)
+    await expect(page.getByText('1 of 2 semesters reviewed (50%)')).toBeVisible();
+    await expect(page.getByText('Reviewed (Pending)')).toBeVisible();
+
+    // Confirmed academic metrics MUST remain strictly untouched (missing confirmed grades shown as em dash, 0 credits)
+    await expect(page.getByText('—/ 4.00').first()).toBeVisible();
+    await expect(page.getByText('0/ 126').first()).toBeVisible();
+    await expect(page.locator('main :visible').filter({ hasText: '★ No Grades Finalized' }).first()).toBeVisible();
+  });
+
+  test('12. Previous and Next semester navigation handles persistence failures safely', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_persist_fail',
+        name: 'Failure Test User',
+        degree: 'ARMT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'CS',
+        semesters: {
+          '1-1': [{ code: 'CS1101', name: 'Principles of Crop Production', credits: 2, isCompulsory: true, grade: '' }],
+          '1-2': [{ code: 'CS1201', name: 'Field Crop Production', credits: 2, isCompulsory: true, grade: '' }],
+          '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_persist_fail');
+    });
+    await page.reload();
+
+    // Navigate to Calculator
+    const calcNavBtn = page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i });
+    if (await calcNavBtn.isVisible()) {
+      await calcNavBtn.click();
+    } else {
+      await page.getByRole('button', { name: /Calculator/i }).first().click();
+    }
+
+    // Verify Next button [1-2 →] is visible
+    const nextTo12Btn = page.getByRole('button', { name: /1-2 →/i });
+    await expect(nextTo12Btn).toBeVisible();
+
+    // Simulate storage quota / persistence failure
+    await page.evaluate(() => {
+      Storage.prototype.setItem = () => {
+        throw new Error('QuotaExceededError: storage full');
+      };
+    });
+
+    // Attempt to navigate to Semester 1-2
+    await nextTo12Btn.click();
+
+    // Should display safe failure notice without silent data corruption
+    await expect(page.locator('text=Save failed: Storage unavailable').first()).toBeVisible();
   });
 
 });

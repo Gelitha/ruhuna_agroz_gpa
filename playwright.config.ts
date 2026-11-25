@@ -14,14 +14,28 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
-    hasTouch: true,
-    channel: 'chrome'
+    hasTouch: true
   },
   projects: [
+    // Genuine WebKit - iPhone 14
+    {
+      name: 'Mobile-WebKit-iPhone14',
+      use: {
+        ...devices['iPhone 14']
+      }
+    },
+    // Genuine WebKit - iPad Gen 7
+    {
+      name: 'Mobile-WebKit-iPad',
+      use: {
+        ...devices['iPad (gen 7)']
+      }
+    },
     // 320px - Narrow Android / iPhone SE 1st gen
     {
       name: 'Mobile-320px',
       use: {
+        channel: 'chrome',
         viewport: { width: 320, height: 600 },
         isMobile: true,
         hasTouch: true,
@@ -32,6 +46,7 @@ export default defineConfig({
     {
       name: 'Mobile-360px',
       use: {
+        channel: 'chrome',
         viewport: { width: 360, height: 740 },
         isMobile: true,
         hasTouch: true,
@@ -42,6 +57,7 @@ export default defineConfig({
     {
       name: 'Mobile-375px',
       use: {
+        channel: 'chrome',
         viewport: { width: 375, height: 667 },
         isMobile: true,
         hasTouch: true,
@@ -52,6 +68,7 @@ export default defineConfig({
     {
       name: 'Mobile-390px',
       use: {
+        channel: 'chrome',
         viewport: { width: 390, height: 844 },
         isMobile: true,
         hasTouch: true,
@@ -62,6 +79,7 @@ export default defineConfig({
     {
       name: 'Mobile-412px',
       use: {
+        channel: 'chrome',
         viewport: { width: 412, height: 915 },
         isMobile: true,
         hasTouch: true,
@@ -72,6 +90,7 @@ export default defineConfig({
     {
       name: 'Mobile-430px',
       use: {
+        channel: 'chrome',
         viewport: { width: 430, height: 932 },
         isMobile: true,
         hasTouch: true,
@@ -82,6 +101,7 @@ export default defineConfig({
     {
       name: 'Tablet-768px',
       use: {
+        channel: 'chrome',
         viewport: { width: 768, height: 1024 },
         isMobile: true,
         hasTouch: true,
@@ -92,6 +112,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run preview -- --port 4173',
     port: 4173,
-    reuseExistingServer: true
+    reuseExistingServer: true,
+    timeout: 60000
   }
 });

@@ -234,7 +234,7 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
   return {
     profiles: initialHydration.profiles,
     activeProfileId: initialHydration.activeId,
-    activeTab: 'calculator',
+    activeTab: 'dashboard',
     isSidebarExpanded: true,
     isMobileDrawerOpen: false,
     showOnboarding: !initialHydration.hasOnboarded,

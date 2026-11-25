@@ -67,6 +67,7 @@ export const ProfileSetupModal: React.FC = () => {
   const [batch, setBatch] = useState<string>('');
   const [specialization, setSpecialization] = useState<string>('CS');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showDegreeConfirm, setShowDegreeConfirm] = useState<boolean>(false);
 
   // Initialize form state: strictly unselected for onboarding/new, preserved for edit
   useEffect(() => {
@@ -150,9 +151,33 @@ export const ProfileSetupModal: React.FC = () => {
 
     if (isEdit && targetProfile) {
       const isDegreeChanged = targetProfile.degree !== degree;
+      const existingGradedCount = Object.values(targetProfile.semesters || {}).reduce(
+        (acc, sem) => acc + sem.filter(c => c.grade).length,
+        0
+      );
+
+      // Require explicit confirmation if degree changed and grades or archived records exist
+      const hasExistingData = existingGradedCount > 0 || Boolean(targetProfile.archivedDegreeRecords?.[degree]);
+      if (isDegreeChanged && hasExistingData && !showDegreeConfirm) {
+        setShowDegreeConfirm(true);
+        return;
+      }
+
+      // Safe recovery: archive previous degree results if degree changed, or restore if available
       const updatedSemesters = isDegreeChanged
-        ? initDefaultCoursesForDegree(degree, specDept)
+        ? (targetProfile.archivedDegreeRecords?.[degree]?.semesters || initDefaultCoursesForDegree(degree, specDept))
         : targetProfile.semesters;
+
+      const updatedArchived = isDegreeChanged
+        ? {
+            ...(targetProfile.archivedDegreeRecords || {}),
+            [targetProfile.degree]: {
+              degree: targetProfile.degree,
+              semesters: targetProfile.semesters,
+              archivedAt: new Date().toISOString()
+            }
+          }
+        : targetProfile.archivedDegreeRecords;
 
       updateProfile(targetProfile.id, {
         name: name.trim(),
@@ -162,8 +187,10 @@ export const ProfileSetupModal: React.FC = () => {
         currentAcademicYear: calculatedYear,
         batch: finalBatch,
         specializationDept: specDept,
-        semesters: updatedSemesters
+        semesters: updatedSemesters,
+        archivedDegreeRecords: updatedArchived
       });
+      setShowDegreeConfirm(false);
       closeProfileModal();
     } else if (isOnboarding) {
       // First-time onboarding setup
@@ -436,6 +463,52 @@ export const ProfileSetupModal: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Degree Programme Change Confirmation & Safe Recovery Modal */}
+        {showDegreeConfirm && targetProfile && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-amber-300">
+              <div className="flex items-center gap-2 text-amber-800 font-black text-sm uppercase tracking-wider">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>Confirm Degree Programme Change</span>
+              </div>
+              <h3 className="text-base font-black text-neutral-900 leading-tight">
+                Change Curriculum from {targetProfile.degree} to {degree}
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                You are changing this student's degree programme from <strong className="text-neutral-900">{targetProfile.degree}</strong> to <strong className="text-[#176B45]">{degree}</strong>.
+              </p>
+              <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                  <span>Academic Data Protection:</span>
+                </p>
+                <p className="text-[11px] text-amber-900 leading-relaxed">
+                  Your current {targetProfile.degree} course grades will be safely archived on this profile. The active course database will switch to {degree}. If you ever switch back, your previous results can be restored.
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDegreeConfirm(false);
+                    setDegree(targetProfile.degree);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs transition min-h-[44px] cursor-pointer"
+                >
+                  Cancel (Keep {targetProfile.degree})
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-black text-xs transition shadow-sm min-h-[44px] cursor-pointer"
+                >
+                  Confirm & Replace
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

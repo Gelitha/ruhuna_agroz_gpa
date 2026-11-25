@@ -52,7 +52,7 @@ export const SettingsView: React.FC = () => {
       degree,
       currentAcademicYear: year,
       currentSemester: sem,
-      batch: `${year === 1 ? '46th' : year === 2 ? '45th' : '44th'} Batch`
+      batch: ''
     });
     setName('');
     setRegNo('');

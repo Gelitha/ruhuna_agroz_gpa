@@ -278,6 +278,8 @@ export interface StudentProfile {
   projectionTargetCgpa?: number;
   // First-Time Grade Entry Onboarding & Setup Guidance
   guidedSetup?: GuidedSetupState;
+  // Archived Academic Results for Safe Degree Programme Recovery
+  archivedDegreeRecords?: Record<string, { degree: DegreeCode; semesters: Record<SemesterKey, Course[]>; archivedAt: string }>;
 }
 
 export interface GuidedSetupState {
