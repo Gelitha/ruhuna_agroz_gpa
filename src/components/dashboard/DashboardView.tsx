@@ -4,10 +4,9 @@
 
 import { AppLogo } from '../common/AppLogo';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Award,
-  BookOpen,
   Calendar,
   CheckCircle2,
   AlertTriangle,
@@ -16,13 +15,12 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
   Compass,
   FileText,
-  Sliders,
+  GraduationCap,
   Sparkles,
   Target,
-  Clock,
-  Layers,
   Edit3,
   X
 } from 'lucide-react';
@@ -36,9 +34,9 @@ import {
   CartesianGrid
 } from 'recharts';
 import { useGradeStore } from '../../store/useGradeStore';
-import { DEGREE_INFO } from '../../database';
+import { DEGREE_INFO, DEPARTMENTS } from '../../database';
 import { SemesterKey } from '../../types';
-import { getOrdinalYear } from '../../utils/calculations';
+import { getOrdinalYear, generateDegreeAudit } from '../../utils/calculations';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -48,39 +46,39 @@ export const DashboardView: React.FC = () => {
     getRiskAlerts,
     setActiveTab,
     setSelectedSemesterForCalculator,
-    setShowOnboarding,
+    setSpecializationDept,
     openProfileModal,
-    startGuidedSetup,
-    dismissGuidedSetup,
-    finishGuidedSetup
+    dismissGuidedSetup
   } = useGradeStore();
+
+  const [showCreditProgress, setShowCreditProgress] = useState(false);
+  const [showRequirements, setShowRequirements] = useState(false);
+  const [showSpecialization, setShowSpecialization] = useState(false);
 
   const profile = getActiveProfile();
   const stats = getOverallStats();
   const proj = getAcademicProjections();
   const alerts = getRiskAlerts();
   const degInfo = DEGREE_INFO[profile.degree] || DEGREE_INFO.ARMT;
+  const audit = generateDegreeAudit(profile);
+  const spec = stats.specEligibility;
 
   const currentYear = profile.currentAcademicYear || 1;
   const currentDeansHonor = stats.deansHonors[currentYear];
+  const showSpecializationCard = Boolean(degInfo.hasSpecializationChoice) && currentYear >= 2;
 
   const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
-  const currentSemIdx = semKeys.indexOf((profile.currentSemester || '1-1') as SemesterKey);
-  const hasFutureExpected = semKeys.slice(currentSemIdx + 1).some(sk =>
-    (profile.semesters[sk] || []).some(c => !c.isNgpa && c.isExpected && c.grade)
-  );
+  const hasFutureExpected = !!proj.hasFutureExpected;
 
   // Check whether any projected grades exist
   const hasProjections = stats.hasExpectedCourses || (proj && proj.combinedTotalCredits > proj.actualGpaCredits) || (stats.projectedCreditsAttempted ?? 0) > 0;
-  const projectedCgpa = hasFutureExpected && stats.projectedCgpa !== undefined
-    ? stats.projectedCgpa
+  const projectedCgpa = hasFutureExpected && proj.overallProjectedCgpa !== undefined
+    ? proj.overallProjectedCgpa
     : (proj && proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? stats.cgpa));
-  const projectedCredits = hasFutureExpected && stats.projectedCreditsAttempted !== undefined
-    ? stats.projectedCreditsAttempted
-    : (stats.projectedCreditsAttempted ?? (proj ? Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits) : 0));
-  const deltaCgpa = hasFutureExpected && stats.projectedCgpa !== undefined
-    ? Number((projectedCgpa - stats.cgpa).toFixed(2))
-    : (proj ? proj.deltaCombined : (stats.deltaCgpa ?? 0));
+  const projectedCredits = hasFutureExpected && proj.overallProjectedCredits !== undefined
+    ? proj.overallProjectedCredits
+    : Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits);
+  const deltaCgpa = Number((projectedCgpa - (proj.actualGpaCredits > 0 ? stats.cgpa : 0)).toFixed(2));
 
   const handleOpenSemester = (semKey: SemesterKey) => {
     setSelectedSemesterForCalculator(semKey);
@@ -453,7 +451,7 @@ export const DashboardView: React.FC = () => {
 
         {/* Metric 2: BIG DEGREE CREDITS */}
         <div
-          onClick={() => setActiveTab('progress')}
+          onClick={() => setShowCreditProgress(true)}
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
@@ -484,7 +482,7 @@ export const DashboardView: React.FC = () => {
 
         {/* Metric 3: DEAN'S HONOR LIST */}
         <div
-          onClick={() => setActiveTab('requirements')}
+          onClick={() => setShowRequirements(true)}
           className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-neutral-200/90 shadow-xs flex flex-col justify-between hover:border-emerald-500 hover:shadow-md cursor-pointer transition group"
         >
           <div className="flex items-center justify-between">
@@ -737,41 +735,69 @@ export const DashboardView: React.FC = () => {
           )}
         </div>
 
-        {/* RIGHT: SPECIALIZATION STREAM ELIGIBILITY (5 Cols) */}
+        {/* RIGHT: CONDITIONAL SPECIALIZATION & PLANNING TOOLS (5 Cols) */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
-          <div
-            onClick={() => setActiveTab('specialization')}
-            className="bg-white border border-neutral-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs cursor-pointer hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between flex-1 space-y-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-100 to-sky-100 text-indigo-800 flex items-center justify-center font-bold shadow-xs shrink-0">
-                  <Compass className="w-5 h-5" />
+          {showSpecializationCard && (
+            <div className="bg-white border border-neutral-200/90 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSpecialization(!showSpecialization)}
+                aria-expanded={showSpecialization}
+                className="w-full p-5 sm:p-6 flex items-start justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-100 to-sky-100 text-indigo-800 flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <Compass className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-neutral-900 truncate">
+                      {profile.degree} Specialization Eligibility
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">
+                      Year 3 Sem 1 Gateway: {spec.gpaMet ? 'GPA ≥ 2.70 Met' : `GPA ${spec.gpa31.toFixed(2)} / 2.70`}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm font-bold text-neutral-900">Final-Year Specialization Check</div>
-                  <div className="text-xs text-neutral-500 mt-0.5">Faculty 3-1 Gateway Rule</div>
+                <ChevronDown className={`w-5 h-5 text-neutral-400 shrink-0 transition-transform ${showSpecialization ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showSpecialization && (
+                <div className="px-5 sm:px-6 pb-5 pt-2 border-t border-neutral-100 space-y-3 text-xs">
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['AS', 'BL', 'CS', 'EC', 'EN', 'FS', 'SS'] as const).map(code => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setSpecializationDept(code)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                          profile.specializationDept === code
+                            ? 'bg-neutral-900 text-white border-neutral-900'
+                            : 'bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-100'
+                        }`}
+                        title={DEPARTMENTS[code]}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200 space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-neutral-600 font-medium">End of 3-1 GPA (≥ 2.70):</span>
+                      <span className={`font-mono font-bold ${spec.gpaMet ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {spec.gpa31.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-neutral-600 font-medium">{profile.specializationDept} Yr 3 Electives (≥ 50%):</span>
+                      <span className={`font-mono font-bold ${spec.electiveRatioMet ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {spec.electiveDeptCredits}/{spec.totalYear3ElectiveCredits} Cr ({(spec.ratio * 100).toFixed(0)}%)
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-neutral-400 shrink-0" />
+              )}
             </div>
-
-            <div className="p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-2 text-xs">
-              <div className="flex justify-between items-center">
-                <span className="text-neutral-600 font-medium">Year 3 Sem 1 CGPA Threshold:</span>
-                <span className="font-mono font-bold text-neutral-900">≥ 2.70</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-neutral-600 font-medium">3rd Year Department Electives:</span>
-                <span className="font-mono font-bold text-neutral-900">≥ 50%</span>
-              </div>
-            </div>
-
-            <div className="text-xs text-emerald-800 font-bold flex items-center gap-1.5">
-              <span>Inspect Department Quotas & Stream Requirements</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
+          )}
 
           {/* Quick Forecast Link Card */}
           <div
@@ -783,12 +809,133 @@ export const DashboardView: React.FC = () => {
                 <Target className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs sm:text-sm font-bold text-neutral-900">Target Class Solver & Grade Mixes</div>
+                <div className="text-xs sm:text-sm font-bold text-neutral-900">Target Class Solver &amp; Grade Mixes</div>
                 <div className="text-[11px] text-neutral-500">Calculate exact courses needed for First Class / 2nd Upper</div>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-neutral-400 shrink-0" />
           </div>
+        </div>
+      </div>
+
+      {/* ======================================================== */}
+      {/* 5. COMPACT COLLAPSIBLE CREDIT PROGRESS & REQUIREMENTS     */}
+      {/* ======================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+        {/* Collapsible Credit Progress */}
+        <div className="bg-white border border-neutral-200/90 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowCreditProgress(!showCreditProgress)}
+            aria-expanded={showCreditProgress}
+            className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                <Award className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-neutral-900">Credit Progress</div>
+                <div className="text-xs text-neutral-500">
+                  {stats.totalGpaCreditsEarned} / {stats.totalRequiredCredits} GPA Credits ({totalCreditsPercent}%)
+                </div>
+              </div>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${showCreditProgress ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showCreditProgress && (
+            <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-neutral-100 space-y-3 text-xs">
+              <div className="space-y-1">
+                <div className="flex justify-between font-semibold">
+                  <span className="text-neutral-700">Compulsory Core</span>
+                  <span className="font-mono text-emerald-800">{stats.totalCompulsoryEarned} / {stats.minCompulsoryCredits} Cr</span>
+                </div>
+                <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-700 h-full rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((stats.totalCompulsoryEarned / Math.max(1, stats.minCompulsoryCredits)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between font-semibold">
+                  <span className="text-neutral-700">Elective Modules</span>
+                  <span className="font-mono text-teal-800">{stats.totalElectiveEarned} / {stats.minElectiveCredits} Cr</span>
+                </div>
+                <div className="w-full bg-neutral-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-teal-600 h-full rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((stats.totalElectiveEarned / Math.max(1, stats.minElectiveCredits)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 flex items-center justify-between">
+                <span className="font-semibold text-neutral-700">Research (4-2) &amp; Non-GPA</span>
+                <span className={`font-bold ${stats.ngpaAllPassed ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {stats.ngpaAllPassed ? 'Non-GPA Cleared ✓' : 'Non-GPA Pending'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Collapsible Academic Requirements */}
+        <div className="bg-white border border-neutral-200/90 rounded-2xl sm:rounded-3xl shadow-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowRequirements(!showRequirements)}
+            aria-expanded={showRequirements}
+            className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-neutral-50/70 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-neutral-900">Academic Requirements</div>
+                <div className="text-xs text-neutral-500">
+                  {audit.allPassed ? 'All graduation criteria satisfied' : 'Degree conferment checklist'}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                audit.allPassed ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}>
+                {audit.allPassed ? 'Satisfied' : 'In Progress'}
+              </span>
+              <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${showRequirements ? 'rotate-180' : ''}`} />
+            </div>
+          </button>
+
+          {showRequirements && (
+            <div className="px-4 sm:px-5 pb-5 pt-2 border-t border-neutral-100 space-y-2 text-xs">
+              {audit.items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-2.5 rounded-xl border border-neutral-200/80 bg-neutral-50/60 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                      item.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {item.passed ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-neutral-900 truncate">{item.title}</div>
+                      <div className="text-[11px] text-neutral-500 truncate">{item.requirement}</div>
+                    </div>
+                  </div>
+                  <span className={`font-bold shrink-0 ${item.passed ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {item.current}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

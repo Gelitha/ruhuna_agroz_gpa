@@ -113,40 +113,45 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Bottom Profile Switcher & Fast CGPA Pill */}
-      <div className="p-3 border-t border-neutral-200 bg-white shrink-0">
+      <div className="p-3 border-t border-neutral-200 bg-white shrink-0 space-y-2">
         {isSidebarExpanded ? (
-          <div className="p-2.5 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between gap-2.5 shadow-2xs">
-            <div
-              className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
-              onClick={() => setActiveTab('profiles')}
-              title="Manage student profiles"
-            >
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-300">
-                {activeProfile.name.charAt(0).toUpperCase()}
+          <>
+            <div className="p-2.5 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between gap-2.5 shadow-2xs">
+              <div
+                className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
+                onClick={() => setActiveTab('profiles')}
+                title="Manage student profiles"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-300">
+                  {activeProfile.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs sm:text-sm font-bold text-neutral-900 truncate leading-tight">
+                    {activeProfile.name}
+                  </span>
+                  <span className="text-xs text-neutral-500 truncate mt-0.5">
+                    {activeProfile.degree} • <span className="font-bold text-emerald-700">{stats.totalGpaCreditsAttempted > 0 ? `${stats.cgpa.toFixed(2)} CGPA` : 'No Confirmed Grades'}</span>
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs sm:text-sm font-bold text-neutral-900 truncate leading-tight">
-                  {activeProfile.name}
-                </span>
-                <span className="text-xs text-neutral-500 truncate mt-0.5">
-                  {activeProfile.degree} • <span className="font-bold text-emerald-700">{stats.totalGpaCreditsAttempted > 0 ? `${stats.cgpa.toFixed(2)} CGPA` : 'No Confirmed Grades'}</span>
-                </span>
-              </div>
-            </div>
 
-            <select
-              value={activeProfileId}
-              onChange={(e) => switchProfile(e.target.value)}
-              className="text-xs bg-white border border-neutral-300 rounded-lg px-2 py-1 text-neutral-800 cursor-pointer focus:outline-none focus:border-emerald-600 font-bold"
-              title="Switch profile"
-            >
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.degree})
-                </option>
-              ))}
-            </select>
-          </div>
+              <select
+                value={activeProfileId}
+                onChange={(e) => switchProfile(e.target.value)}
+                className="text-xs bg-white border border-neutral-300 rounded-lg px-2 py-1 text-neutral-800 cursor-pointer focus:outline-none focus:border-emerald-600 font-bold"
+                title="Switch profile"
+              >
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.degree})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11px] text-[#626962] text-center font-medium px-1">
+              Your academic data stays on your device.
+            </p>
+          </>
         ) : (
           <button
             onClick={() => setActiveTab('profiles')}

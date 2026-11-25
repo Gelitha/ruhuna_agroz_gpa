@@ -200,14 +200,37 @@ export const PlanningTools: React.FC = () => {
   };
 
   const handleApplySuggestedGrades = (allowBelowTarget = false) => {
+    if (!profile || !profile.id) {
+      setAppliedToast('Cannot apply: No active student profile.');
+      setTimeout(() => setAppliedToast(null), 4000);
+      return;
+    }
     if (suggestedCombination.courses.length === 0) return;
     if (!allowBelowTarget && !suggestedCombination.possible) return;
 
-    const allocations = suggestedCombination.courses.map(item => ({
-      semKey: item.semesterKey,
-      courseCode: item.courseCode,
-      grade: item.suggestedGrade
-    }));
+    // Validate concrete enrolled, non-NGPA, unresolved courses only (never overwrite confirmed grades)
+    const allocations = suggestedCombination.courses
+      .filter(item => {
+        if (!item.suggestedGrade || !GRADING_SCALE[item.suggestedGrade]) return false;
+        const semCourses = profile.semesters[item.semesterKey] || [];
+        const course = semCourses.find(c => c.code === item.courseCode);
+        if (!course || course.isNgpa || isCourseGradeConfirmed(course)) return false;
+        const effGpv = calculateEffectiveGpvForGrade(item.suggestedGrade, course.isRepeat, course.isExcused);
+        if (effGpv === null) return false;
+        if (course.isRepeat && !course.isExcused && effGpv > 2.0 + 1e-6) return false;
+        return true;
+      })
+      .map(item => ({
+        semKey: item.semesterKey,
+        courseCode: item.courseCode,
+        grade: item.suggestedGrade
+      }));
+
+    if (allocations.length === 0) {
+      setAppliedToast('No eligible unresolved courses to apply.');
+      setTimeout(() => setAppliedToast(null), 4000);
+      return;
+    }
 
     applyTargetMixPlan(allocations);
     const saved = saveCurrentState ? saveCurrentState() : true;
@@ -217,10 +240,14 @@ export const PlanningTools: React.FC = () => {
       return;
     }
 
+    const estimateNote = suggestedCombination.isIncompleteEstimate
+      ? ` (${suggestedCombination.unenrolledCredits} future Cr remain unenrolled)`
+      : '';
+
     setAppliedToast(
       allowBelowTarget && !suggestedCombination.possible
-        ? `Applied ${allocations.length} scenario grades as projected (shortfall: ${suggestedCombination.shortfall.toFixed(2)} CGPA).`
-        : `Applied ${allocations.length} balanced grades as projected grades!`
+        ? `Applied ${allocations.length} scenario grades as projected (shortfall: ${suggestedCombination.shortfall.toFixed(2)} CGPA)${estimateNote}.`
+        : `Applied ${allocations.length} balanced grades as projected grades${estimateNote}!`
     );
     setTimeout(() => setAppliedToast(null), 5000);
   };
@@ -778,12 +805,16 @@ export const PlanningTools: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Unreachable Target Warning */}
+                  {/* Unreachable Target / Allocation Shortfall Warning */}
                   {!suggestedCombination.possible && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950 space-y-1">
                       <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
                         <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-                        <span>Target currently unreachable with your selected grades.</span>
+                        <span>
+                          {suggestedCombination.theoreticallyAchievable
+                            ? 'Generated allocation falls short of target under current course weights or locks.'
+                            : 'Target currently unreachable with your selected grades.'}
+                        </span>
                       </div>
                       <p className="text-[11px] text-amber-900 leading-relaxed">
                         Max achievable CGPA: <strong>{suggestedCombination.maxAchievableCgpa.toFixed(2)}</strong> • Shortfall: <strong>{suggestedCombination.shortfall.toFixed(2)}</strong> • Required remaining avg: <strong>{suggestedCombination.autoCredits + suggestedCombination.unenrolledCredits > 0 ? suggestedCombination.requiredRemainingAverage.toFixed(2) : 'N/A'}</strong> across {suggestedCombination.autoCredits + suggestedCombination.unenrolledCredits} remaining Cr. Change manual grades, return subjects to Auto, or adjust your target.
@@ -853,10 +884,15 @@ export const PlanningTools: React.FC = () => {
                         ) : (
                           suggestedCombination.autoQuotas.map(q => (
                             <span
-                              key={`auto-${q.grade}`}
-                              className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#103B2D] border border-emerald-300 font-bold text-[11px]"
+                              key={`auto-${q.grade}-${q.gpv.toFixed(2)}`}
+                              title={`${q.credits} Cr × ${q.gpv.toFixed(1)} GPV = ${q.weightedPoints.toFixed(1)} pts`}
+                              className={`px-2 py-0.5 rounded-full border font-bold text-[11px] ${
+                                q.isRepeatCapped
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-emerald-100 text-[#103B2D] border-emerald-300'
+                              }`}
                             >
-                              {q.grade}: {q.credits} Cr
+                              {q.grade}{q.isRepeatCapped ? ` (repeat capped · ${q.gpv.toFixed(1)})` : ''}: {q.credits} Cr
                             </span>
                           ))
                         )}
@@ -867,10 +903,15 @@ export const PlanningTools: React.FC = () => {
                           <span className="text-[11px] font-bold text-blue-700">Manual Locked:</span>
                           {suggestedCombination.manualQuotas.map(q => (
                             <span
-                              key={`man-${q.grade}`}
-                              className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 font-bold text-[11px]"
+                              key={`man-${q.grade}-${q.gpv.toFixed(2)}`}
+                              title={`${q.credits} Cr × ${q.gpv.toFixed(1)} GPV = ${q.weightedPoints.toFixed(1)} pts`}
+                              className={`px-2 py-0.5 rounded-full border font-bold text-[11px] ${
+                                q.isRepeatCapped
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : 'bg-blue-100 text-blue-900 border-blue-300'
+                              }`}
                             >
-                              {q.grade}: {q.credits} Cr
+                              {q.grade}{q.isRepeatCapped ? ` (repeat capped · ${q.gpv.toFixed(1)})` : ''}: {q.credits} Cr
                             </span>
                           ))}
                         </div>
@@ -881,8 +922,8 @@ export const PlanningTools: React.FC = () => {
                       <div className="text-[10px] text-neutral-500 flex flex-wrap items-center gap-1">
                         <span>Initial Auto Baseline:</span>
                         {baselineCombination.autoQuotas.map(q => (
-                          <span key={`base-${q.grade}`} className="font-mono">
-                            {q.grade} ({q.credits} Cr)
+                          <span key={`base-${q.grade}-${q.gpv.toFixed(2)}`} className="font-mono">
+                            {q.grade}{q.isRepeatCapped ? ` (repeat capped)` : ''} ({q.credits} Cr)
                           </span>
                         ))}
                         <span>• Combination Avg: {suggestedCombination.achievedGpa.toFixed(2)}</span>
@@ -986,10 +1027,12 @@ export const PlanningTools: React.FC = () => {
                     <HelpTooltip id="T09" size="xs" />
                   </div>
                   <div className="font-sans font-tabular text-xl font-bold text-[#176B45] mt-1">
-                    {proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa.toFixed(2) : '—'}
+                    {(proj.hasFutureExpected ? (proj.overallProjectedCgpa ?? proj.combinedProjectedCgpa) : proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : 0) > 0
+                      ? (proj.hasFutureExpected ? (proj.overallProjectedCgpa ?? proj.combinedProjectedCgpa) : proj.combinedProjectedCgpa).toFixed(2)
+                      : '—'}
                   </div>
                   <span className="text-[11px] text-emerald-700 block mt-0.5">
-                    {proj.scenarios.isExpectedIncomplete ? 'Partial coverage' : 'Full projection'}
+                    {proj.hasFutureExpected ? 'Includes future semesters' : proj.scenarios.isExpectedIncomplete ? 'Partial coverage' : 'Full projection'}
                   </span>
                 </div>
 

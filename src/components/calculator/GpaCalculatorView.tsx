@@ -372,25 +372,22 @@ export const GpaCalculatorView: React.FC = () => {
   }, [profile]);
 
   const hasFutureExpectedCourses = useMemo(() => {
-    const curIdx = ALL_SEMESTER_KEYS.indexOf((profile.currentSemester || '1-1') as SemesterKey);
-    return ALL_SEMESTER_KEYS.slice(curIdx + 1).some(sk =>
-      (profile.semesters[sk] || []).some(c => !c.isNgpa && c.isExpected && c.grade)
-    );
-  }, [profile]);
+    return !!proj.hasFutureExpected;
+  }, [proj.hasFutureExpected]);
 
   const displayedProjectedCgpa = useMemo(() => {
-    if (hasFutureExpectedCourses && stats.projectedCgpa !== undefined) {
-      return stats.projectedCgpa;
+    if (hasFutureExpectedCourses && proj.overallProjectedCgpa !== undefined) {
+      return proj.overallProjectedCgpa;
     }
     return proj.combinedTotalCredits > 0 ? proj.combinedProjectedCgpa : (stats.projectedCgpa ?? proj.actualCgpa);
-  }, [hasFutureExpectedCourses, stats.projectedCgpa, proj.combinedTotalCredits, proj.combinedProjectedCgpa, proj.actualCgpa]);
+  }, [hasFutureExpectedCourses, proj.overallProjectedCgpa, proj.combinedTotalCredits, proj.combinedProjectedCgpa, stats.projectedCgpa, proj.actualCgpa]);
 
   const displayedProjectedCredits = useMemo(() => {
-    if (hasFutureExpectedCourses && stats.projectedCreditsAttempted !== undefined) {
-      return stats.projectedCreditsAttempted;
+    if (hasFutureExpectedCourses && proj.overallProjectedCredits !== undefined) {
+      return proj.overallProjectedCredits;
     }
     return Math.max(0, proj.combinedTotalCredits - proj.actualGpaCredits);
-  }, [hasFutureExpectedCourses, stats.projectedCreditsAttempted, proj.combinedTotalCredits, proj.actualGpaCredits]);
+  }, [hasFutureExpectedCourses, proj.overallProjectedCredits, proj.combinedTotalCredits, proj.actualGpaCredits]);
 
   const displayedDeltaCgpa = useMemo(() => {
     const baseActual = proj.actualGpaCredits > 0 ? proj.actualCgpa : 0;

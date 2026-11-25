@@ -10,11 +10,10 @@ import { Footer } from './components/layout/Footer';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { ProfileSetupModal } from './components/profiles/ProfileSetupModal';
 
-// 7 Consolidated Screen Views
+// 6 Consolidated Screen Views
 import { DashboardView } from './components/dashboard/DashboardView';
 import { GpaCalculatorView } from './components/calculator/GpaCalculatorView';
 import { AcademicTranscriptView } from './components/transcript/AcademicTranscriptView';
-import { CreditProgressView } from './components/progress/CreditProgressView';
 import { GpaAnalyticsView } from './components/analytics/GpaAnalyticsView';
 import { StudentProfilesView } from './components/profiles/StudentProfilesView';
 import { SettingsView } from './components/settings/SettingsView';
@@ -31,8 +30,6 @@ export const GradePathApp: React.FC = () => {
         return <GpaCalculatorView />;
       case 'analytics':
         return <GpaAnalyticsView />;
-      case 'progress':
-        return <CreditProgressView />;
       case 'transcript':
         return <AcademicTranscriptView />;
       case 'profiles':

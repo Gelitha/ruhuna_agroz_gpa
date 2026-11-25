@@ -139,6 +139,9 @@ export function calculateAcademicProjections(
   // Combined Projection Trackers (through current semester: idx <= currentIndex)
   let combinedPoints = 0;
   let combinedCredits = 0;
+  let allSemProjectedPoints = 0;
+  let allSemProjectedCredits = 0;
+  let hasFutureExpected = false;
   let unresolvedCoursesWithoutPredictionCount = 0;
 
   // Scenarios Trackers (bounded strictly to scope: idx <= currentIndex)
@@ -349,6 +352,12 @@ export function calculateAcademicProjections(
     }
 
     // Accumulate into Scope Buckets
+    allSemProjectedPoints += semProjectedPoints;
+    allSemProjectedCredits += semProjectedCredits;
+    if (isFuture && gpaCourses.some(c => c.isExpected && c.grade && GRADING_SCALE[c.grade])) {
+      hasFutureExpected = true;
+    }
+
     if (isPast) {
       pendingProjPoints += semProjectedPoints;
       pendingProjCredits += semProjectedCredits;
@@ -475,6 +484,11 @@ export function calculateAcademicProjections(
       ? Number((accuracyEntries.reduce((sum, e) => sum + e.deltaGpv, 0) / totalCompared).toFixed(2))
       : 0;
 
+  const combinedProjectedCgpaExact = combinedProjectedCgpa;
+  const overallProjectedCgpaExact =
+    allSemProjectedCredits > 0 ? allSemProjectedPoints / allSemProjectedCredits : actualCgpa;
+  const overallProjectedCredits = Math.max(0, allSemProjectedCredits - globalActualCredits);
+
   return {
     actualCgpa: Number(actualCgpa.toFixed(2)),
     actualGpaCredits: globalActualCredits,
@@ -494,8 +508,11 @@ export function calculateAcademicProjections(
     currentSemConfirmedCredits: currentSemActualCredits,
     currentSemUnresolvedCredits,
     currentSemGradedCredits: currentSemProjectedCredits,
-    combinedProjectedCgpa: Number(combinedProjectedCgpa.toFixed(2)),
+    combinedProjectedCgpa: Number(combinedProjectedCgpaExact.toFixed(2)),
     combinedTotalCredits: combinedCredits,
+    overallProjectedCgpa: Number(overallProjectedCgpaExact.toFixed(2)),
+    overallProjectedCredits,
+    hasFutureExpected,
     deltaCombined,
     projectionCoveragePercent,
     isCurrentSemComplete,
@@ -811,6 +828,8 @@ export interface GradeCreditQuota {
   gpv: number;
   credits: number;
   courseCount: number;
+  weightedPoints: number;
+  isRepeatCapped?: boolean;
 }
 
 export interface SuggestedCourseGrade {
@@ -829,6 +848,7 @@ export interface SuggestedCourseGrade {
 
 export interface SuggestedCombinationResult {
   possible: boolean;
+  theoreticallyAchievable: boolean;
   courses: SuggestedCourseGrade[];
   achievedGpa: number;
   estimatedAchievedCgpa: number;
@@ -852,25 +872,33 @@ export interface SuggestedCombinationResult {
 const FULL_GRADE_ORDER: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
 
 function buildGradeQuotas(items: Array<{ grade: Grade; gpv: number; credits: number }>): GradeCreditQuota[] {
-  const map = new Map<Grade, GradeCreditQuota>();
+  const map = new Map<string, GradeCreditQuota>();
   for (const item of items) {
     if (!item.grade || item.credits <= 0) continue;
-    const existing = map.get(item.grade);
+    const rawGpv = GRADING_SCALE[item.grade]?.gpv ?? item.gpv;
+    const isRepeatCapped = rawGpv > item.gpv + 1e-6;
+    const key = `${item.grade}:${item.gpv.toFixed(2)}`;
+    const existing = map.get(key);
     if (existing) {
       existing.credits += item.credits;
       existing.courseCount += 1;
+      existing.weightedPoints += item.gpv * item.credits;
     } else {
-      map.set(item.grade, {
+      map.set(key, {
         grade: item.grade,
         gpv: item.gpv,
         credits: item.credits,
-        courseCount: 1
+        courseCount: 1,
+        weightedPoints: item.gpv * item.credits,
+        isRepeatCapped
       });
     }
   }
-  return Array.from(map.values()).sort(
-    (a, b) => FULL_GRADE_ORDER.indexOf(a.grade) - FULL_GRADE_ORDER.indexOf(b.grade)
-  );
+  return Array.from(map.values()).sort((a, b) => {
+    const orderDiff = FULL_GRADE_ORDER.indexOf(a.grade) - FULL_GRADE_ORDER.indexOf(b.grade);
+    if (orderDiff !== 0) return orderDiff;
+    return b.gpv - a.gpv;
+  });
 }
 
 /**
@@ -955,6 +983,7 @@ export function generateSuggestedGradeCombination(
   if (scope === 'after_pending' && currentIndex === 0) {
     return {
       possible: false,
+      theoreticallyAchievable: false,
       courses: [],
       achievedGpa: 0,
       estimatedAchievedCgpa: actualCgpa,
@@ -1041,6 +1070,7 @@ export function generateSuggestedGradeCombination(
 
     return {
       possible,
+      theoreticallyAchievable: possible,
       courses: resultCourses,
       achievedGpa: totalEligibleCredits > 0 ? Number((manualPoints / totalEligibleCredits).toFixed(2)) : 0,
       estimatedAchievedCgpa: Number(finalCgpa.toFixed(2)),
@@ -1079,15 +1109,27 @@ export function generateSuggestedGradeCombination(
     { grade: 'E', gpv: 0.0 }
   ];
 
-  const isTargetReachable =
+  const isTargetTheoreticallyAchievable =
     targetTotalPoints <= maxAchievablePoints + 1e-9 && requiredRemainingAverage <= 4.0 + 1e-9;
 
-  // Portion of remaining points expected from enrolled auto courses
+  const enrolledMaxAutoPoints = autoItems.reduce(
+    (sum, item) => sum + item.maxGpv * (item.course.credits || 0),
+    0
+  );
+
+  // Portion of remaining points expected from enrolled auto courses, respecting repeat caps and unenrolled capacity
+  const minEnrolledNeeded = Math.max(0, remainingNeededPoints - 4.0 * unenrolledCredits);
   const enrolledTargetAutoPoints =
     autoCredits > 0
-      ? isTargetReachable
-        ? Math.max(0, remainingNeededPoints - Math.min(4.0, Math.max(2.0, requiredRemainingAverage)) * unenrolledCredits)
-        : maxAutoPoints - 4.0 * unenrolledCredits
+      ? isTargetTheoreticallyAchievable
+        ? Math.min(
+            enrolledMaxAutoPoints,
+            Math.max(
+              minEnrolledNeeded,
+              remainingNeededPoints - Math.min(4.0, Math.max(2.0, requiredRemainingAverage)) * unenrolledCredits
+            )
+          )
+        : enrolledMaxAutoPoints
       : 0;
 
   const enrolledReqAvg =
@@ -1102,7 +1144,7 @@ export function generateSuggestedGradeCombination(
   if (baseStepIdx === -1) baseStepIdx = GRADE_SCALE_STEPS.length - 1;
 
   const autoStepIndices = autoItems.map(({ maxGpv }) => {
-    if (!isTargetReachable) {
+    if (!isTargetTheoreticallyAchievable) {
       const bestIdx = GRADE_SCALE_STEPS.findIndex(s => s.gpv <= maxGpv + 1e-9);
       return bestIdx === -1 ? GRADE_SCALE_STEPS.length - 1 : bestIdx;
     }
@@ -1114,17 +1156,23 @@ export function generateSuggestedGradeCombination(
   });
 
   const calcAutoPoints = () =>
-    autoItems.reduce(
-      (sum, item, i) => sum + (item.course.credits || 0) * GRADE_SCALE_STEPS[autoStepIndices[i]].gpv,
-      0
-    );
+    autoItems.reduce((sum, item, i) => {
+      const effGpv =
+        calculateEffectiveGpvForGrade(
+          GRADE_SCALE_STEPS[autoStepIndices[i]].grade,
+          item.course.isRepeat,
+          item.course.isExcused
+        ) ?? 0;
+      return sum + (item.course.credits || 0) * effGpv;
+    }, 0);
 
   let currentAutoPoints = calcAutoPoints();
 
-  if (isTargetReachable && autoItems.length > 0 && remainingNeededPoints > 0) {
-    // Phase 1: Step up lowest-GPV automatic courses until enrolledTargetAutoPoints is met
+  if (isTargetTheoreticallyAchievable && autoItems.length > 0 && enrolledTargetAutoPoints > 0) {
+    // Phase 1: Step up lowest-GPV automatic courses until enrolledTargetAutoPoints is met (no arbitrary 200-step cap)
+    const maxPhase1Steps = autoItems.length * GRADE_SCALE_STEPS.length + 10;
     let guard = 0;
-    while (currentAutoPoints + 1e-9 < enrolledTargetAutoPoints && guard < 200) {
+    while (currentAutoPoints + 1e-9 < enrolledTargetAutoPoints && guard < maxPhase1Steps) {
       guard++;
       let bestIdx = -1;
       let bestScore = Infinity;
@@ -1185,7 +1233,7 @@ export function generateSuggestedGradeCombination(
     // Phase 3: Smooth variance between high & low auto courses without dropping below target
     let smoothed = true;
     let smoothGuard = 0;
-    while (smoothed && smoothGuard < 50) {
+    while (smoothed && smoothGuard < 100) {
       smoothed = false;
       smoothGuard++;
       for (let i = 0; i < autoItems.length; i++) {
@@ -1243,12 +1291,23 @@ export function generateSuggestedGradeCombination(
 
   const unenrolledAssumedPoints =
     unenrolledCredits > 0
-      ? (isTargetReachable ? Math.min(4.0, Math.max(2.0, requiredRemainingAverage)) : 4.0) * unenrolledCredits
+      ? isTargetTheoreticallyAchievable
+        ? Math.min(
+            4.0 * unenrolledCredits,
+            Math.max(
+              2.0 * unenrolledCredits,
+              targetTotalPoints - confirmedPointsInScope - manualPoints - currentAutoPoints
+            )
+          )
+        : 4.0 * unenrolledCredits
       : 0;
 
+  // Validate actual generated allocation using unrounded effective grade points
   const totalCombinedPoints = confirmedPointsInScope + manualPoints + currentAutoPoints + unenrolledAssumedPoints;
-  const estimatedAchievedCgpa =
-    totalScopeCredits > 0 ? Number((totalCombinedPoints / totalScopeCredits).toFixed(2)) : 0;
+  const allocationAchieved = totalScopeCredits > 0 && totalCombinedPoints + 1e-9 >= targetTotalPoints;
+
+  const estimatedAchievedCgpaExact = totalScopeCredits > 0 ? totalCombinedPoints / totalScopeCredits : 0;
+  const estimatedAchievedCgpa = Number(estimatedAchievedCgpaExact.toFixed(2));
   const achievedGpa =
     totalEligibleCredits > 0
       ? Number(((manualPoints + currentAutoPoints) / totalEligibleCredits).toFixed(2))
@@ -1264,12 +1323,13 @@ export function generateSuggestedGradeCombination(
     resultCourses.map(c => ({ grade: c.suggestedGrade, gpv: c.effectiveGpv, credits: c.credits }))
   );
 
-  const shortfall = isTargetReachable
+  const shortfall = allocationAchieved
     ? 0
-    : Number(Math.max(0, targetCgpa - maxAchievableCgpa).toFixed(2));
+    : Number(Math.max(0, targetCgpa - estimatedAchievedCgpaExact).toFixed(2));
 
   return {
-    possible: isTargetReachable,
+    possible: allocationAchieved,
+    theoreticallyAchievable: isTargetTheoreticallyAchievable,
     courses: resultCourses,
     achievedGpa,
     estimatedAchievedCgpa,
@@ -1287,8 +1347,10 @@ export function generateSuggestedGradeCombination(
     manualQuotas,
     autoQuotas,
     combinedQuotas,
-    explanation: isTargetReachable
+    explanation: allocationAchieved
       ? `Balanced combination achieving ${achievedGpa.toFixed(2)} average across ${totalEligibleCredits} eligible credits (Estimated CGPA: ${estimatedAchievedCgpa.toFixed(2)}).`
+      : isTargetTheoreticallyAchievable
+      ? `Generated allocation reaches ${estimatedAchievedCgpa.toFixed(2)} CGPA (shortfall: ${shortfall.toFixed(2)}) under current course weights and locks.`
       : 'Target currently unreachable with your selected grades.'
   };
 }

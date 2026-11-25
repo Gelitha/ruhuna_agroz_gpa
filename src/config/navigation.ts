@@ -1,13 +1,12 @@
 // University of Ruhuna - Faculty of Agriculture
 // Unified Navigation Configuration (Single Source of Truth)
-// 7 Consolidated Primary Destinations + 4 Mobile Bottom Nav Destinations + Legacy Alias Redirects
+// 6 Consolidated Primary Destinations + 4 Mobile Bottom Nav Destinations + Legacy Alias Redirects
 
 import React from 'react';
 import {
   LayoutDashboard,
   Calculator,
   LineChart,
-  Award,
   FileText,
   Users,
   Settings
@@ -18,7 +17,6 @@ export type ConsolidatedNavId =
   | 'dashboard'
   | 'calculator'
   | 'analytics'
-  | 'progress'
   | 'transcript'
   | 'profiles'
   | 'settings';
@@ -29,36 +27,27 @@ export interface NavItemConfig {
   id: ConsolidatedNavId;
   label: string;
   mobileLabel?: string;
-  section: 'OVERVIEW' | 'ACADEMIC' | 'INSIGHTS' | 'PERSONAL';
+  section: 'ACADEMIC' | 'PERSONAL';
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
 }
 
 export const CONSOLIDATED_NAV_ITEMS: NavItemConfig[] = [
-  { id: 'dashboard', label: 'Dashboard', mobileLabel: 'Home', section: 'OVERVIEW', icon: LayoutDashboard },
-  { id: 'calculator', label: 'GPA Calculator', mobileLabel: 'Calculator', section: 'OVERVIEW', icon: Calculator },
-  { id: 'analytics', label: 'Analytics', mobileLabel: 'Analytics', section: 'INSIGHTS', icon: LineChart },
-  { id: 'progress', label: 'Academic Progress', mobileLabel: 'Progress', section: 'ACADEMIC', icon: Award },
-  { id: 'transcript', label: 'Academic Transcript', section: 'OVERVIEW', icon: FileText },
+  { id: 'dashboard', label: 'Dashboard', mobileLabel: 'Home', section: 'ACADEMIC', icon: LayoutDashboard },
+  { id: 'calculator', label: 'GPA Calculator', mobileLabel: 'Calculator', section: 'ACADEMIC', icon: Calculator },
+  { id: 'analytics', label: 'Analytics', mobileLabel: 'Analytics', section: 'ACADEMIC', icon: LineChart },
+  { id: 'transcript', label: 'Academic Transcript', mobileLabel: 'Transcript', section: 'ACADEMIC', icon: FileText },
   { id: 'profiles', label: 'Student Profiles', section: 'PERSONAL', icon: Users },
   { id: 'settings', label: 'Settings & Backup', section: 'PERSONAL', icon: Settings }
 ];
 
 export const NAV_SECTIONS: Array<{
-  title: 'OVERVIEW' | 'ACADEMIC' | 'INSIGHTS' | 'PERSONAL';
+  title: 'ACADEMIC' | 'PERSONAL';
   items: NavItemConfig[];
 }> = [
   {
-    title: 'OVERVIEW',
-    items: CONSOLIDATED_NAV_ITEMS.filter(i => i.section === 'OVERVIEW')
-  },
-  {
     title: 'ACADEMIC',
     items: CONSOLIDATED_NAV_ITEMS.filter(i => i.section === 'ACADEMIC')
-  },
-  {
-    title: 'INSIGHTS',
-    items: CONSOLIDATED_NAV_ITEMS.filter(i => i.section === 'INSIGHTS')
   },
   {
     title: 'PERSONAL',
@@ -70,7 +59,7 @@ export const MOBILE_BOTTOM_NAV_ITEMS: NavItemConfig[] = [
   CONSOLIDATED_NAV_ITEMS[0], // Home (dashboard)
   CONSOLIDATED_NAV_ITEMS[1], // Calculator (calculator)
   CONSOLIDATED_NAV_ITEMS[2], // Analytics (analytics)
-  CONSOLIDATED_NAV_ITEMS[3]  // Progress (progress)
+  CONSOLIDATED_NAV_ITEMS[3]  // Transcript (transcript)
 ];
 
 const LEGACY_REDIRECT_MAP: Record<string, ConsolidatedNavId> = {
@@ -83,9 +72,9 @@ const LEGACY_REDIRECT_MAP: Record<string, ConsolidatedNavId> = {
   forecast: 'calculator',
   goals: 'calculator',
   analytics: 'analytics',
-  progress: 'progress',
-  requirements: 'progress',
-  specialization: 'progress',
+  progress: 'dashboard',
+  requirements: 'dashboard',
+  specialization: 'dashboard',
   transcript: 'transcript',
   profiles: 'profiles',
   settings: 'settings'
@@ -111,5 +100,5 @@ export function getRouteInfo(view: NavView | string): { section: string; title: 
   const item = CONSOLIDATED_NAV_ITEMS.find(i => i.id === normalized);
   return item
     ? { section: item.section, title: item.label }
-    : { section: 'OVERVIEW', title: 'Dashboard' };
+    : { section: 'ACADEMIC', title: 'Dashboard' };
 }

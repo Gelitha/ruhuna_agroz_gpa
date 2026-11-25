@@ -420,6 +420,9 @@ export interface AcademicProjectionResult {
   currentSemGradedCredits: number;
   combinedProjectedCgpa: number;
   combinedTotalCredits: number;
+  overallProjectedCgpa?: number;
+  overallProjectedCredits?: number;
+  hasFutureExpected?: boolean;
   deltaCombined: number;
   projectionCoveragePercent: number;
   isCurrentSemComplete: boolean;

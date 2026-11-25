@@ -1032,25 +1032,46 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
 
     applyTargetMixPlan: (allocations) => {
       const activeId = get().activeProfileId;
+      const activeProfile = get().profiles.find(p => p.id === activeId);
+      if (!activeProfile || !Array.isArray(allocations) || allocations.length === 0) return;
+
       const allocMap = new Map<string, Grade>();
       allocations.forEach(a => {
-        allocMap.set(`${a.semKey}:${a.courseCode}`, a.grade);
+        if (a.grade && GRADING_SCALE[a.grade]) {
+          allocMap.set(`${a.semKey}:${a.courseCode}`, a.grade);
+        }
       });
+      if (allocMap.size === 0) return;
 
       const updatedProfiles = get().profiles.map(profile => {
         if (profile.id !== activeId) return profile;
 
         const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
         const nextSemesters = { ...profile.semesters };
+        const existingProjections = { ...(profile.courseProjections || {}) };
 
         semKeys.forEach(semKey => {
           const list = nextSemesters[semKey] || [];
           nextSemesters[semKey] = list.map(c => {
             const key = `${semKey}:${c.code}`;
-            if (allocMap.has(key)) {
+            if (allocMap.has(key) && !c.isNgpa && !isCourseGradeConfirmed(c)) {
+              const nextGrade = allocMap.get(key) as Grade;
+              const currentProj = existingProjections[key];
+              existingProjections[key] = {
+                ...(currentProj || {
+                  courseCode: c.code,
+                  semesterKey: semKey,
+                  examStatus: 'upcoming'
+                }),
+                historicalPrediction: currentProj?.historicalPrediction || nextGrade,
+                predictedGrade: nextGrade,
+                targetGrade: nextGrade,
+                isResultPending: true,
+                lastUpdated: new Date().toISOString()
+              };
               return {
                 ...c,
-                grade: allocMap.get(key) as Grade,
+                grade: nextGrade,
                 isExpected: true
               };
             }
@@ -1061,6 +1082,7 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         return {
           ...profile,
           semesters: nextSemesters,
+          courseProjections: existingProjections,
           updatedAt: new Date().toISOString()
         };
       });

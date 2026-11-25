@@ -307,7 +307,7 @@ export const Header: React.FC = () => {
 
           {/* Quick Credits Completed Pill */}
           <div
-            onClick={() => setActiveTab('progress')}
+            onClick={() => setActiveTab('dashboard')}
             className="cursor-pointer hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-xs text-neutral-700 font-medium transition"
             title="Total GPA Credits Earned"
           >
@@ -516,7 +516,7 @@ export const Header: React.FC = () => {
             ))}
           </div>
 
-          <div className="p-3 border-t border-[#DCDDD7]">
+          <div className="p-3 border-t border-[#DCDDD7] space-y-2">
             <button
               type="button"
               onClick={() => {
@@ -528,6 +528,9 @@ export const Header: React.FC = () => {
               <Sparkles className="w-4 h-4 text-[#176B45]" />
               <span>Welcome Guide</span>
             </button>
+            <p className="text-[11px] text-[#626962] text-center font-medium px-1">
+              Your academic data stays on your device.
+            </p>
           </div>
         </nav>
       </div>
