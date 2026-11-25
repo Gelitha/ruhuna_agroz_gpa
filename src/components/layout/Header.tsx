@@ -7,9 +7,23 @@ import {
   ChevronDown,
   PlusCircle,
   Users,
-  Check
+  Check,
+  Menu,
+  X,
+  LayoutDashboard,
+  Calculator,
+  FileText,
+  CalendarDays,
+  Award,
+  BookCheck,
+  Compass,
+  LineChart,
+  Sliders,
+  Target,
+  Settings
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
+import { NavView } from '../../types';
 import { AppLogo } from '../common/AppLogo';
 
 const ROUTE_INFO: Record<string, { section: string; title: string }> = {
@@ -30,6 +44,48 @@ const ROUTE_INFO: Record<string, { section: string; title: string }> = {
   settings: { section: 'PERSONAL', title: 'Settings' }
 };
 
+const MOBILE_NAV_SECTIONS: Array<{
+  title: string;
+  items: Array<{
+    id: NavView;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }>;
+}> = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'calculator', label: 'GPA Calculator', icon: Calculator },
+      { id: 'transcript', label: 'Academic Transcript', icon: FileText }
+    ]
+  },
+  {
+    title: 'ACADEMIC',
+    items: [
+      { id: 'planner', label: 'Semester Planner', icon: CalendarDays },
+      { id: 'progress', label: 'Credit Progress', icon: Award },
+      { id: 'requirements', label: 'Degree Requirements', icon: BookCheck },
+      { id: 'specialization', label: 'Specialization Eligibility', icon: Compass }
+    ]
+  },
+  {
+    title: 'INSIGHTS',
+    items: [
+      { id: 'analytics', label: 'GPA Analytics', icon: LineChart },
+      { id: 'simulator', label: 'Grade Simulator', icon: Sliders },
+      { id: 'goals', label: 'Academic Goals', icon: Target }
+    ]
+  },
+  {
+    title: 'PERSONAL',
+    items: [
+      { id: 'profiles', label: 'Student Profiles', icon: Users },
+      { id: 'settings', label: 'Settings', icon: Settings }
+    ]
+  }
+];
+
 export const Header: React.FC = () => {
   const {
     activeTab,
@@ -44,6 +100,7 @@ export const Header: React.FC = () => {
   } = useGradeStore();
 
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
@@ -52,6 +109,28 @@ export const Header: React.FC = () => {
   const stats = getOverallStats();
 
   const currentInfo = ROUTE_INFO[activeTab] || { section: 'ACADEMIC', title: 'GPA Calculator' };
+
+  const handleSelectProfile = (profileId: string) => {
+    switchProfile(profileId);
+    setIsProfileDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
+  const toggleProfileDropdown = () => {
+    setIsProfileDropdownOpen((prev) => {
+      const next = !prev;
+      if (next) setIsMobileMenuOpen(false);
+      return next;
+    });
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => {
+      const next = !prev;
+      if (next) setIsProfileDropdownOpen(false);
+      return next;
+    });
+  };
 
   // Dynamically measure and register header height on root for layout-aware offsets
   useEffect(() => {
@@ -69,9 +148,16 @@ export const Header: React.FC = () => {
   // Close profile dropdown on outside pointer events across mobile and desktop
   useEffect(() => {
     const handleClickOutside = (event: PointerEvent | MouseEvent) => {
-      const target = event.target as Node;
-      const isInsideMobile = mobileDropdownRef.current && mobileDropdownRef.current.contains(target);
-      const isInsideDesktop = desktopDropdownRef.current && desktopDropdownRef.current.contains(target);
+      const target = event.target as Node | null;
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      const isInsideMobile =
+        mobileDropdownRef.current &&
+        (path.includes(mobileDropdownRef.current) ||
+          (target !== null && mobileDropdownRef.current.contains(target)));
+      const isInsideDesktop =
+        desktopDropdownRef.current &&
+        (path.includes(desktopDropdownRef.current) ||
+          (target !== null && desktopDropdownRef.current.contains(target)));
       if (!isInsideMobile && !isInsideDesktop) {
         setIsProfileDropdownOpen(false);
       }
@@ -85,37 +171,55 @@ export const Header: React.FC = () => {
   }, [isProfileDropdownOpen]);
 
   return (
+    <>
     <header
       ref={headerRef}
-      className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] px-3.5 sm:px-6 py-2.5 sm:py-3 transition-all shadow-xs min-w-0"
+      className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] px-3.5 sm:px-6 py-2.5 sm:py-3 transition-all shadow-xs min-w-0"
     >
       {/* ======================================================== */}
       {/* MOBILE HEADER (<= 767px)                                 */}
-      {/* Distinct, Compact, Purpose-Built: Logo + Title + Profile */}
+      {/* Distinct, Compact, Purpose-Built: Menu + Logo + Profile  */}
       {/* ======================================================== */}
-      <div className="flex md:hidden items-center justify-between w-full min-h-[40px]">
-        {/* Left: Branding */}
-        <div
-          className="flex items-center gap-2.5 min-w-0 cursor-pointer"
-          onClick={() => setActiveTab('dashboard')}
-          title="Ruhuna Agri GPA Dashboard"
-        >
-          <AppLogo size="sm" />
-          <div className="min-w-0">
-            <h1 className="text-sm font-extrabold text-[#242824] leading-tight tracking-tight truncate">
-              Ruhuna Agri GPA
-            </h1>
-            <p className="text-[11px] text-[#626962] font-medium leading-none truncate mt-0.5">
-              Faculty of Agriculture
-            </p>
+      <div className="flex md:hidden items-center justify-between w-full min-h-[40px] gap-2">
+        {/* Left: Hamburger Menu + Branding */}
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={toggleMobileMenu}
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={isMobileMenuOpen}
+            className="p-2 -ml-1.5 rounded-xl text-[#242824] hover:bg-neutral-100 active:scale-95 transition min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation cursor-pointer shrink-0"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+
+          <div
+            className="flex items-center gap-2 min-w-0 cursor-pointer touch-manipulation"
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              setIsProfileDropdownOpen(false);
+              setActiveTab('dashboard');
+            }}
+            title="Ruhuna Agri GPA Dashboard"
+          >
+            <AppLogo size="sm" />
+            <div className="min-w-0">
+              <h1 className="text-sm font-extrabold text-[#242824] leading-tight tracking-tight truncate">
+                Ruhuna Agri GPA
+              </h1>
+              <p className="text-[11px] text-[#626962] font-medium leading-none truncate mt-0.5">
+                Faculty of Agriculture
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Right: Accessible Student Profile Selector */}
-        <div className="relative" ref={mobileDropdownRef}>
+        <div className="relative shrink-0" ref={mobileDropdownRef}>
           <button
-            onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-neutral-50 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] transition shadow-2xs group min-h-[44px] touch-manipulation"
+            type="button"
+            onClick={toggleProfileDropdown}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-neutral-50 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] transition shadow-2xs group min-h-[44px] touch-manipulation cursor-pointer select-none"
             aria-label={`Student profile: ${profile.name} (${profile.degree})`}
             aria-expanded={isProfileDropdownOpen}
           >
@@ -139,17 +243,22 @@ export const Header: React.FC = () => {
 
           {/* Profile Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white border border-[#DCDDD7] rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="absolute right-0 mt-2 w-72 bg-white border border-[#DCDDD7] rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-150"
+            >
               <div className="px-3 py-2 border-b border-neutral-100 flex items-center justify-between">
                 <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
                   Switch Profile ({profiles.length})
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     setActiveTab('profiles');
                   }}
-                  className="text-[11px] font-bold text-[#176B45] hover:underline"
+                  className="text-[11px] font-bold text-[#176B45] hover:underline min-h-[32px] px-1.5 touch-manipulation cursor-pointer"
                 >
                   Manage
                 </button>
@@ -161,15 +270,13 @@ export const Header: React.FC = () => {
                   const isSelected = p.id === activeProfileId;
                   return (
                     <button
+                      type="button"
                       key={p.id}
-                      onClick={() => {
-                        switchProfile(p.id);
-                        setIsProfileDropdownOpen(false);
-                      }}
-                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between gap-2.5 transition min-h-[44px] ${
+                      onClick={() => handleSelectProfile(p.id)}
+                      className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between gap-2.5 transition min-h-[44px] touch-manipulation cursor-pointer select-none ${
                         isSelected
                           ? 'bg-[#EAF2ED] border border-[#176B45]/30 text-[#103B2D] font-bold'
-                          : 'hover:bg-neutral-50 text-neutral-700 border border-transparent'
+                          : 'hover:bg-neutral-50 active:bg-neutral-100 text-neutral-700 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -208,21 +315,23 @@ export const Header: React.FC = () => {
               {/* Quick Actions */}
               <div className="pt-2 border-t border-neutral-100 grid grid-cols-2 gap-1.5">
                 <button
+                  type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     openProfileModal('create');
                   }}
-                  className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-[#176B45] hover:bg-[#EAF2ED] border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition"
+                  className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-[#176B45] hover:bg-[#EAF2ED] border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition min-h-[44px] touch-manipulation cursor-pointer select-none"
                 >
                   <PlusCircle className="w-3.5 h-3.5 text-[#176B45]" />
                   <span>New Profile</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     setActiveTab('profiles');
                   }}
-                  className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition"
+                  className="p-2 rounded-xl text-xs font-bold text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100 border border-[#DCDDD7] flex items-center justify-center gap-1.5 transition min-h-[44px] touch-manipulation cursor-pointer select-none"
                 >
                   <Users className="w-3.5 h-3.5 text-neutral-600" />
                   <span>All Profiles</span>
@@ -289,7 +398,8 @@ export const Header: React.FC = () => {
           {/* Desktop Profile Switcher */}
           <div className="relative" ref={desktopDropdownRef}>
             <button
-              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              type="button"
+              onClick={toggleProfileDropdown}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-50 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] transition shadow-2xs group cursor-pointer"
               title={`Switch Profile • Currently: ${profile.name} (${profile.degree})`}
             >
@@ -319,6 +429,7 @@ export const Header: React.FC = () => {
                     Switch Profile ({profiles.length})
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
                       setActiveTab('profiles');
@@ -334,11 +445,9 @@ export const Header: React.FC = () => {
                     const isSelected = p.id === activeProfileId;
                     return (
                       <button
+                        type="button"
                         key={p.id}
-                        onClick={() => {
-                          switchProfile(p.id);
-                          setIsProfileDropdownOpen(false);
-                        }}
+                        onClick={() => handleSelectProfile(p.id)}
                         className={`w-full p-2.5 rounded-xl text-left flex items-center justify-between gap-2.5 transition ${
                           isSelected
                             ? 'bg-[#EAF2ED] border border-[#176B45]/30 text-[#103B2D] font-bold'
@@ -406,6 +515,7 @@ export const Header: React.FC = () => {
 
           {/* Guide Trigger */}
           <button
+            type="button"
             onClick={() => setShowOnboarding(true)}
             className="flex items-center gap-1.5 text-xs font-bold text-neutral-700 hover:text-neutral-900 px-3 py-1.5 rounded-xl border border-[#DCDDD7] hover:bg-neutral-100 transition shadow-2xs"
             title="Open Welcome Guide"
@@ -416,5 +526,85 @@ export const Header: React.FC = () => {
         </div>
       </div>
     </header>
+
+    {/* Mobile Hamburger Slide-Over Navigation Drawer */}
+    {isMobileMenuOpen && (
+      <div className="fixed inset-0 z-50 md:hidden flex" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+        <nav className="relative z-10 w-72 max-w-[85vw] bg-white h-full shadow-2xl border-r border-[#DCDDD7] flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="px-4 py-3.5 border-b border-[#DCDDD7] flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AppLogo size="sm" />
+              <div className="min-w-0">
+                <div className="text-sm font-extrabold text-[#242824] truncate">Ruhuna Agri GPA</div>
+                <div className="text-[11px] text-[#626962] truncate">
+                  {profile.name} • {profile.degree} (Sem {profile.currentSemester})
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close navigation menu"
+              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+            {MOBILE_NAV_SECTIONS.map((section) => (
+              <div key={section.title} className="space-y-1">
+                <div className="px-3 py-1 text-[11px] font-black text-neutral-400 uppercase tracking-wider">
+                  {section.title}
+                </div>
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    activeTab === item.id ||
+                    (item.id === 'calculator' && activeTab === 'grades');
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition min-h-[44px] touch-manipulation cursor-pointer select-none ${
+                        isActive
+                          ? 'bg-[#EAF2ED] text-[#176B45] font-extrabold border border-[#176B45]/25'
+                          : 'text-[#242824] font-semibold hover:bg-neutral-50'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#176B45]' : 'text-neutral-500'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div className="p-3 border-t border-[#DCDDD7]">
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setShowOnboarding(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-xs font-bold text-[#242824] min-h-[44px] touch-manipulation cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-[#176B45]" />
+              <span>Welcome Guide</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    )}
+    </>
   );
 };

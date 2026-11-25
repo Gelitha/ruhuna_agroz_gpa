@@ -352,7 +352,7 @@ test.describe('Mobile Interaction & Profile Audit', () => {
   });
 
   test('7. Direct semester navigation and permanent Previous/Next semester movement', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       window.localStorage.setItem('gradepath_onboarded_v3', 'true');
       const profile = {
@@ -736,6 +736,146 @@ test.describe('Mobile Interaction & Profile Audit', () => {
 
     // Should display safe failure notice without silent data corruption
     await expect(page.locator('text=Save failed: Storage unavailable').first()).toBeVisible();
+  });
+
+  test('13. Reported Mobile Profile Switching in GPA Calculator using real touchscreen tap (Gelitha & Nishani)', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profileGelitha = {
+        id: 'prof_gelitha',
+        name: 'Gelitha',
+        degree: 'ABM',
+        currentSemester: '2-1',
+        currentAcademicYear: 2,
+        batch: '',
+        specializationDept: 'ABM',
+        semesters: {
+          '1-1': [{ code: 'ABM1101', name: 'Microeconomics', credits: 2, isCompulsory: true, grade: 'A', isExpected: false }],
+          '1-2': [{ code: 'ABM1201', name: 'Macroeconomics', credits: 2, isCompulsory: true, grade: 'A', isExpected: false }],
+          '2-1': [{ code: 'ABM2101', name: 'Agribusiness Management', credits: 3, isCompulsory: true, grade: '', isExpected: false }],
+          '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      const profileNishani = {
+        id: 'prof_nishani',
+        name: 'Nishani',
+        degree: 'ABM',
+        currentSemester: '2-1',
+        currentAcademicYear: 2,
+        batch: '',
+        specializationDept: 'ABM',
+        semesters: {
+          '1-1': [{ code: 'ABM1101', name: 'Microeconomics', credits: 2, isCompulsory: true, grade: 'C', isExpected: false }],
+          '1-2': [{ code: 'ABM1201', name: 'Macroeconomics', credits: 2, isCompulsory: true, grade: 'C', isExpected: false }],
+          '2-1': [{ code: 'ABM2101', name: 'Agribusiness Management', credits: 3, isCompulsory: true, grade: 'B', isExpected: false }],
+          '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profileGelitha, profileNishani]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_nishani');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // Open GPA Calculator on mobile
+    const calcNavBtn = page.locator('nav[aria-label="Mobile Navigation"]').getByRole('button', { name: /Calculator/i });
+    await expect(calcNavBtn).toBeVisible();
+    await calcNavBtn.tap();
+
+    // Verify Nishani is active in header and Nishani's 2-1 grade ('B') & CGPA (2.43) are loaded
+    const headerSwitcherNishani = page.locator('header button:visible').filter({ hasText: 'Nishani' }).first();
+    await expect(headerSwitcherNishani).toBeVisible();
+    await expect(page.locator('main :visible').filter({ hasText: '2.43' }).first()).toBeVisible();
+
+    // Tap header profile switcher with genuine touchscreen tap
+    await headerSwitcherNishani.tap();
+    const dropdownHeading = page.getByText(/Switch Profile \(2\)/i).filter({ visible: true }).first();
+    await expect(dropdownHeading).toBeVisible();
+
+    // Tap Gelitha in dropdown (no force click)
+    const gelithaOption = page.locator('header button:visible').filter({ hasText: 'Gelitha' }).first();
+    await expect(gelithaOption).toBeVisible();
+    await gelithaOption.tap();
+
+    // Verify dropdown closed, header displays Gelitha, and Calculator loaded Gelitha's CGPA (4.00)
+    await expect(dropdownHeading).not.toBeVisible();
+    const headerSwitcherGelitha = page.locator('header button:visible').filter({ hasText: 'Gelitha' }).first();
+    await expect(headerSwitcherGelitha).toBeVisible();
+    await expect(page.locator('main :visible').filter({ hasText: '4.00' }).first()).toBeVisible();
+
+    // Verify active profile persists after page refresh
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('header button:visible').filter({ hasText: 'Gelitha' }).first()).toBeVisible();
+
+    // Verify switching while scrolled down (sticky summary visible) and after entering a grade (Undo toast visible)
+    const gradeAPlusBtn = page.getByRole('button', { name: 'Grade A+' }).first();
+    if (await gradeAPlusBtn.isVisible()) {
+      await gradeAPlusBtn.tap();
+    }
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await page.waitForTimeout(150);
+
+    await page.locator('header button:visible').filter({ hasText: 'Gelitha' }).first().tap();
+    await expect(page.getByText(/Switch Profile \(2\)/i).filter({ visible: true }).first()).toBeVisible();
+    const nishaniOption = page.locator('header button:visible').filter({ hasText: 'Nishani' }).first();
+    await nishaniOption.tap();
+    await expect(page.locator('header button:visible').filter({ hasText: 'Nishani' }).first()).toBeVisible();
+  });
+
+  test('14. Mobile hamburger menu and profile switcher are mutually exclusive with no blocking overlays', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => {
+      window.localStorage.setItem('gradepath_onboarded_v3', 'true');
+      const profile = {
+        id: 'prof_hamburger_test',
+        name: 'Menu Tester',
+        degree: 'ARMT',
+        currentSemester: '1-1',
+        currentAcademicYear: 1,
+        batch: '',
+        specializationDept: 'CS',
+        semesters: {
+          '1-1': [{ code: 'CS1101', name: 'Principles of Crop Production', credits: 2, isCompulsory: true, grade: '' }],
+          '1-2': [], '2-1': [], '2-2': [], '3-1': [], '3-2': [], '4-1': [], '4-2': []
+        },
+        orientationCourses: []
+      };
+      window.localStorage.setItem('gradepath_profiles_v3', JSON.stringify([profile]));
+      window.localStorage.setItem('gradepath_active_id_v3', 'prof_hamburger_test');
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    const hamburgerBtn = page.getByRole('button', { name: /Open navigation menu/i });
+    if (!(await hamburgerBtn.isVisible())) {
+      // Desktop/Tablet >= 768px does not render mobile hamburger
+      return;
+    }
+
+    // 1. Open hamburger drawer via tap
+    await hamburgerBtn.tap();
+    const drawer = page.getByRole('dialog', { name: /Mobile Navigation Menu/i });
+    await expect(drawer).toBeVisible();
+
+    // 2. Navigate to Analytics from drawer and verify drawer closes cleanly
+    await drawer.getByRole('button', { name: /GPA Analytics/i }).tap();
+    await expect(drawer).not.toBeVisible();
+
+    // 3. Open profile switcher, then open hamburger -> profile switcher must close
+    const profileBtn = page.locator('header button:visible').filter({ hasText: 'Menu Tester' }).first();
+    await profileBtn.tap();
+    await expect(page.getByText(/Switch Profile/i).filter({ visible: true }).first()).toBeVisible();
+
+    await hamburgerBtn.tap();
+    await expect(drawer).toBeVisible();
+    await expect(page.getByText(/Switch Profile/i).filter({ visible: true })).toHaveCount(0);
+
+    // 4. Close drawer and verify profile switcher still responds immediately (no blocking overlay)
+    await drawer.getByRole('button', { name: /Close navigation menu/i }).tap();
+    await expect(drawer).not.toBeVisible();
+    await profileBtn.tap();
+    await expect(page.getByText(/Switch Profile/i).filter({ visible: true }).first()).toBeVisible();
   });
 
 });

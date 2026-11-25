@@ -24,7 +24,7 @@ import { StudentProfilesView } from './components/profiles/StudentProfilesView';
 import { SettingsView } from './components/settings/SettingsView';
 
 export const GradePathApp: React.FC = () => {
-  const { activeTab, isSidebarExpanded } = useGradeStore();
+  const { activeTab, activeProfileId, isSidebarExpanded } = useGradeStore();
 
   const renderCurrentView = () => {
     switch (activeTab) {
@@ -85,7 +85,9 @@ export const GradePathApp: React.FC = () => {
 
         {/* View Content (Comfortable, generous sizing, responsive padding with mobile bottom nav clearance) */}
         <main className="flex-1 p-4 sm:p-5 lg:p-7 max-w-[1600px] w-full mx-auto min-w-0 overflow-x-hidden pb-24 md:pb-8">
-          {renderCurrentView()}
+          <React.Fragment key={activeProfileId}>
+            {renderCurrentView()}
+          </React.Fragment>
         </main>
 
         {/* Global Platform Footer */}
