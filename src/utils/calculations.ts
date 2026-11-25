@@ -35,6 +35,14 @@ import {
 } from '../database';
 
 // 1. Calculate Course GPV taking Repeat Capping into account
+export function getOrdinalYear(year?: number | null): string {
+  if (year === 1) return '1st Year';
+  if (year === 2) return '2nd Year';
+  if (year === 3) return '3rd Year';
+  if (year === 4) return '4th Year';
+  return '1st Year';
+}
+
 export function isCourseGradeConfirmed(course: Course): boolean {
   return Boolean(course.grade && !course.isExpected && GRADING_SCALE[course.grade]);
 }

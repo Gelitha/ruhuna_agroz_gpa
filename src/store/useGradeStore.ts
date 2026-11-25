@@ -141,6 +141,13 @@ interface GradeStoreState {
   setSelectedSemesterForCalculator: (sem: SemesterKey | 'ALL') => void;
   setSearchQuery: (query: string) => void;
 
+  // First-Time Grade Entry Onboarding & Setup Actions
+  startGuidedSetup: (semKey?: SemesterKey) => void;
+  dismissGuidedSetup: () => void;
+  finishGuidedSetup: () => void;
+  markSemesterReviewed: (semKey: SemesterKey) => void;
+  dismissCalculatorTips: () => void;
+
   // Profile Management
   switchProfile: (id: string) => void;
   setCurrentSemester: (sem: SemesterKey) => void;
@@ -256,6 +263,123 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
     setSelectedSemesterForCalculator: (sem) => set({ selectedSemesterForCalculator: sem }),
     setSearchQuery: (query) => set({ searchQuery: query }),
 
+    startGuidedSetup: (semKey?: SemesterKey) => {
+      const activeId = get().activeProfileId;
+      const currentProfile = get().getActiveProfile();
+      const semKeys: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+      const currentIdx = semKeys.indexOf(currentProfile.currentSemester || '1-1');
+      const applicableSems = currentIdx <= 0 ? ['1-1'] : semKeys.slice(0, currentIdx);
+
+      // Target semester: requested semKey, or earliest applicable semester with empty grades, or first applicable
+      let targetSem = semKey;
+      if (!targetSem) {
+        targetSem = (applicableSems.find(sk => {
+          const courses = currentProfile.semesters[sk as SemesterKey] || [];
+          return courses.some(c => !c.grade);
+        }) || applicableSems[0]) as SemesterKey;
+      }
+
+      const updated = get().profiles.map(p => {
+        if (p.id !== activeId) return p;
+        const currentSetup = p.guidedSetup || {};
+        return {
+          ...p,
+          guidedSetup: {
+            ...currentSetup,
+            active: true,
+            dismissed: false,
+            lastVisitedSemester: targetSem
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      set({
+        profiles: updated,
+        selectedSemesterForCalculator: targetSem,
+        activeTab: 'calculator'
+      });
+      persist(updated, activeId);
+    },
+
+    dismissGuidedSetup: () => {
+      const activeId = get().activeProfileId;
+      const updated = get().profiles.map(p => {
+        if (p.id !== activeId) return p;
+        const currentSetup = p.guidedSetup || {};
+        return {
+          ...p,
+          guidedSetup: {
+            ...currentSetup,
+            active: false,
+            dismissed: true
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updated });
+      persist(updated, activeId);
+    },
+
+    finishGuidedSetup: () => {
+      const activeId = get().activeProfileId;
+      const updated = get().profiles.map(p => {
+        if (p.id !== activeId) return p;
+        const currentSetup = p.guidedSetup || {};
+        return {
+          ...p,
+          guidedSetup: {
+            ...currentSetup,
+            active: false,
+            dismissed: false,
+            completed: true
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updated });
+      persist(updated, activeId);
+    },
+
+    markSemesterReviewed: (semKey: SemesterKey) => {
+      const activeId = get().activeProfileId;
+      const updated = get().profiles.map(p => {
+        if (p.id !== activeId) return p;
+        const currentSetup = p.guidedSetup || {};
+        const reviewed = new Set(currentSetup.reviewedSemesters || []);
+        reviewed.add(semKey);
+        return {
+          ...p,
+          guidedSetup: {
+            ...currentSetup,
+            reviewedSemesters: Array.from(reviewed),
+            lastVisitedSemester: semKey
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updated });
+      persist(updated, activeId);
+    },
+
+    dismissCalculatorTips: () => {
+      const activeId = get().activeProfileId;
+      const updated = get().profiles.map(p => {
+        if (p.id !== activeId) return p;
+        const currentSetup = p.guidedSetup || {};
+        return {
+          ...p,
+          guidedSetup: {
+            ...currentSetup,
+            calculatorTipsDismissed: true
+          },
+          updatedAt: new Date().toISOString()
+        };
+      });
+      set({ profiles: updated });
+      persist(updated, activeId);
+    },
+
     switchProfile: (id: string) => {
       const found = get().profiles.find(p => p.id === id);
       if (found) {
@@ -306,13 +430,19 @@ export const useGradeStore = create<GradeStoreState>((set, get) => {
         name: params.name.trim() || 'Student',
         registrationNumber: params.registrationNumber?.trim() || '',
         degree: params.degree,
-        batch: params.batch || `${yearNum === 1 ? '46th' : yearNum === 2 ? '45th' : yearNum === 3 ? '44th' : '43rd'} Batch`,
+        batch: params.batch?.trim() || '',
         currentAcademicYear: yearNum,
         currentSemester: semKey,
         specializationDept,
         specializationResearch: params.degree === 'GT' ? 'EN42601' : `${specializationDept}42601`,
         semesters: params.semesters || initDefaultCoursesForDegree(params.degree, specializationDept),
         orientationCourses: initOrientationCourses(),
+        guidedSetup: {
+          completed: false,
+          dismissed: false,
+          active: false,
+          reviewedSemesters: []
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

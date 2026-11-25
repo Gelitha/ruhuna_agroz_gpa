@@ -18,7 +18,9 @@ import {
   MoreVertical,
   Info,
   CheckCircle2,
-  X
+  X,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { Grade, SemesterKey, Course } from '../../types';
@@ -98,7 +100,8 @@ export const GpaCalculatorView: React.FC = () => {
     markUnresolvedAsProjected,
     clearSemesterProjections,
     setCourseGradeAndStatus,
-    setActiveTab
+    setActiveTab,
+    dismissCalculatorTips
   } = useGradeStore();
 
   const profile = getActiveProfile();
@@ -113,6 +116,42 @@ export const GpaCalculatorView: React.FC = () => {
     }
     return profile.currentSemester || '1-1';
   });
+
+  // Synchronize viewed semester when selectedSemesterForCalculator changes
+  useEffect(() => {
+    if (selectedSemesterForCalculator && selectedSemesterForCalculator !== 'ALL') {
+      setActiveTabKey(selectedSemesterForCalculator);
+    }
+  }, [selectedSemesterForCalculator]);
+
+  // Permanent Chronological Semester Sequence
+  const CHRONOLOGICAL_SEMESTERS: SemesterKey[] = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const currentChronoIdx = CHRONOLOGICAL_SEMESTERS.indexOf(activeTabKey as SemesterKey);
+  const prevSemester = currentChronoIdx > 0 ? CHRONOLOGICAL_SEMESTERS[currentChronoIdx - 1] : activeTabKey === 'ORIENTATION' ? '4-2' : null;
+  const nextSemester = currentChronoIdx >= 0 && currentChronoIdx < CHRONOLOGICAL_SEMESTERS.length - 1 ? CHRONOLOGICAL_SEMESTERS[currentChronoIdx + 1] : null;
+
+  const courseListTopRef = useRef<HTMLDivElement | null>(null);
+
+  const handleNavigateSemester = (destSem: SemesterKey | 'ORIENTATION') => {
+    // Ensure entered grades are saved before presenting successful navigation
+    const saveSuccess = saveCurrentState ? saveCurrentState() : true;
+    if (!saveSuccess) {
+      setSaveStatus('Save failed');
+    }
+
+    // Update only the currently viewed calculator semester (preserves profile.currentSemester)
+    setActiveTabKey(destSem);
+    if (destSem !== 'ORIENTATION') {
+      setSelectedSemesterForCalculator(destSem);
+    }
+
+    // Scroll smoothly to the beginning of the new semester's course list
+    if (courseListTopRef.current) {
+      courseListTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+    }
+  };
 
   // Modal for changing student's current academic semester
   const [showCurrentSemSelector, setShowCurrentSemSelector] = useState(false);
@@ -461,9 +500,12 @@ export const GpaCalculatorView: React.FC = () => {
 
   return (
     <div className="max-w-[1440px] mx-auto pb-16 space-y-4 sm:space-y-5">
-      {/* Compact Sticky Summary on Mobile (< 1024px) when top summary scrolls out of view */}
+      {/* Compact Sticky Summary on Mobile (< 1024px) when top summary scrolls out of view - Layout-aware dynamic offset */}
       {isStickySummaryVisible && (
-        <div className="block lg:hidden fixed top-[53px] left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] shadow-md px-4 py-2.5 animate-in slide-in-from-top duration-200">
+        <div
+          style={{ top: 'var(--header-height, 58px)' }}
+          className="block lg:hidden fixed left-0 right-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] shadow-md px-4 py-2.5 animate-in slide-in-from-top duration-200"
+        >
           <div className="flex items-center justify-between max-w-4xl mx-auto text-xs">
             <div className="flex items-center gap-3">
               {/* Actual CGPA (Dominant Green) */}
@@ -769,9 +811,58 @@ export const GpaCalculatorView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
+      {/* 2.5 FIRST-USE CONTEXTUAL GRADE-ENTRY TIPS                */}
+      {/* ======================================================== */}
+      {!profile.guidedSetup?.calculatorTipsDismissed && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/90 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-800">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Quick Grade-Entry Tips</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 text-xs text-emerald-900 font-medium">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span><strong>Tap a grade</strong> to select it</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span><strong>Tap again</strong> to clear a grade</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span><strong>Swipe horizontally</strong> to access all grades</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span>Select <strong>Repeat</strong> for repeat courses</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span>Select <strong>Projected</strong> for expected results</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                <span>Use <strong>course options (⋯)</strong> for details</span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={dismissCalculatorTips}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-emerald-100/70 border border-emerald-300 text-emerald-800 text-xs font-bold shrink-0 min-h-[44px] flex items-center justify-center gap-1 transition touch-manipulation self-start sm:self-center"
+            aria-label="Dismiss quick tips"
+          >
+            <span>Got it</span>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* ======================================================== */}
       {/* 3. SEMESTER NAVIGATION & FAST ACTIONS                    */}
       {/* ======================================================== */}
-      <div className="space-y-3">
+      <div ref={courseListTopRef} className="space-y-3">
         {/* Mobile Semester Dropdown */}
         <div className="block lg:hidden bg-white border border-[#DCDDD7] rounded-2xl p-3 shadow-subtle space-y-2">
           <div className="flex items-center justify-between">
@@ -1606,6 +1697,47 @@ export const GpaCalculatorView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
+      {/* 4.5 PERMANENT PREVIOUS & NEXT SEMESTER NAVIGATION ROW     */}
+      {/* Immediately after final course, immediately before Plan   */}
+      {/* ======================================================== */}
+      <div className="flex items-center justify-between gap-3 pt-2 pb-1">
+        {prevSemester ? (
+          <button
+            type="button"
+            onClick={() => handleNavigateSemester(prevSemester)}
+            className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-white hover:bg-neutral-100 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition shadow-2xs min-h-[44px] touch-manipulation active:scale-95"
+            aria-label={`Previous Semester ${prevSemester}`}
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0 text-neutral-600" />
+            <span>← {prevSemester}</span>
+          </button>
+        ) : (
+          <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
+        )}
+
+        <div className="hidden xs:flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
+          <span>Viewing:</span>
+          <span className="font-extrabold text-[#176B45]">
+            {activeTabKey === 'ORIENTATION' ? 'Non-GPA' : `Sem ${activeTabKey}`}
+          </span>
+        </div>
+
+        {nextSemester ? (
+          <button
+            type="button"
+            onClick={() => handleNavigateSemester(nextSemester)}
+            className="flex-1 sm:flex-initial sm:min-w-[140px] px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition shadow-sm hover:scale-[1.01] min-h-[44px] touch-manipulation active:scale-95"
+            aria-label={`Next Semester ${nextSemester}`}
+          >
+            <span>{nextSemester} →</span>
+            <ArrowRight className="w-4 h-4 shrink-0 text-white" />
+          </button>
+        ) : (
+          <div className="flex-1 sm:flex-initial sm:min-w-[140px]" />
+        )}
+      </div>
+
+      {/* ======================================================== */}
       {/* 5. ADVANCED PLANNING & FORECAST TOOLS                    */}
       {/* Target Planning, Assumptions, Scenarios & Course Impact  */}
       {/* ======================================================== */}
@@ -1654,12 +1786,23 @@ export const GpaCalculatorView: React.FC = () => {
         </div>
       )}
 
-      {/* Lightweight Undo Toast Notification (4.5s auto-dismiss) */}
+      {/* Lightweight Undo Toast Notification (4.5s auto-dismiss) - Positioned safely above mobile bottom nav */}
       {undoRecord && (
-        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 bg-[#103B2D] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-emerald-600/40 animate-in slide-in-from-bottom duration-200 max-w-[92vw]">
+        <div
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+          className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 py-2.5 bg-[#103B2D] text-white text-xs font-semibold rounded-2xl shadow-2xl border border-emerald-600/40 animate-in slide-in-from-bottom duration-200 max-w-[92vw]"
+        >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="truncate">
-            Grade updated to <strong className="font-extrabold text-white">{undoRecord.newGrade || 'None'}</strong>
+            {undoRecord.newGrade ? (
+              <>
+                Grade updated to <strong className="font-extrabold text-white">{undoRecord.newGrade}</strong>
+              </>
+            ) : (
+              <>
+                Grade cleared for <strong className="font-extrabold text-white">{undoRecord.courseCode}</strong>
+              </>
+            )}
           </span>
           <button
             type="button"

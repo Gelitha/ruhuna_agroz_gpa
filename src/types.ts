@@ -276,6 +276,17 @@ export interface StudentProfile {
     currentSemAvgGpa: number;
   };
   projectionTargetCgpa?: number;
+  // First-Time Grade Entry Onboarding & Setup Guidance
+  guidedSetup?: GuidedSetupState;
+}
+
+export interface GuidedSetupState {
+  completed?: boolean;
+  dismissed?: boolean;
+  active?: boolean;
+  reviewedSemesters?: SemesterKey[];
+  lastVisitedSemester?: SemesterKey;
+  calculatorTipsDismissed?: boolean;
 }
 
 // ========================================================

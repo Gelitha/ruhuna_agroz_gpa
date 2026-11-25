@@ -1,6 +1,7 @@
 // University of Ruhuna - Faculty of Agriculture
 // Unified Academic Profile Setup & Onboarding Modal
 // Supports 1. First-time onboarding, 2. New profile creation, 3. Profile editing
+// Requires explicit degree and semester selection; prevents silent default profile creation.
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -8,29 +9,27 @@ import {
   GraduationCap,
   Calendar,
   Compass,
-  Sparkles,
   Check,
   X,
   AlertCircle,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2
+  Tag
 } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { DegreeCode, SemesterKey } from '../../types';
-import { DEGREE_INFO, DEPARTMENTS } from '../../database';
-import { initDefaultCoursesForDegree } from '../../utils/calculations';
+import { initDefaultCoursesForDegree, getOrdinalYear } from '../../utils/calculations';
 import { AppLogo } from '../common/AppLogo';
 
-const SEMESTERS_LIST: Array<{ key: SemesterKey; label: string; year: number; batch: string }> = [
-  { key: '1-1', label: 'Sem 1-1', year: 1, batch: '46th Batch' },
-  { key: '1-2', label: 'Sem 1-2', year: 1, batch: '46th Batch' },
-  { key: '2-1', label: 'Sem 2-1', year: 2, batch: '45th Batch' },
-  { key: '2-2', label: 'Sem 2-2', year: 2, batch: '45th Batch' },
-  { key: '3-1', label: 'Sem 3-1', year: 3, batch: '44th Batch' },
-  { key: '3-2', label: 'Sem 3-2', year: 3, batch: '44th Batch' },
-  { key: '4-1', label: 'Sem 4-1', year: 4, batch: '43rd Batch' },
-  { key: '4-2', label: 'Sem 4-2', year: 4, batch: '43rd Batch' }
+const SEMESTERS_LIST: Array<{ key: SemesterKey; label: string; year: number; yearText: string }> = [
+  { key: '1-1', label: 'Sem 1-1', year: 1, yearText: '1st Yr' },
+  { key: '1-2', label: 'Sem 1-2', year: 1, yearText: '1st Yr' },
+  { key: '2-1', label: 'Sem 2-1', year: 2, yearText: '2nd Yr' },
+  { key: '2-2', label: 'Sem 2-2', year: 2, yearText: '2nd Yr' },
+  { key: '3-1', label: 'Sem 3-1', year: 3, yearText: '3rd Yr' },
+  { key: '3-2', label: 'Sem 3-2', year: 3, yearText: '3rd Yr' },
+  { key: '4-1', label: 'Sem 4-1', year: 4, yearText: '4th Yr' },
+  { key: '4-2', label: 'Sem 4-2', year: 4, yearText: '4th Yr' }
 ];
 
 const ARMT_SPECIALIZATIONS = [
@@ -63,26 +62,30 @@ export const ProfileSetupModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [regNo, setRegNo] = useState('');
-  const [degree, setDegree] = useState<DegreeCode>('ARMT');
-  const [currentSem, setCurrentSem] = useState<SemesterKey>('1-1');
+  const [degree, setDegree] = useState<DegreeCode | ''>('');
+  const [currentSem, setCurrentSem] = useState<SemesterKey | ''>('');
+  const [batch, setBatch] = useState<string>('');
   const [specialization, setSpecialization] = useState<string>('CS');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Initialize form state depending on mode
+  // Initialize form state: strictly unselected for onboarding/new, preserved for edit
   useEffect(() => {
     if (!isOpen) return;
 
     if (mode === 'edit' && targetProfile) {
       setName(targetProfile.name || '');
       setRegNo(targetProfile.registrationNumber || '');
-      setDegree(targetProfile.degree || 'ARMT');
-      setCurrentSem(targetProfile.currentSemester || '1-1');
+      setDegree(targetProfile.degree || '');
+      setCurrentSem(targetProfile.currentSemester || '');
+      setBatch(targetProfile.batch || '');
       setSpecialization(targetProfile.specializationDept || 'CS');
     } else {
+      // First-time onboarding & new profile creation start clean and unselected
       setName('');
       setRegNo('');
-      setDegree('ARMT');
-      setCurrentSem('1-1');
+      setDegree('');
+      setCurrentSem('');
+      setBatch('');
       setSpecialization('CS');
     }
     setErrorMsg(null);
@@ -93,10 +96,15 @@ export const ProfileSetupModal: React.FC = () => {
   const isOnboarding = mode === 'onboarding';
   const isEdit = mode === 'edit';
 
-  // Derived Year & Batch information
-  const semMeta = SEMESTERS_LIST.find(s => s.key === currentSem) || SEMESTERS_LIST[0];
-  const derivedYear = semMeta.year;
-  const derivedBatch = semMeta.batch;
+  // Derived Year information
+  const semMeta = currentSem ? SEMESTERS_LIST.find(s => s.key === currentSem) : null;
+  const derivedYear = semMeta ? semMeta.year : null;
+
+  // Academic applicability for specialization:
+  // - In ARMT, specialization is formally assigned and applicable for Years 3 & 4
+  // - In ABM, economics (EC) is the default home department
+  // - In GT, agricultural engineering/tech (EN) is the default home department
+  const isSpecializationApplicable = degree === 'ARMT' && derivedYear !== null && derivedYear >= 3;
 
   const handleDegreeSelect = (deg: DegreeCode) => {
     setDegree(deg);
@@ -107,27 +115,54 @@ export const ProfileSetupModal: React.FC = () => {
     } else if (specialization === 'EN') {
       setSpecialization('CS');
     }
+    if (errorMsg) setErrorMsg(null);
+  };
+
+  const handleSemesterSelect = (semKey: SemesterKey) => {
+    setCurrentSem(semKey);
+    if (errorMsg) setErrorMsg(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Validate required Student Name
     if (!name.trim()) {
       setErrorMsg('Please enter the student name.');
       return;
     }
 
+    // 2. Validate explicit Degree Programme selection
+    if (!degree) {
+      setErrorMsg('Please select your degree programme.');
+      return;
+    }
+
+    // 3. Validate explicit Academic Semester selection
+    if (!currentSem) {
+      setErrorMsg('Please select your current academic semester.');
+      return;
+    }
+
+    const calculatedYear = derivedYear || 1;
+    const finalBatch = isEdit ? (batch.trim() || targetProfile?.batch || '') : '';
     const specDept = degree === 'ABM' ? 'EC' : degree === 'GT' ? 'EN' : (specialization || 'CS');
 
     if (isEdit && targetProfile) {
+      const isDegreeChanged = targetProfile.degree !== degree;
+      const updatedSemesters = isDegreeChanged
+        ? initDefaultCoursesForDegree(degree, specDept)
+        : targetProfile.semesters;
+
       updateProfile(targetProfile.id, {
         name: name.trim(),
         registrationNumber: regNo.trim(),
         degree,
         currentSemester: currentSem,
-        currentAcademicYear: derivedYear,
-        batch: derivedBatch,
-        specializationDept: specDept
+        currentAcademicYear: calculatedYear,
+        batch: finalBatch,
+        specializationDept: specDept,
+        semesters: updatedSemesters
       });
       closeProfileModal();
     } else if (isOnboarding) {
@@ -137,13 +172,14 @@ export const ProfileSetupModal: React.FC = () => {
         registrationNumber: regNo.trim(),
         degree,
         currentSemester: currentSem,
-        currentAcademicYear: derivedYear,
-        batch: derivedBatch,
+        currentAcademicYear: calculatedYear,
+        batch: finalBatch,
         specializationDept: specDept,
         semesters: initDefaultCoursesForDegree(degree, specDept)
       });
       completeOnboarding();
       switchProfile(newId);
+      closeProfileModal();
       setActiveTab('dashboard');
     } else {
       // New profile creation
@@ -152,8 +188,8 @@ export const ProfileSetupModal: React.FC = () => {
         registrationNumber: regNo.trim(),
         degree,
         currentSemester: currentSem,
-        currentAcademicYear: derivedYear,
-        batch: derivedBatch,
+        currentAcademicYear: calculatedYear,
+        batch: finalBatch,
         specializationDept: specDept,
         semesters: initDefaultCoursesForDegree(degree, specDept)
       });
@@ -206,8 +242,8 @@ export const ProfileSetupModal: React.FC = () => {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -249,10 +285,11 @@ export const ProfileSetupModal: React.FC = () => {
             />
           </div>
 
-          {/* 3. Degree Programme */}
+          {/* 3. Degree Programme (Explicit Choice Required) */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#242824] block">
-              Degree Programme <strong className="text-rose-600">*</strong>
+            <label className="text-xs font-bold text-[#242824] flex items-center justify-between">
+              <span>Degree Programme <strong className="text-rose-600">*</strong></span>
+              {!degree && <span className="text-[11px] text-amber-700 font-bold">Please select</span>}
             </label>
             <div className="grid grid-cols-1 gap-2">
               {[
@@ -298,6 +335,7 @@ export const ProfileSetupModal: React.FC = () => {
                         {deg.name}
                       </div>
                     </div>
+
                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
                       isSelected ? 'bg-[#176B45] border-[#176B45] text-white' : 'border-neutral-300'
                     }`}>
@@ -309,15 +347,19 @@ export const ProfileSetupModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Current Academic Semester & Derived Year */}
+          {/* 4. Current Academic Semester (Explicit Choice Required) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#242824]">
                 Current Academic Semester <strong className="text-rose-600">*</strong>
               </label>
-              <span className="text-xs font-extrabold text-[#176B45] bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                Year {derivedYear} • {derivedBatch}
-              </span>
+              {derivedYear ? (
+                <span className="text-xs font-extrabold text-[#176B45] bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                  {getOrdinalYear(derivedYear)}
+                </span>
+              ) : (
+                <span className="text-[11px] text-amber-700 font-bold">Please select</span>
+              )}
             </div>
 
             <div className="grid grid-cols-4 gap-1.5 pt-1">
@@ -327,7 +369,7 @@ export const ProfileSetupModal: React.FC = () => {
                   <button
                     key={s.key}
                     type="button"
-                    onClick={() => setCurrentSem(s.key)}
+                    onClick={() => handleSemesterSelect(s.key)}
                     className={`py-2 px-1 rounded-xl text-xs font-bold border transition text-center min-h-[44px] cursor-pointer flex flex-col items-center justify-center ${
                       isSelected
                         ? 'bg-[#103B2D] text-white border-[#103B2D] shadow-xs font-extrabold'
@@ -336,7 +378,7 @@ export const ProfileSetupModal: React.FC = () => {
                   >
                     <span>{s.label}</span>
                     <span className={`text-[9px] font-medium leading-none mt-0.5 ${isSelected ? 'text-emerald-200' : 'text-neutral-400'}`}>
-                      Yr {s.year}
+                      {s.yearText}
                     </span>
                   </button>
                 );
@@ -344,24 +386,32 @@ export const ProfileSetupModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 5. Specialization Department (for ARMT) */}
+          {/* 5. Specialization Department (Visible when academically applicable) */}
           {degree === 'ARMT' && (
             <div className="space-y-1.5 pt-1">
               <label className="text-xs font-bold text-[#242824] flex items-center justify-between">
                 <span>Specialization Department</span>
-                <span className="text-[11px] text-neutral-400 font-normal">Years 3 &amp; 4 focus</span>
+                <span className="text-[11px] text-neutral-400 font-normal">
+                  {isSpecializationApplicable ? 'Required for Years 3 & 4' : 'Core curriculum in Years 1 & 2'}
+                </span>
               </label>
-              <select
-                value={specialization}
-                onChange={(e) => setSpecialization(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DCDDD7] text-xs font-bold text-[#242824] cursor-pointer focus:outline-none focus:border-[#176B45] min-h-[44px]"
-              >
-                {ARMT_SPECIALIZATIONS.map((sp) => (
-                  <option key={sp.code} value={sp.code}>
-                    {sp.code} — {sp.name}
-                  </option>
-                ))}
-              </select>
+              {isSpecializationApplicable ? (
+                <select
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#DCDDD7] text-xs font-bold text-[#242824] cursor-pointer focus:outline-none focus:border-[#176B45] min-h-[44px]"
+                >
+                  {ARMT_SPECIALIZATIONS.map((sp) => (
+                    <option key={sp.code} value={sp.code}>
+                      {sp.code} — {sp.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 text-[11px] text-neutral-600 font-medium">
+                  ARMT Semesters 1-1 to 2-2 follow the universal core agricultural curriculum. Departmental specialization is chosen starting Semester 3-1.
+                </div>
+              )}
             </div>
           )}
 

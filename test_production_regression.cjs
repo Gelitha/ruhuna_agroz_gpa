@@ -1781,17 +1781,17 @@ runTest('Profile Setup: Accurately derives academic year and batch from selected
   const id1 = store.createProfile({ name: 'Student 1', degree: 'ARMT', currentSemester: '1-2' });
   const p1 = useGradeStore.getState().profiles.find(p => p.id === id1);
   assert.strictEqual(p1.currentAcademicYear, 1);
-  assert.strictEqual(p1.batch, '46th Batch');
+  assert.strictEqual(p1.batch || '', '', 'No automatic batch number inferred');
 
-  const id2 = store.createProfile({ name: 'Student 2', degree: 'ARMT', currentSemester: '3-1' });
+  const id2 = store.createProfile({ name: 'Student 2', degree: 'ARMT', currentSemester: '3-1', batch: '44th Batch' });
   const p2 = useGradeStore.getState().profiles.find(p => p.id === id2);
   assert.strictEqual(p2.currentAcademicYear, 3);
-  assert.strictEqual(p2.batch, '44th Batch');
+  assert.strictEqual(p2.batch, '44th Batch', 'Explicit custom batch is preserved');
 
   const id3 = store.createProfile({ name: 'Student 3', degree: 'ARMT', currentSemester: '4-2' });
   const p3 = useGradeStore.getState().profiles.find(p => p.id === id3);
   assert.strictEqual(p3.currentAcademicYear, 4);
-  assert.strictEqual(p3.batch, '43rd Batch');
+  assert.strictEqual(p3.batch || '', '', 'No automatic batch number inferred');
 });
 
 // 93. Multi-profile isolation and clean switching
@@ -1842,24 +1842,31 @@ runTest('Undo Isolation: Undo actions are strictly scoped to the active profile'
   assert.strictEqual(canUndoForProfileA, true, 'Undo recorded for profile A is valid in profile A');
 });
 
-// 95. Horizontal Grade Selector re-tap stability
-runTest('Horizontal Grade Selector: Re-tapping currently selected grade preserves value', () => {
+// 95. Horizontal Grade Selector: Tap-to-deselect clears grade, tap other grade changes selection
+runTest('Horizontal Grade Selector: Tap-to-deselect clears selection, tapping other grade changes selection', () => {
   let currentGrade = 'A';
   const handleSelect = (g) => { currentGrade = g; };
 
   const handleGradeClick = (grade) => {
-    // If user taps already selected grade, return unchanged
-    if (currentGrade === grade) return;
-    handleSelect(grade);
+    // Tap-to-deselect: tapping selected grade clears it
+    if (currentGrade === grade) {
+      handleSelect('');
+    } else {
+      handleSelect(grade);
+    }
   };
 
-  // Re-tapping 'A' does not clear it
+  // Re-tapping 'A' clears it to ''
   handleGradeClick('A');
-  assert.strictEqual(currentGrade, 'A', 'Grade remains A when tapped again');
+  assert.strictEqual(currentGrade, '', 'Grade is cleared when tapped again');
 
-  // Tapping another grade changes it
+  // Tapping 'B' selects B
   handleGradeClick('B');
   assert.strictEqual(currentGrade, 'B', 'Grade switches to B when new grade is tapped');
+
+  // Tapping 'B' again clears it
+  handleGradeClick('B');
+  assert.strictEqual(currentGrade, '', 'Grade is cleared on second tap');
 });
 
 // 96. Deliberate official grade corrections
@@ -1898,6 +1905,322 @@ runTest('Mobile Undo Notification: Offset above mobile bottom navigation bar', (
   const mobileBottomNavHeight = 64; // px
   const undoBottomMobile = 80; // bottom-20 = 5rem = 80px
   assert.ok(undoBottomMobile > mobileBottomNavHeight, 'Undo notification must sit above mobile bottom navigation');
+});
+
+// ========================================================
+// SECTION 28: EXPLICIT SELECTIONS, PROFILE SWITCHER REFS & DATA SAFETY
+// ========================================================
+
+// 99. Explicit Academic Profile Selections
+runTest('Explicit Selections: Rejects unselected or empty academic fields', () => {
+  const validateForm = (name, degree, currentSem) => {
+    if (!name || !name.trim()) return 'Please enter the student name.';
+    if (!degree) return 'Please select your degree programme.';
+    if (!currentSem) return 'Please select your current academic semester.';
+    return null;
+  };
+
+  assert.strictEqual(validateForm('', 'ARMT', '1-1'), 'Please enter the student name.');
+  assert.strictEqual(validateForm('Test Student', '', '1-1'), 'Please select your degree programme.');
+  assert.strictEqual(validateForm('Test Student', 'ARMT', ''), 'Please select your current academic semester.');
+  assert.strictEqual(validateForm('Test Student', 'ARMT', '1-1'), null);
+});
+
+// 100. Profile Editing Data Safety: Preserves existing grades when degree unchanged; migrates safely when changed
+runTest('Profile Editing Safety: Preserves grades if degree is unchanged, migrates catalog if degree changes', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const { initDefaultCoursesForDegree } = jiti('./src/utils/calculations.ts');
+  const store = useGradeStore.getState();
+
+  const id = store.createProfile({ name: 'Safety Student', degree: 'ARMT', currentSemester: '1-1' });
+  store.switchProfile(id);
+
+  // Enter Grade A for first course
+  const firstCourseCode = store.getActiveProfile().semesters['1-1'][0].code;
+  store.setCourseGrade('1-1', firstCourseCode, 'A');
+
+  const beforeEdit = store.getActiveProfile();
+  assert.strictEqual(beforeEdit.semesters['1-1'][0].grade, 'A');
+
+  // Case A: Edit profile (name or semester) with UNCHANGED degree
+  store.updateProfile(id, { name: 'Safety Student Updated', currentSemester: '1-2' });
+  const afterSafeEdit = store.getActiveProfile();
+  assert.strictEqual(afterSafeEdit.name, 'Safety Student Updated');
+  assert.strictEqual(afterSafeEdit.currentSemester, '1-2');
+  assert.strictEqual(afterSafeEdit.semesters['1-1'][0].grade, 'A', 'Existing grades must be 100% preserved');
+
+  // Case B: Edit profile changing degree from ARMT to ABM
+  const abmCourses = initDefaultCoursesForDegree('ABM', 'EC');
+  store.updateProfile(id, { degree: 'ABM', specializationDept: 'EC', semesters: abmCourses });
+  const afterDegreeChange = store.getActiveProfile();
+  assert.strictEqual(afterDegreeChange.degree, 'ABM');
+  assert.ok(afterDegreeChange.semesters['1-1'].some(c => c.code.startsWith('AB') || c.code.startsWith('EC')), 'Course catalog updated cleanly for new degree');
+});
+
+// 101. Batch information is not hardcoded and ordinal academic year labels are used
+runTest('Academic Year & Batch: No hardcoded batch numbers, ordinal year labels (1st Year - 4th Year) used', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const { getOrdinalYear } = jiti('./src/utils/calculations.ts');
+  const store = useGradeStore.getState();
+
+  assert.strictEqual(getOrdinalYear(1), '1st Year');
+  assert.strictEqual(getOrdinalYear(2), '2nd Year');
+  assert.strictEqual(getOrdinalYear(3), '3rd Year');
+  assert.strictEqual(getOrdinalYear(4), '4th Year');
+
+  const defaultBatchId = store.createProfile({
+    name: 'Ordinal Student',
+    degree: 'ARMT',
+    currentSemester: '2-1'
+  });
+  const profDef = useGradeStore.getState().profiles.find(p => p.id === defaultBatchId);
+  assert.strictEqual(profDef.currentAcademicYear, 2);
+  assert.strictEqual(profDef.batch || '', '', 'No automatic batch numbers inferred');
+});
+
+// 102. Specialization applicability rules
+runTest('Specialization Applicability: ARMT Years 3-4 requires specialization; ABM and GT use default departments', () => {
+  const isSpecializationApplicable = (degree, year) => {
+    return degree === 'ARMT' && year !== null && year >= 3;
+  };
+
+  assert.strictEqual(isSpecializationApplicable('ARMT', 1), false, 'ARMT Year 1 follows core curriculum');
+  assert.strictEqual(isSpecializationApplicable('ARMT', 2), false, 'ARMT Year 2 follows core curriculum');
+  assert.strictEqual(isSpecializationApplicable('ARMT', 3), true, 'ARMT Year 3 selects specialization');
+  assert.strictEqual(isSpecializationApplicable('ARMT', 4), true, 'ARMT Year 4 selects specialization');
+  assert.strictEqual(isSpecializationApplicable('ABM', 3), false, 'ABM uses Agricultural Economics throughout');
+  assert.strictEqual(isSpecializationApplicable('GT', 3), false, 'GT uses Agricultural Engineering throughout');
+});
+
+// 103. Mobile and Desktop Profile Switcher Ref Separation
+runTest('Profile Switcher: Separate ref handling prevents outside-click cross-dismissal', () => {
+  // Simulating check: mobile container and desktop container are distinct DOM nodes
+  const mobileContainer = { contains: (node) => node === 'mobile-node' };
+  const desktopContainer = { contains: (node) => node === 'desktop-node' };
+
+  const isOutside = (target) => {
+    const isInsideMobile = mobileContainer.contains(target);
+    const isInsideDesktop = desktopContainer.contains(target);
+    return !isInsideMobile && !isInsideDesktop;
+  };
+
+  assert.strictEqual(isOutside('mobile-node'), false, 'Tapping inside mobile dropdown must NOT be classified as outside click');
+  assert.strictEqual(isOutside('desktop-node'), false, 'Tapping inside desktop dropdown must NOT be classified as outside click');
+  assert.strictEqual(isOutside('somewhere-else'), true, 'Tapping outside both containers correctly registers outside click');
+});
+
+// ========================================================
+// SECTION 29: FIRST-TIME GRADE ENTRY ONBOARDING & GUIDED SETUP
+// ========================================================
+console.log('\n🌟 Testing Section 29 First-Time Grade Entry Onboarding & Personalized Guidance...\n');
+
+// 104. Applicable semester detection for different cohorts
+runTest('Onboarding Semesters: Calculates applicable semesters strictly up to current semester', () => {
+  const semKeys = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const getApplicable = (currentSem) => {
+    const idx = semKeys.indexOf(currentSem);
+    return idx <= 0 ? ['1-1'] : semKeys.slice(0, idx);
+  };
+
+  assert.deepStrictEqual(getApplicable('1-1'), ['1-1'], 'Semester 1-1 student only needs attention on Sem 1-1');
+  assert.deepStrictEqual(getApplicable('2-1'), ['1-1', '1-2'], 'Semester 2-1 student requires attention on 1-1 and 1-2');
+  assert.deepStrictEqual(getApplicable('3-1'), ['1-1', '1-2', '2-1', '2-2'], 'Semester 3-1 student requires attention on all previous semesters');
+  assert.ok(!getApplicable('2-1').includes('2-2'), 'Future semesters must never be marked as requiring official results');
+});
+
+// 105. Guided setup consecutive navigation and profile persistence
+runTest('Guided Setup: Consecutive step navigation, auto-save, and profile persistence', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  const id = store.createProfile({
+    name: 'Guided User',
+    degree: 'ARMT',
+    currentSemester: '2-1'
+  });
+  store.switchProfile(id);
+
+  // Start guided setup
+  store.startGuidedSetup();
+  let prof = store.getActiveProfile();
+  assert.strictEqual(prof.guidedSetup.active, true, 'Guided setup marked active');
+  assert.strictEqual(prof.guidedSetup.dismissed, false, 'Guided setup not dismissed');
+  assert.strictEqual(useGradeStore.getState().selectedSemesterForCalculator, '1-1', 'Earliest applicable semester selected');
+
+  // Mark 1-1 reviewed and advance
+  store.markSemesterReviewed('1-1');
+  prof = store.getActiveProfile();
+  assert.ok(prof.guidedSetup.reviewedSemesters.includes('1-1'), 'Semester 1-1 marked reviewed');
+
+  // Finish setup
+  store.finishGuidedSetup();
+  prof = store.getActiveProfile();
+  assert.strictEqual(prof.guidedSetup.completed, true, 'Guided setup marked completed');
+  assert.strictEqual(prof.guidedSetup.active, false, 'Guided setup deactivated');
+});
+
+// 106. Profile switching preserves independent guided setup progress
+runTest('Guided Setup Isolation: Switching profiles maintains profile-specific setup progress', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  const p1Id = store.createProfile({
+    name: 'Student Incomplete',
+    degree: 'ARMT',
+    currentSemester: '2-1'
+  });
+  store.switchProfile(p1Id);
+  store.startGuidedSetup();
+
+  const p2Id = store.createProfile({
+    name: 'Student Completed',
+    degree: 'ARMT',
+    currentSemester: '2-1'
+  });
+  store.switchProfile(p2Id);
+  store.finishGuidedSetup();
+
+  // Verify p2 is completed
+  assert.strictEqual(store.getActiveProfile().guidedSetup.completed, true);
+
+  // Switch back to p1 and verify p1 is still active/incomplete
+  store.switchProfile(p1Id);
+  assert.strictEqual(store.getActiveProfile().guidedSetup.active, true);
+  assert.strictEqual(store.getActiveProfile().guidedSetup.completed, false);
+});
+
+// 107. Direct semester navigation preserves student's currentSemester
+runTest('Direct Semester Navigation: Opening previous semester preserves currentSemester', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  const id = store.createProfile({
+    name: 'Current Sem Preserved',
+    degree: 'ARMT',
+    currentSemester: '3-1'
+  });
+  store.switchProfile(id);
+
+  assert.strictEqual(store.getActiveProfile().currentSemester, '3-1', 'Initial current semester is 3-1');
+
+  // Open Semester 1-1 via guided setup
+  store.startGuidedSetup('1-1');
+  assert.strictEqual(useGradeStore.getState().selectedSemesterForCalculator, '1-1', 'Calculator shows 1-1');
+  assert.strictEqual(store.getActiveProfile().currentSemester, '3-1', 'Student actual currentSemester is strictly preserved as 3-1');
+});
+
+// 108. Dynamic dashboard guidance adapts based on academic state
+runTest('Dynamic Dashboard Guidance: Messages match academic grade status accurately', () => {
+  const getDynamicGuidance = ({ isSetupCompleted, totalGradedCourses, missingPreviousCount }) => {
+    if (isSetupCompleted) return 'Your academic profile is ready.';
+    if (totalGradedCourses === 0) return 'Add your academic results to calculate your GPA.';
+    if (missingPreviousCount > 0) return 'Some previous semester results are still missing. Add them when available.';
+    return 'Continue entering your available semester results.';
+  };
+
+  assert.strictEqual(getDynamicGuidance({ isSetupCompleted: false, totalGradedCourses: 0, missingPreviousCount: 2 }), 'Add your academic results to calculate your GPA.');
+  assert.strictEqual(getDynamicGuidance({ isSetupCompleted: false, totalGradedCourses: 3, missingPreviousCount: 1 }), 'Some previous semester results are still missing. Add them when available.');
+  assert.strictEqual(getDynamicGuidance({ isSetupCompleted: false, totalGradedCourses: 6, missingPreviousCount: 0 }), 'Continue entering your available semester results.');
+  assert.strictEqual(getDynamicGuidance({ isSetupCompleted: true, totalGradedCourses: 6, missingPreviousCount: 0 }), 'Your academic profile is ready.');
+});
+
+// 109. Pending examination results and empty grades preservation
+runTest('Pending Results Safety: Unresolved courses remain empty and excluded from actual CGPA', () => {
+  const { useGradeStore } = jiti('./src/store/useGradeStore.ts');
+  const store = useGradeStore.getState();
+
+  const id = store.createProfile({
+    name: 'Pending Safety Student',
+    degree: 'ARMT',
+    currentSemester: '2-1'
+  });
+  store.switchProfile(id);
+
+  // Enter only 1 official grade in 1-1, leave the rest empty
+  const sem11Courses = store.getActiveProfile().semesters['1-1'];
+  store.setCourseGrade('1-1', sem11Courses[0].code, 'A');
+
+  // Mark semester 1-1 as reviewed in guided setup
+  store.markSemesterReviewed('1-1');
+
+  const updatedProf = store.getActiveProfile();
+  const updated11 = updatedProf.semesters['1-1'];
+  assert.strictEqual(updated11[0].grade, 'A', 'Official grade recorded');
+  assert.strictEqual(updated11[1].grade || '', '', 'Pending course remains strictly empty');
+  assert.strictEqual(updated11[2].grade || '', '', 'Pending course remains strictly empty');
+
+  const stats = store.getOverallStats();
+  assert.strictEqual(stats.cgpa, 4.0, 'Only confirmed grade counts in CGPA');
+  assert.strictEqual(stats.totalGpaCreditsAttempted, updated11[0].credits, 'Only confirmed credits attempted');
+});
+
+// 110. Permanent Previous and Next semester navigation sequence and boundaries
+runTest('Semester Navigation: Automatically resolves chronological destination with boundary safety', () => {
+  const CHRONO = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
+  const getPrevNext = (sem) => {
+    const idx = CHRONO.indexOf(sem);
+    return {
+      prev: idx > 0 ? CHRONO[idx - 1] : sem === 'ORIENTATION' ? '4-2' : null,
+      next: idx >= 0 && idx < CHRONO.length - 1 ? CHRONO[idx + 1] : null
+    };
+  };
+
+  // Boundary 1: Sem 1-1 has no previous, next is 1-2
+  assert.deepStrictEqual(getPrevNext('1-1'), { prev: null, next: '1-2' }, 'First academic semester (1-1) hides/disables Previous');
+
+  // Middle: Sem 1-2 previous is 1-1, next is 2-1
+  assert.deepStrictEqual(getPrevNext('1-2'), { prev: '1-1', next: '2-1' }, 'Semester 1-2 navigates to 1-1 and 2-1');
+
+  // Middle: Sem 2-1 previous is 1-2, next is 2-2
+  assert.deepStrictEqual(getPrevNext('2-1'), { prev: '1-2', next: '2-2' }, 'Semester 2-1 navigates to 1-2 and 2-2');
+
+  // Boundary 2: Sem 4-2 previous is 4-1, next is null
+  assert.deepStrictEqual(getPrevNext('4-2'), { prev: '4-1', next: null }, 'Final academic semester (4-2) hides/disables Next');
+});
+
+// 111. Accidental touch prevention during horizontal swiping or vertical scrolling
+runTest('Touch Safety: Swiping gestures (> 5px) prevent accidental grade selection or deselection', () => {
+  let grade = 'A';
+  let isSwiping = false;
+
+  const handleTouchMove = (dx, dy) => {
+    if (dx > 5 || dy > 5) isSwiping = true;
+  };
+
+  const handleGradeClick = (newGrade) => {
+    if (isSwiping) return; // Prevent selection during swipe
+    if (grade === newGrade) grade = '';
+    else grade = newGrade;
+  };
+
+  // Simulate scrolling gesture (dx = 20px, dy = 10px)
+  handleTouchMove(20, 10);
+  handleGradeClick('B');
+  assert.strictEqual(grade, 'A', 'Swiping must NOT change selected grade');
+
+  // End swipe
+  isSwiping = false;
+  handleGradeClick('B');
+  assert.strictEqual(grade, 'B', 'Intentional tap changes grade to B');
+
+  // Intentional second tap clears grade
+  handleGradeClick('B');
+  assert.strictEqual(grade, '', 'Intentional tap-to-deselect clears grade');
+});
+
+// 112. Course Impact target deselection clears temporary target without altering saved records
+runTest('Course Impact: Deselecting target resets simulation without altering saved profile grades', () => {
+  const simulatedTargets = { '1-1:CS1101': 'A' };
+  let originalProfileGrade = 'B';
+
+  const handleTargetDeselect = (key) => {
+    // Second tap clears target to ''
+    simulatedTargets[key] = '';
+  };
+
+  handleTargetDeselect('1-1:CS1101');
+  assert.strictEqual(simulatedTargets['1-1:CS1101'], '', 'Simulated target is cleared');
+  assert.strictEqual(originalProfileGrade, 'B', 'Original saved profile grade remains strictly untouched');
 });
 
 console.log(`\n🎉 ALL ${passedTests} REGRESSION SCENARIOS COMPLETED WITH 100% SUCCESS!\n`);

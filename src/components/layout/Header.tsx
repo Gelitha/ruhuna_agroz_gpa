@@ -44,30 +44,51 @@ export const Header: React.FC = () => {
   } = useGradeStore();
 
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
   const profile = getActiveProfile();
   const stats = getOverallStats();
 
   const currentInfo = ROUTE_INFO[activeTab] || { section: 'ACADEMIC', title: 'GPA Calculator' };
 
-  // Close profile dropdown on outside click
+  // Dynamically measure and register header height on root for layout-aware offsets
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        document.documentElement.style.setProperty('--header-height', `${height}px`);
+      }
+    };
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight, { passive: true });
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
+
+  // Close profile dropdown on outside pointer events across mobile and desktop
+  useEffect(() => {
+    const handleClickOutside = (event: PointerEvent | MouseEvent) => {
+      const target = event.target as Node;
+      const isInsideMobile = mobileDropdownRef.current && mobileDropdownRef.current.contains(target);
+      const isInsideDesktop = desktopDropdownRef.current && desktopDropdownRef.current.contains(target);
+      if (!isInsideMobile && !isInsideDesktop) {
         setIsProfileDropdownOpen(false);
       }
     };
     if (isProfileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('pointerdown', handleClickOutside);
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside);
     };
   }, [isProfileDropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] px-3.5 sm:px-6 py-2.5 sm:py-3 transition-all shadow-xs min-w-0">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#DCDDD7] px-3.5 sm:px-6 py-2.5 sm:py-3 transition-all shadow-xs min-w-0"
+    >
       {/* ======================================================== */}
       {/* MOBILE HEADER (<= 767px)                                 */}
       {/* Distinct, Compact, Purpose-Built: Logo + Title + Profile */}
@@ -91,7 +112,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Right: Accessible Student Profile Selector */}
-        <div className="relative" ref={profileDropdownRef}>
+        <div className="relative" ref={mobileDropdownRef}>
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-neutral-50 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] transition shadow-2xs group min-h-[44px] touch-manipulation"
@@ -266,7 +287,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Desktop Profile Switcher */}
-          <div className="relative" ref={profileDropdownRef}>
+          <div className="relative" ref={desktopDropdownRef}>
             <button
               onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-50 border border-[#DCDDD7] hover:border-[#176B45] text-[#242824] transition shadow-2xs group cursor-pointer"

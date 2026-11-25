@@ -23,7 +23,8 @@ import {
   Target,
   Clock,
   Layers,
-  Edit3
+  Edit3,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -37,6 +38,7 @@ import {
 import { useGradeStore } from '../../store/useGradeStore';
 import { DEGREE_INFO } from '../../database';
 import { SemesterKey } from '../../types';
+import { getOrdinalYear } from '../../utils/calculations';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -47,7 +49,10 @@ export const DashboardView: React.FC = () => {
     setActiveTab,
     setSelectedSemesterForCalculator,
     setShowOnboarding,
-    openProfileModal
+    openProfileModal,
+    startGuidedSetup,
+    dismissGuidedSetup,
+    finishGuidedSetup
   } = useGradeStore();
 
   const profile = getActiveProfile();
@@ -74,6 +79,54 @@ export const DashboardView: React.FC = () => {
   const currentIdx = semKeys.indexOf(profile.currentSemester);
   const previousSemesters = semKeys.slice(0, currentIdx);
   const missingPrevious = previousSemesters.filter(k => stats.semStats[k].gpaCreditsAttempted === 0);
+
+  // Applicable semesters for initial setup guidance
+  const applicableSemesters: SemesterKey[] = currentIdx <= 0 ? ['1-1'] : semKeys.slice(0, currentIdx);
+
+  const getSemesterGradeStatus = (sk: SemesterKey) => {
+    const courses = profile.semesters[sk] || [];
+    let confirmed = 0;
+    let projected = 0;
+    let empty = 0;
+    for (const c of courses) {
+      if (c.grade) {
+        if (c.isExpected) projected++;
+        else confirmed++;
+      } else {
+        empty++;
+      }
+    }
+    const isReviewed = (profile.guidedSetup?.reviewedSemesters || []).includes(sk);
+    return { total: courses.length, confirmed, projected, empty, isReviewed };
+  };
+
+  const reviewedCount = applicableSemesters.filter(sk => {
+    const st = getSemesterGradeStatus(sk);
+    return st.isReviewed || st.confirmed > 0;
+  }).length;
+  const setupProgressPercent = Math.round((reviewedCount / applicableSemesters.length) * 100);
+
+  const earliestEmptySem = applicableSemesters.find(sk => {
+    const st = getSemesterGradeStatus(sk);
+    return st.empty > 0;
+  }) || applicableSemesters[0];
+
+  // Dynamic Dashboard guidance state (Requirement 8)
+  const totalGradedCourses = semKeys.reduce((acc, sk) => acc + (profile.semesters[sk] || []).filter(c => c.grade).length, 0);
+  const isSetupCompleted = Boolean(profile.guidedSetup?.completed);
+  const isSetupDismissed = Boolean(profile.guidedSetup?.dismissed);
+  const showGettingStartedCard = !isSetupCompleted && !isSetupDismissed;
+
+  let dynamicGuidanceMessage = '';
+  if (isSetupCompleted) {
+    dynamicGuidanceMessage = 'Your academic profile is ready.';
+  } else if (totalGradedCourses === 0) {
+    dynamicGuidanceMessage = 'Add your academic results to calculate your GPA.';
+  } else if (missingPrevious.length > 0) {
+    dynamicGuidanceMessage = 'Some previous semester results are still missing. Add them when available.';
+  } else {
+    dynamicGuidanceMessage = 'Continue entering your available semester results.';
+  }
 
   // Data for GPA Trend Chart
   const trendData = semKeys
@@ -102,7 +155,7 @@ export const DashboardView: React.FC = () => {
               {profile.degree} (Hons) Undergraduate
             </span>
             <span className="text-xs sm:text-sm text-neutral-500 font-semibold flex items-center gap-1.5">
-              <span>Year {profile.currentAcademicYear} • Sem {profile.currentSemester}</span>
+              <span>{getOrdinalYear(profile.currentAcademicYear)} • Sem {profile.currentSemester}</span>
               <button
                 onClick={() => openProfileModal('edit')}
                 className="text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-0.5 text-xs ml-1"
@@ -142,30 +195,182 @@ export const DashboardView: React.FC = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* MISSING PREVIOUS SEMESTER GRADES ALERT (DIRECT FEEDBACK) */}
+      {/* 2. PERSONALIZED GETTING STARTED ONBOARDING CARD          */}
       {/* ======================================================== */}
-      {missingPrevious.length > 0 && (
+      {showGettingStartedCard && (
+        <div className="p-5 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/60 border-2 border-emerald-300/80 shadow-sm space-y-4 sm:space-y-5 animate-in fade-in duration-200">
+          {/* Card Header */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-black tracking-wider uppercase text-emerald-800">
+                  Getting Started
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-neutral-900 tracking-tight">
+                Let's set up your academic results
+              </h3>
+              <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                {profile.currentSemester === '1-1'
+                  ? 'Welcome! Add your academic results to calculate your actual CGPA.'
+                  : 'Welcome! Add your previous semester results to calculate your actual CGPA.'}
+              </p>
+            </div>
+            <button
+              onClick={dismissGuidedSetup}
+              className="text-xs font-semibold text-neutral-500 hover:text-neutral-800 p-2 rounded-xl hover:bg-neutral-100 transition shrink-0 min-h-[44px] flex items-center gap-1 touch-manipulation"
+              title="I'll do this later"
+              aria-label="I'll do this later"
+            >
+              <span className="hidden xs:inline">I'll Do This Later</span>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Setup Progress */}
+          <div className="space-y-1.5 bg-white/80 p-3.5 sm:p-4 rounded-2xl border border-emerald-200/70">
+            <div className="flex items-center justify-between text-xs font-bold text-neutral-700">
+              <span>Setup Progress</span>
+              <span className="text-emerald-800 font-mono">
+                {reviewedCount} of {applicableSemesters.length} semesters reviewed ({setupProgressPercent}%)
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden border border-neutral-200/80">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full transition-all duration-300"
+                style={{ width: `${setupProgressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Applicable Semesters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+            {applicableSemesters.map(sk => {
+              const st = getSemesterGradeStatus(sk);
+              const isDone = st.confirmed === st.total && st.total > 0;
+              const hasGrades = st.confirmed > 0;
+              const isReviewed = st.isReviewed;
+
+              return (
+                <div
+                  key={sk}
+                  className={`p-3.5 sm:p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                    isDone
+                      ? 'bg-emerald-50/70 border-emerald-300'
+                      : hasGrades
+                      ? 'bg-emerald-50/40 border-emerald-200'
+                      : isReviewed
+                      ? 'bg-amber-50/50 border-amber-200'
+                      : 'bg-white border-neutral-200'
+                  }`}
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="text-xs sm:text-sm font-black text-neutral-900 truncate">
+                      Semester {sk}
+                    </div>
+                    <div className="text-[11px] font-semibold truncate">
+                      {isDone ? (
+                        <span className="text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>All {st.total} graded</span>
+                        </span>
+                      ) : hasGrades ? (
+                        <span className="text-emerald-700">
+                          {st.confirmed} of {st.total} graded
+                        </span>
+                      ) : st.projected > 0 ? (
+                        <span className="text-blue-700">
+                          {st.projected} projected
+                        </span>
+                      ) : isReviewed ? (
+                        <span className="text-amber-700">
+                          Reviewed (Pending)
+                        </span>
+                      ) : (
+                        <span className="text-neutral-500">
+                          Not started ({st.total} courses)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleOpenSemester(sk)}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shrink-0 min-h-[44px] flex items-center gap-1.5 transition shadow-2xs touch-manipulation active:scale-95"
+                    aria-label={`Semester ${sk} ${hasGrades ? 'Edit' : 'Add Grades'}`}
+                  >
+                    <span>{hasGrades ? 'Edit' : 'Add Grades'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Primary Action Button Bar */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+            <button
+              onClick={() => handleOpenSemester(earliestEmptySem)}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-800 hover:to-green-800 text-white text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-sm transition hover:scale-[1.01] min-h-[44px] touch-manipulation active:scale-95"
+            >
+              <span>{reviewedCount > 0 ? 'Continue Setup' : 'Start Entering Grades'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={dismissGuidedSetup}
+              className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-700 text-xs sm:text-sm font-bold min-h-[44px] transition touch-manipulation text-center"
+            >
+              I'll Do This Later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* RESUME SETUP BANNER (WHEN DISMISSED WITH MISSING GRADES)  */}
+      {/* ======================================================== */}
+      {!showGettingStartedCard && !isSetupCompleted && missingPrevious.length > 0 && (
         <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-amber-50 border border-amber-300 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
           <div className="flex items-start sm:items-center gap-3 min-w-0">
             <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5 sm:mt-0" />
             <div className="min-w-0">
               <div className="text-xs sm:text-sm font-bold text-amber-900 flex flex-wrap items-center gap-1.5">
-                <span>Missing Previous Semester Grades:</span>
+                <span>{dynamicGuidanceMessage}</span>
                 <span className="font-mono font-black text-amber-950 bg-amber-200/80 px-2 py-0.2 rounded-md">
                   {missingPrevious.map(s => `Sem ${s}`).join(', ')}
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-amber-800 mt-0.5 leading-relaxed">
-                You are currently in Semester {profile.currentSemester}. To check your past SGPA history and calculate your true Cumulative CGPA, add your subjects and grades from completed semesters.
+                You are currently in Semester {profile.currentSemester}. Enter your official previous semester grades to compute your true Cumulative CGPA.
               </p>
             </div>
           </div>
           <button
-            onClick={() => handleOpenSemester(missingPrevious[0])}
-            className="px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold shrink-0 flex items-center justify-center gap-1.5 transition self-start sm:self-auto shadow-xs"
+            onClick={() => handleOpenSemester(earliestEmptySem)}
+            className="px-4 py-2.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold shrink-0 flex items-center justify-center gap-1.5 transition self-start sm:self-auto shadow-xs min-h-[44px] touch-manipulation"
           >
-            <span>Add Sem {missingPrevious[0]} Grades</span>
+            <span>Continue Setup</span>
             <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+          </button>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* SETUP COMPLETED BANNER                                    */}
+      {/* ======================================================== */}
+      {isSetupCompleted && (
+        <div className="px-4 py-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between flex-wrap gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>Your academic profile is ready. Official results are used for all GPA calculations.</span>
+          </div>
+          <button
+            onClick={() => handleOpenSemester(profile.currentSemester)}
+            className="text-emerald-800 hover:text-emerald-950 text-xs font-black underline shrink-0 min-h-[44px] flex items-center"
+          >
+            Open Calculator &gt;
           </button>
         </div>
       )}

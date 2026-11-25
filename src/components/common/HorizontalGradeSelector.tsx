@@ -125,7 +125,8 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
     if (touchStartPos.current && e.touches && e.touches.length > 0) {
       const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
       const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
-      if (dx > 6 || dy > 6) {
+      // Movement in horizontal, vertical, or diagonal direction (> 5px) flags as scrolling/swiping
+      if (dx > 5 || dy > 5) {
         isSwipingRef.current = true;
       }
     }
@@ -136,15 +137,27 @@ export const HorizontalGradeSelector: React.FC<HorizontalGradeSelectorProps> = (
     setTimeout(() => {
       isInteractingRef.current = false;
       isSwipingRef.current = false;
-    }, 120);
+    }, 150);
+  };
+
+  const handleTouchCancel = () => {
+    touchStartPos.current = null;
+    isSwipingRef.current = true;
+    setTimeout(() => {
+      isInteractingRef.current = false;
+      isSwipingRef.current = false;
+    }, 150);
   };
 
   const handleGradeClick = (grade: Grade) => {
     if (isDisabled || isSwipingRef.current) return;
-    // Selected grades remain unchanged when tapped again (Clear Grade operates separately)
-    if (currentGrade === grade) return;
     triggerHaptic();
-    handleSelect(grade);
+    // Tap-to-deselect: tapping the currently selected grade again clears it
+    if (currentGrade === grade) {
+      handleSelect('');
+    } else {
+      handleSelect(grade);
+    }
   };
 
   const isTouchSize = size === 'touch';
