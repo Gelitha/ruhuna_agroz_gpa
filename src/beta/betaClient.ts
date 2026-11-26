@@ -5,6 +5,7 @@ import { BETA_API_ENDPOINT, BETA_CONSENT_VERSION, isBetaActive } from './betaCon
 import {
   getBetaConsent,
   getOrCreateAnonId,
+  getOrCreateAnonSecret,
   saveBetaConsent,
   subscribeBetaConsent,
   withdrawBetaConsent
@@ -22,8 +23,10 @@ import { calculateOverallStats } from '../utils/calculations';
 import { ALL_SEMESTER_KEYS } from '../utils/projectionCalculations';
 import { SemesterKey, StudentProfile } from '../types';
 
-const SNAPSHOT_DEBOUNCE_MS = 4000;
+const SNAPSHOT_DEBOUNCE_MS = 10_000;
 const SESSION_SYNC_INTERVAL_MS = 60_000;
+const MAX_SNAPSHOT_RETRIES = 3;
+const BASE_RETRY_DELAY_MS = 5000;
 
 let initialized = false;
 let sessionId = '';
@@ -31,6 +34,7 @@ let sessionStartedAt = Date.now();
 let viewsVisited: string[] = [];
 let lastSnapshotHash = '';
 let snapshotTimer: ReturnType<typeof setTimeout> | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let sessionTimer: ReturnType<typeof setInterval> | null = null;
 let latestPlanningDiagnostics: BetaPlanningDiagnostics = {};
 let lastTrackedTab = '';
@@ -114,11 +118,18 @@ function getPerformanceMetrics(): Record<string, number> {
   }
 }
 
-async function postBetaPayload(payload: Record<string, unknown>, useBeacon = false): Promise<boolean> {
-  if (!isBetaActive()) return false;
+async function postBetaPayload(
+  payload: Record<string, unknown>,
+  useBeacon = false,
+  allowAfterExpiry = false
+): Promise<boolean> {
+  if (!allowAfterExpiry && !isBetaActive()) return false;
 
   try {
-    const json = JSON.stringify(payload);
+    const json = JSON.stringify({
+      ...payload,
+      anonSecret: getOrCreateAnonSecret()
+    });
     if (useBeacon && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
       const blob = new Blob([json], { type: 'application/json' });
       return navigator.sendBeacon(BETA_API_ENDPOINT, blob);
@@ -225,12 +236,49 @@ function buildSanitizedSnapshot(profile: StudentProfile, profileCount: number): 
   };
 }
 
+function clearSnapshotTimers(): void {
+  if (snapshotTimer) {
+    clearTimeout(snapshotTimer);
+    snapshotTimer = null;
+  }
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+}
+
+async function attemptSnapshotUpload(snapshot: BetaAcademicSnapshot, attempt = 0): Promise<void> {
+  if (!isBetaActive()) return;
+  const latestConsent = getBetaConsent();
+  if (!latestConsent.decided || !latestConsent.academicConsent) return;
+
+  const ok = await postBetaPayload({
+    action: 'snapshot',
+    anonId: getOrCreateAnonId(),
+    sessionId,
+    snapshot
+  });
+
+  if (ok) {
+    lastSnapshotHash = snapshot.snapshotHash;
+    return;
+  }
+
+  if (attempt < MAX_SNAPSHOT_RETRIES) {
+    const delayMs = BASE_RETRY_DELAY_MS * Math.pow(3, attempt); // 5s, 15s, 45s
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void attemptSnapshotUpload(snapshot, attempt + 1);
+    }, delayMs);
+  }
+}
+
 function scheduleAcademicSnapshotSync(): void {
   if (!isBetaActive()) return;
   const consent = getBetaConsent();
   if (!consent.decided || !consent.academicConsent) return;
 
-  if (snapshotTimer) clearTimeout(snapshotTimer);
+  clearSnapshotTimers();
   snapshotTimer = setTimeout(() => {
     snapshotTimer = null;
     if (!isBetaActive()) return;
@@ -245,13 +293,7 @@ function scheduleAcademicSnapshotSync(): void {
       const snapshot = buildSanitizedSnapshot(activeProfile, state.profiles.length);
       if (snapshot.snapshotHash === lastSnapshotHash) return;
 
-      lastSnapshotHash = snapshot.snapshotHash;
-      void postBetaPayload({
-        action: 'snapshot',
-        anonId: getOrCreateAnonId(),
-        sessionId,
-        snapshot
-      });
+      void attemptSnapshotUpload(snapshot, 0);
     } catch {
       // Never affect GPA calculation or local saving
     }
@@ -325,9 +367,14 @@ export async function updateBetaConsentPreferences(
   const prev = getBetaConsent();
   saveBetaConsent(analyticsConsent, academicConsent);
 
+  if (!academicConsent) {
+    clearSnapshotTimers();
+    lastSnapshotHash = '';
+  }
+
   if (!isBetaActive()) return;
 
-  await postBetaPayload({
+  const consentSaved = await postBetaPayload({
     action: 'consent',
     anonId: getOrCreateAnonId(),
     analyticsConsent,
@@ -336,6 +383,8 @@ export async function updateBetaConsentPreferences(
     consentAction,
     device: getDeviceInfo()
   });
+
+  if (!consentSaved) return;
 
   if (analyticsConsent && !prev.analyticsConsent) {
     syncSession(false);
@@ -363,11 +412,15 @@ export async function submitBetaFeedback(payload: BetaFeedbackPayload): Promise<
 }
 
 export async function deleteMyBetaData(): Promise<boolean> {
-  if (!isBetaActive()) return false;
-  const ok = await postBetaPayload({
-    action: 'delete_user_data',
-    anonId: getOrCreateAnonId()
-  });
+  clearSnapshotTimers();
+  const ok = await postBetaPayload(
+    {
+      action: 'delete_user_data',
+      anonId: getOrCreateAnonId()
+    },
+    false,
+    true
+  );
   withdrawBetaConsent();
   lastSnapshotHash = '';
   return ok;
@@ -467,9 +520,9 @@ export function initBetaTelemetry(): () => void {
   });
 
   unsubscribeConsent = subscribeBetaConsent(next => {
-    if (!next.academicConsent && snapshotTimer) {
-      clearTimeout(snapshotTimer);
-      snapshotTimer = null;
+    if (!next.academicConsent) {
+      clearSnapshotTimers();
+      lastSnapshotHash = '';
     }
   });
 
@@ -484,7 +537,7 @@ export function initBetaTelemetry(): () => void {
     document.removeEventListener('visibilitychange', onVisibilityChange);
     window.removeEventListener('pagehide', onPageHide);
     if (sessionTimer) clearInterval(sessionTimer);
-    if (snapshotTimer) clearTimeout(snapshotTimer);
+    clearSnapshotTimers();
     if (unsubscribeStore) unsubscribeStore();
     if (unsubscribeConsent) unsubscribeConsent();
     initialized = false;

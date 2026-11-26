@@ -5,6 +5,7 @@ import { BETA_CONSENT_VERSION } from './betaConfig';
 import { BetaConsentState } from './betaTypes';
 
 const STORAGE_KEY_BETA_ANON_ID = 'gradepath_beta_anon_id_v1';
+const STORAGE_KEY_BETA_ANON_SECRET = 'gradepath_beta_anon_secret_v1';
 const STORAGE_KEY_BETA_CONSENT = 'gradepath_beta_consent_v1';
 
 const DEFAULT_CONSENT: BetaConsentState = {
@@ -45,6 +46,36 @@ export function getOrCreateAnonId(): string {
     return created;
   } catch {
     return generateAnonId();
+  }
+}
+
+function generateAnonSecret(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(24);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch {
+    // Fallback below
+  }
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
+}
+
+export function getOrCreateAnonSecret(): string {
+  try {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      return 'ssr_secret_fallback_0000';
+    }
+    const existing = localStorage.getItem(STORAGE_KEY_BETA_ANON_SECRET);
+    if (existing && /^[a-zA-Z0-9_-]{16,128}$/.test(existing)) {
+      return existing;
+    }
+    const created = generateAnonSecret();
+    localStorage.setItem(STORAGE_KEY_BETA_ANON_SECRET, created);
+    return created;
+  } catch {
+    return generateAnonSecret();
   }
 }
 
