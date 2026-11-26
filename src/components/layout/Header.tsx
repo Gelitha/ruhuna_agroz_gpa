@@ -490,8 +490,11 @@ export const Header: React.FC = () => {
           <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
             {NAV_SECTIONS.map((section) => (
               <div key={section.title} className="space-y-1">
-                <div className="px-3 py-1 text-[11px] font-black text-neutral-400 uppercase tracking-wider">
-                  {section.title}
+                <div className="px-3 py-1">
+                  <div className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">
+                    {section.title}
+                  </div>
+                  <SiSubtext text={section.siTitle} className="text-[10px] text-neutral-400" />
                 </div>
                 {section.items.map((item) => {
                   const Icon = item.icon;

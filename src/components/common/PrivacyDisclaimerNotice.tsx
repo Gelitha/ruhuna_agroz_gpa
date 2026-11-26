@@ -41,12 +41,7 @@ export const PrivacyDisclaimerNotice: React.FC<PrivacyDisclaimerNoticeProps> = (
         <p className="text-emerald-900/90 leading-relaxed">{PRIVACY_BODY}</p>
         <SiSubtext text={SI.privacy.body} className="text-emerald-900/85" />
         <p className="text-emerald-800/80 leading-relaxed">
-          {PRIVACY_BACKUP_NOTE}{' '}
-          {!compact && (
-            <span>
-              Standard website hosting and font asset requests do not transmit your personal or academic records.
-            </span>
-          )}
+          {PRIVACY_BACKUP_NOTE}
         </p>
         <SiSubtext text={SI.privacy.backupNote} className="text-emerald-800/80" />
       </div>

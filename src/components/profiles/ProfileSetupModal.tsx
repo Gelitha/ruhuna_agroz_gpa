@@ -21,6 +21,8 @@ import { DegreeCode, SemesterKey } from '../../types';
 import { initDefaultCoursesForDegree, getOrdinalYear } from '../../utils/calculations';
 import { AppLogo } from '../common/AppLogo';
 import { PrivacyDisclaimerNotice } from '../common/PrivacyDisclaimerNotice';
+import { SiSubtext } from '../common/BilingualText';
+import { SI } from '../../constants/translations';
 
 const SEMESTERS_LIST: Array<{ key: SemesterKey; label: string; year: number; yearText: string }> = [
   { key: '1-1', label: 'Sem 1-1', year: 1, yearText: '1st Yr' },
@@ -252,6 +254,13 @@ export const ProfileSetupModal: React.FC = () => {
               >
                 {isOnboarding ? 'My Academic Profile' : isEdit ? 'Edit Academic Profile' : 'New Student Profile'}
               </h2>
+              <SiSubtext
+                text={isOnboarding ? SI.profiles.onboardingWelcome : isEdit ? SI.profiles.editProfile : SI.profiles.createNew}
+                className="text-[#176B45] font-semibold mt-0.5"
+              />
+              {isOnboarding && (
+                <SiSubtext text={SI.profiles.onboardingSub} className="text-[#626962]" />
+              )}
             </div>
           </div>
 
@@ -282,6 +291,7 @@ export const ProfileSetupModal: React.FC = () => {
               <span>Student Name <strong className="text-rose-600">*</strong></span>
               <span className="text-[11px] text-neutral-400 font-normal">Full name or with initials</span>
             </label>
+            <SiSubtext text={SI.common.studentName} className="text-[10px] text-[#626962]" />
             <div className="relative">
               <User className="w-4 h-4 absolute left-3.5 top-3 text-neutral-400" />
               <input
@@ -304,6 +314,7 @@ export const ProfileSetupModal: React.FC = () => {
               <span>Registration / Index Number</span>
               <span className="text-[11px] text-neutral-400 font-normal">Optional</span>
             </label>
+            <SiSubtext text={SI.common.registrationNumber} className="text-[10px] text-[#626962]" />
             <input
               type="text"
               value={regNo}
@@ -319,6 +330,7 @@ export const ProfileSetupModal: React.FC = () => {
               <span>Degree Programme <strong className="text-rose-600">*</strong></span>
               {!degree && <span className="text-[11px] text-amber-700 font-bold">Please select</span>}
             </label>
+            <SiSubtext text={SI.common.selectDegree} className="text-[10px] text-[#626962]" />
             <div className="grid grid-cols-1 gap-2">
               {[
                 {
@@ -380,6 +392,7 @@ export const ProfileSetupModal: React.FC = () => {
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#242824]">
                 Current Academic Semester <strong className="text-rose-600">*</strong>
+                <SiSubtext text={SI.common.selectSemester} className="text-[10px] text-[#626962]" />
               </label>
               {derivedYear ? (
                 <span className="text-xs font-extrabold text-[#176B45] bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
@@ -454,9 +467,10 @@ export const ProfileSetupModal: React.FC = () => {
               <button
                 type="button"
                 onClick={closeProfileModal}
-                className="px-4 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs sm:text-sm transition min-h-[44px] cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs sm:text-sm transition min-h-[44px] cursor-pointer text-left leading-tight"
               >
-                Cancel
+                <span className="block">Cancel</span>
+                <SiSubtext text={SI.common.cancel} className="text-[9.5px] text-[#626962]" />
               </button>
             )}
 
@@ -464,8 +478,11 @@ export const ProfileSetupModal: React.FC = () => {
               type="submit"
               className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#176B45] hover:bg-[#103B2D] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-95 min-h-[44px] cursor-pointer"
             >
-              <span>{isOnboarding ? 'Complete Setup & Open Dashboard' : isEdit ? 'Save Changes' : 'Create Profile'}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span className="text-left leading-tight">
+                <span className="block">{isOnboarding ? 'Complete Setup & Open Dashboard' : isEdit ? 'Save Changes' : 'Create Profile'}</span>
+                <SiSubtext text={SI.common.saveProfile} className="text-[9.5px] text-emerald-100" />
+              </span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
           </div>
         </form>

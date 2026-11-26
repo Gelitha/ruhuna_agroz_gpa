@@ -75,8 +75,11 @@ export const Sidebar: React.FC = () => {
           {NAV_SECTIONS.map((section) => (
             <div key={section.title} className="space-y-1.5">
               {isSidebarExpanded ? (
-                <div className="px-3 py-1 text-[11px] font-black text-neutral-400 uppercase tracking-wider">
-                  {section.title}
+                <div className="px-3 py-1">
+                  <div className="text-[11px] font-black text-neutral-400 uppercase tracking-wider">
+                    {section.title}
+                  </div>
+                  <SiSubtext text={section.siTitle} className="text-[10px] text-neutral-400" />
                 </div>
               ) : (
                 <div className="h-px bg-neutral-200 my-2.5 mx-1" />

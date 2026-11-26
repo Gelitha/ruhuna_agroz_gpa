@@ -574,6 +574,7 @@ export const PlanningTools: React.FC = () => {
                 <div className="p-4 rounded-xl bg-[#F8F8F4] border border-[#DCDDD7] space-y-3">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#626962]">
                     Target Scope
+                    <SiSubtext text={SI.planning.targetScope} className="text-[10px] text-[#626962]" />
                   </label>
                   <div className="grid grid-cols-1 gap-2">
                     <button
@@ -586,6 +587,7 @@ export const PlanningTools: React.FC = () => {
                       }`}
                     >
                       <div>After the current semester (Sem {proj.currentSemester})</div>
+                      <SiSubtext text={SI.planning.scopeAfterCurrent} className={`text-[10px] ${targetScope === 'after_current' ? 'text-emerald-100' : 'text-[#626962]'}`} />
                       <div className={`text-[11px] font-normal mt-0.5 ${targetScope === 'after_current' ? 'text-emerald-100' : 'text-[#626962]'}`}>
                         Pending results + upcoming Sem {proj.currentSemester} examinations
                       </div>
@@ -601,6 +603,7 @@ export const PlanningTools: React.FC = () => {
                       }`}
                     >
                       <div>After pending previous semester results</div>
+                      <SiSubtext text={SI.planning.scopeAfterPending} className={`text-[10px] ${targetScope === 'after_pending' ? 'text-emerald-100' : 'text-[#626962]'}`} />
                       <div className={`text-[11px] font-normal mt-0.5 ${targetScope === 'after_pending' ? 'text-emerald-100' : 'text-[#626962]'}`}>
                         Resolves outstanding grades from earlier terms
                       </div>
@@ -616,6 +619,7 @@ export const PlanningTools: React.FC = () => {
                       }`}
                     >
                       <div>At graduation ({targetResult.totalScopeCredits} Credits)</div>
+                      <SiSubtext text={SI.planning.scopeAtGraduation} className={`text-[10px] ${targetScope === 'at_graduation' ? 'text-emerald-100' : 'text-[#626962]'}`} />
                       <div className={`text-[11px] font-normal mt-0.5 ${targetScope === 'at_graduation' ? 'text-emerald-100' : 'text-[#626962]'}`}>
                         Degree classification across all remaining degree requirements
                       </div>
@@ -950,7 +954,7 @@ export const PlanningTools: React.FC = () => {
 
                       {suggestedCombination.manualQuotas.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[11px] font-bold text-blue-700">Manual Locked:</span>
+                          <span className="text-[11px] font-bold text-blue-700">Manual Locked ({SI.planning.manualQuota}):</span>
                           {suggestedCombination.manualQuotas.map(q => (
                             <span
                               key={`man-${q.grade}-${q.gpv.toFixed(2)}`}

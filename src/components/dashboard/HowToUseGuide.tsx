@@ -39,55 +39,55 @@ const GUIDE_STEPS: GuideStep[] = [
   {
     num: 1,
     title: 'Set up your academic profile',
-    siTitle: 'ඔබගේ උපාධි පාඨමාලාව සහ වත්මන් අධ්‍යයන වාරය තෝරන්න.',
+    siTitle: SI.howToUse.step1,
     enDesc: 'Select your degree programme (ARMT, ABM, or GT) and current academic semester in your profile.'
   },
   {
     num: 2,
     title: 'Enter official grades',
-    siTitle: 'ලැබී ඇති නිල ප්‍රතිඵල අදාළ අධ්‍යයන වාරයට ඇතුළත් කරන්න.',
+    siTitle: SI.howToUse.step2,
     enDesc: 'Enter confirmed results from previous and current semesters in the GPA Calculator.'
   },
   {
     num: 3,
     title: 'Add expected grades',
-    siTitle: 'තවමත් ලැබී නොමැති ප්‍රතිඵල සඳහා Projected තෝරා අපේක්ෂිත ශ්‍රේණිය ඇතුළත් කරන්න.',
+    siTitle: SI.howToUse.step3,
     enDesc: 'Expected grades update your Projected GPA without changing your official Actual GPA.'
   },
   {
     num: 4,
     title: 'Understand Repeat and Excused',
-    siTitle: 'නැවත හදාරන විෂයක් සඳහා Repeat තෝරන්න. අදාළ නිල අවසරයක් තිබේ නම් පමණක් Excused තෝරන්න.',
+    siTitle: SI.howToUse.step4,
     enDesc: 'Repeat attempts are capped at Grade C (2.00 GPV) unless officially excused by the Faculty/Senate.'
   },
   {
     num: 5,
     title: 'Plan your target CGPA',
-    siTitle: 'ඔබට ලබා ගැනීමට අවශ්‍ය CGPA අගය තෝරා අවශ්‍ය ශ්‍රේණි සැලසුම් කරන්න.',
+    siTitle: SI.howToUse.step5,
     enDesc: 'Open Planning Tools inside GPA Calculator and select Target CGPA to check required grades.'
   },
   {
     num: 6,
     title: 'Customize suggested grades',
-    siTitle: 'එක් එක් විෂයට අපේක්ෂිත ශ්‍රේණිය තෝරන්න. අනෙකුත් විෂයවල අවශ්‍ය ශ්‍රේණි ස්වයංක්‍රීයව ගැළපේ.',
+    siTitle: SI.howToUse.step6,
     enDesc: 'Lock any subject grade using the dropdown; remaining Auto subjects rebalance dynamically with credit quotas, feasibility status, and Apply Suggested as Projected.'
   },
   {
     num: 7,
     title: 'Update results when released',
-    siTitle: 'නිල ප්‍රතිඵල ලැබුණු පසු Projected ඉවත් කර නිවැරදි ශ්‍රේණිය තහවුරු කරන්න.',
+    siTitle: SI.howToUse.step7,
     enDesc: 'Untick Projected on the course and confirm the official grade once university results are released.'
   },
   {
     num: 8,
     title: 'Review academic performance',
-    siTitle: 'Analytics හරහා ඔබගේ GPA වෙනස්වීම් සහ අධ්‍යයන ප්‍රගතිය නිරීක්ෂණය කරන්න.',
+    siTitle: SI.howToUse.step8,
     enDesc: 'Use Analytics for GPA trends and grade distribution, and Academic Transcript for a printable record.'
   },
   {
     num: 9,
     title: 'Back up academic records',
-    siTitle: 'ඔබගේ අධ්‍යයන දත්ත ආරක්ෂා කර ගැනීමට උපස්ථ පිටපතක් ලබා ගන්න.',
+    siTitle: SI.howToUse.step9,
     enDesc: 'Data is saved locally in your browser; clearing browser data can remove it, so export and restore JSON backups from Settings & Backup.'
   }
 ];
@@ -128,8 +128,9 @@ export const HowToUseGuide: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-            {isExpanded ? 'Hide Guide' : 'Show Guide'}
+          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-right">
+            <span className="block">{isExpanded ? 'Hide Guide' : 'Show Guide'}</span>
+            <SiSubtext text={isExpanded ? SI.common.hideGuide : SI.common.showGuide} className="text-[9.5px] text-emerald-700" />
           </span>
           <ChevronDown className={`w-4 h-4 text-neutral-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </div>
@@ -145,7 +146,10 @@ export const HowToUseGuide: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             >
               <Calculator className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Open GPA Calculator</span>
+              <span className="text-left leading-tight">
+                <span className="block">Open GPA Calculator</span>
+                <SiSubtext text={SI.common.openCalculator} className="text-[9.5px] text-emerald-800" />
+              </span>
             </button>
             <button
               type="button"
@@ -153,7 +157,10 @@ export const HowToUseGuide: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             >
               <Target className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Open Target CGPA</span>
+              <span className="text-left leading-tight">
+                <span className="block">Open Target CGPA</span>
+                <SiSubtext text={SI.common.openTargetCgpa} className="text-[9.5px] text-emerald-800" />
+              </span>
             </button>
             <button
               type="button"
@@ -161,7 +168,10 @@ export const HowToUseGuide: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             >
               <LineChart className="w-3.5 h-3.5 text-emerald-700" />
-              <span>View Analytics</span>
+              <span className="text-left leading-tight">
+                <span className="block">View Analytics</span>
+                <SiSubtext text={SI.common.viewAnalytics} className="text-[9.5px] text-[#626962]" />
+              </span>
             </button>
             <button
               type="button"
@@ -169,7 +179,10 @@ export const HowToUseGuide: React.FC = () => {
               className="px-3 py-1.5 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 text-neutral-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Export Backup</span>
+              <span className="text-left leading-tight">
+                <span className="block">Export Backup</span>
+                <SiSubtext text={SI.settings.exportBackup} className="text-[9.5px] text-[#626962]" />
+              </span>
             </button>
           </div>
 
@@ -200,7 +213,7 @@ export const HowToUseGuide: React.FC = () => {
                 <span>Practical GPA Example (Illustrative Only)</span>
               </div>
               <span className="text-[10px] font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
-                Sample values — not your actual records
+                Sample values only — {SI.common.sampleValuesOnly}
               </span>
             </div>
 
@@ -213,7 +226,7 @@ export const HowToUseGuide: React.FC = () => {
                   Actual CGPA represents confirmed academic results.
                 </p>
                 <SiSubtext
-                  text="නිල වශයෙන් ලැබී ඇති ප්‍රතිඵල අනුව ගණනය කළ CGPA අගයයි."
+                  text={SI.howToUse.actualExample}
                   className="text-emerald-900"
                 />
               </div>
@@ -226,7 +239,7 @@ export const HowToUseGuide: React.FC = () => {
                   Projected CGPA represents estimated performance including expected grades.
                 </p>
                 <SiSubtext
-                  text="අපේක්ෂිත ප්‍රතිඵල ද ඇතුළත් කර ගණනය කරන ලද CGPA අගයයි."
+                  text={SI.howToUse.projectedExample}
                   className="text-emerald-900"
                 />
               </div>

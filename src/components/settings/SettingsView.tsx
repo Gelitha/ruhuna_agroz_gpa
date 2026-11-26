@@ -319,14 +319,17 @@ export const SettingsView: React.FC = () => {
 
           <button
             onClick={() => {
-              if (confirm('Reset all student profiles to factory defaults?')) {
+              if (confirm(`Reset all student profiles to factory defaults?\n(${SI.settings.confirmReset})`)) {
                 resetToFactoryDefaults();
               }
             }}
             className="px-4 py-2.5 rounded-2xl bg-white border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 hover:bg-rose-50 transition ml-auto"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>Reset Defaults</span>
+            <span className="text-left leading-tight">
+              <span className="block">Reset Defaults</span>
+              <SiSubtext text={SI.settings.resetDefaults} className="text-[9.5px] text-rose-600" />
+            </span>
           </button>
         </div>
 
