@@ -34,6 +34,7 @@ import { HorizontalGradeSelector } from '../common/HorizontalGradeSelector';
 import { HelpTooltip } from '../common/HelpTooltip';
 import { SiSubtext } from '../common/BilingualText';
 import { SI } from '../../constants/translations';
+import { recordPlanningDiagnostics } from '../../beta/betaClient';
 
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E'];
 
@@ -235,6 +236,20 @@ export const PlanningTools: React.FC = () => {
     }
 
     applyTargetMixPlan(allocations);
+    const gradeCounts: Record<string, number> = {};
+    for (const a of allocations) {
+      gradeCounts[a.grade] = (gradeCounts[a.grade] || 0) + 1;
+    }
+    recordPlanningDiagnostics({
+      targetCgpa,
+      targetScope,
+      possible: suggestedCombination.possible,
+      achievedCgpa: suggestedCombination.estimatedAchievedCgpa ?? suggestedCombination.achievedGpa,
+      shortfall: suggestedCombination.shortfall,
+      suggestedSummary: gradeCounts,
+      manualGradeAllocations,
+      appliedCount: allocations.length
+    });
     const saved = saveCurrentState ? saveCurrentState() : true;
     if (!saved) {
       setAppliedToast('Save failed: Local browser storage unavailable.');

@@ -6,6 +6,7 @@ import { BookOpen } from 'lucide-react';
 import { useGradeStore } from '../../store/useGradeStore';
 import { AppLogo } from '../common/AppLogo';
 import { PRIVACY_HEADING, ACADEMIC_DISCLAIMER } from '../common/PrivacyDisclaimerNotice';
+import { isBetaActive } from '../../beta/betaConfig';
 
 export const Footer: React.FC = () => {
   const { setActiveTab, setShowOnboarding } = useGradeStore();
@@ -48,7 +49,9 @@ export const Footer: React.FC = () => {
           {/* Privacy, Academic Disclaimer & Quick Actions */}
           <div className="md:col-span-4 space-y-1.5 text-center md:text-right">
             <div className="text-[11px] font-bold text-[#103B2D]">
-              {PRIVACY_HEADING} Academic data stays in your browser.
+              {isBetaActive()
+                ? 'Local-first storage • Optional temporary beta diagnostics active.'
+                : `${PRIVACY_HEADING} Academic data stays in your browser.`}
             </div>
             <p className="text-[11px] text-neutral-500 leading-relaxed">
               {ACADEMIC_DISCLAIMER}

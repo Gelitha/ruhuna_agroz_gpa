@@ -1,9 +1,11 @@
 // University of Ruhuna - Faculty of Agriculture
 // GradePath Root Application (11 Core Dedicated Views as per Specification)
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGradeStore } from './store/useGradeStore';
 import { normalizeNavView } from './config/navigation';
+import { initBetaTelemetry } from './beta/betaClient';
+import { BetaConsentBanner } from './beta/BetaConsentBanner';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -20,6 +22,10 @@ import { SettingsView } from './components/settings/SettingsView';
 
 export const GradePathApp: React.FC = () => {
   const { activeTab, activeProfileId, isSidebarExpanded } = useGradeStore();
+
+  useEffect(() => {
+    return initBetaTelemetry();
+  }, []);
 
   const renderCurrentView = () => {
     const view = normalizeNavView(activeTab);
@@ -71,6 +77,9 @@ export const GradePathApp: React.FC = () => {
 
       {/* First-Time Experience & Unified Profile Setup Modal */}
       <ProfileSetupModal />
+
+      {/* Temporary Beta Consent Banner (auto-hidden when beta is disabled/expired) */}
+      <BetaConsentBanner />
     </div>
   );
 };

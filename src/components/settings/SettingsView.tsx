@@ -23,6 +23,8 @@ import { HelpTooltip } from '../common/HelpTooltip';
 import { PrivacyDisclaimerNotice } from '../common/PrivacyDisclaimerNotice';
 import { SiSubtext } from '../common/BilingualText';
 import { SI } from '../../constants/translations';
+import { BetaSettingsSection } from '../../beta/BetaSettingsSection';
+import { isBetaActive } from '../../beta/betaConfig';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -156,6 +158,9 @@ export const SettingsView: React.FC = () => {
       {/* Privacy & Academic Disclaimer */}
       <PrivacyDisclaimerNotice showAcademicDisclaimer />
 
+      {/* Temporary Beta Participation & Feedback Controls (auto-hidden when beta ends) */}
+      <BetaSettingsSection />
+
       {/* ======================================================== */}
       {/* 1. STUDENT PROFILES MANAGER */}
       {/* ======================================================== */}
@@ -277,7 +282,9 @@ export const SettingsView: React.FC = () => {
           </div>
         </h3>
         <p className="text-xs text-neutral-500 leading-relaxed max-w-2xl">
-          GradePath saves all profiles locally on your device without transmitting data over the network. Export a periodic backup to safeguard your grades.
+          {isBetaActive()
+            ? 'GradePath saves all profiles locally on your device as the primary source. Export a periodic backup to safeguard your grades.'
+            : 'GradePath saves all profiles locally on your device without transmitting data over the network. Export a periodic backup to safeguard your grades.'}
         </p>
         <SiSubtext text={SI.settings.backupDesc} className="text-neutral-600 max-w-2xl" />
 
